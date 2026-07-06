@@ -1,7 +1,8 @@
 # KnowledgeFlow
 
-> A structured SOP system for LLM-assisted personal knowledge base management —
-> from raw source to curated wiki, with a human-in-the-loop audit pipeline.
+> Solving the curation paradox — a two-stage pipeline that separates LLM-powered
+> exhaustive extraction from human semantic curation, with an auditable reading map
+> as the interface between them.
 
 ---
 
