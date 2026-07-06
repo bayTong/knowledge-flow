@@ -10,11 +10,11 @@
 
 Two premises, each reasonable on its own, but together they form a paradox:
 
-**Premise 1**: High-quality knowledge curation demands domain judgment. You need to distinguish core concepts from minor details, recognize when two different-sounding ideas refer to the same thing — these judgments can only be made by someone who actually understands the domain.
+**Premise 1**: High-quality knowledge curation demands domain judgment. You need to distinguish core concepts from minor details, recognize when two different-sounding ideas refer to the same thing, identify which entities in a source are worth extracting as domain-relevant versus peripheral or low-relevance, and determine which pieces of knowledge should be linked — and how. These judgments can only be made by someone who actually understands the domain.
 
-**Premise 2**: People adopt knowledge management tools precisely because they don't yet know the domain. If you already understood the field, you'd take notes directly — you wouldn't need an LLM to extract and organize for you.
+**Premise 2**: People adopt knowledge management tools precisely because they don't yet know the domain. The goal is to learn faster, more intuitively, and more easily from unfamiliar material — building structured knowledge or enabling a range of interactive capabilities. This process depends heavily on AI for analysis and reasoning.
 
-The paradox: **the responsibility for curation lies with the human (only you know your goals and context), but the capability for exhaustive extraction lies with the LLM (only it can scan long texts without missing details).** Two independently valid premises point to a contradiction — who should curate?
+The paradox: **the responsibility for curation lies with the human (only you know your goals and context), yet the human lacks the domain knowledge required to curate; meanwhile, the entity with knowledge-processing capability (the LLM) lacks the context to judge what matters to you, and its risks — extraction omissions, hallucinations — cannot be ignored.** Two independently valid premises point to a contradiction — who should curate?
 
 Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the LLM curate directly. The LLM reads the source, decides what's worth a page, writes summaries, assigns tags, builds links. This is fast and frictionless, but it has an unfixable defect: **LLM omissions are far harder to repair than LLM noise.** If the LLM over-extracts (noise), you delete the extra pages in seconds. If the LLM misses a critical concept, you never know it was skipped — because there's no reading map, no intermediate artifact between the raw source and the finished wiki. The reasoning is entirely inside the LLM's black box.
 
