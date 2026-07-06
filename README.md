@@ -6,16 +6,38 @@
 
 ---
 
+## The Curation Paradox
+
+Two premises, each reasonable on its own, but together they form a paradox:
+
+**Premise 1**: High-quality knowledge curation demands domain judgment. You need to distinguish core concepts from minor details, recognize when two different-sounding ideas refer to the same thing — these judgments can only be made by someone who actually understands the domain.
+
+**Premise 2**: People adopt knowledge management tools precisely because they don't yet know the domain. If you already understood the field, you'd take notes directly — you wouldn't need an LLM to extract and organize for you.
+
+The paradox: **the responsibility for curation lies with the human (only you know your goals and context), but the capability for exhaustive extraction lies with the LLM (only it can scan long texts without missing details).** Two independently valid premises point to a contradiction — who should curate?
+
+Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the LLM curate directly. The LLM reads the source, decides what's worth a page, writes summaries, assigns tags, builds links. This is fast and frictionless, but it has an unfixable defect: **LLM omissions are far harder to repair than LLM noise.** If the LLM over-extracts (noise), you delete the extra pages in seconds. If the LLM misses a critical concept, you never know it was skipped — because there's no reading map, no intermediate artifact between the raw source and the finished wiki. The reasoning is entirely inside the LLM's black box.
+
+KnowledgeFlow takes a different position — **redistribute responsibility rather than make the LLM smarter**:
+
+- **LLM handles exhaustive extraction** — no filtering, no importance judgment (hard constraint C5). Every extraction is anchored to a source location (C2), uncertainty is explicitly marked (C3), and agent suggestions are structurally isolated from facts (C4). The output is a structured reading map
+- **You handle semantic judgment** — mark each entry in the reading map as "ingest," "ignore," or "need more sources." You don't need to trust the LLM's judgment; you only need to verify that it extracted everything (verifiable through section-by-section coverage and source citations)
+- **LLM executes constrained writes** — the curation phase (SOP-002) only processes entries you've confirmed, operating under SCHEMA rules for deduplication, conflict resolution, and formatting
+
+The two-stage pipeline isn't primarily about efficiency — it's about **auditability**.
+
+---
+
 ## The Core Problem
 
-LLM-assisted knowledge management tools face a fundamental tension:
+Following from the paradox above, the specific failures of existing tools can be precisely located:
 
-- **High-quality curation demands domain judgment** — you need to know what matters before you can organize it.
-- **Users adopt knowledge management tools precisely because they don't yet know the domain** — if you already understood the field, you wouldn't need a structured knowledge base.
+**The issue isn't insufficient LLM capability — it's a misallocation of roles.** When the LLM is placed in the curator's seat, its strength (exhaustive scanning — not missing anything) is sidelined, and its weakness (judging what matters to you) is pushed to the frontline. Two failure modes dominate:
 
-Most AI knowledge tools resolve this by letting the LLM **both** extract and curate. The LLM decides what's a "core concept" vs. a "minor detail," which pages to create, and how to organize them. This is fast and frictionless — but the LLM is making semantic judgments about what matters **to you**, without knowing your goals, your context, or your evolving understanding of the field.
+- **Omissions**: The LLM decides a concept isn't important enough and skips it. Without reading the original source, you'll never know what was left out
+- **Over-simplification**: The LLM produces a wiki page that reads well, but you can't tell whether it represents everything the source contained or just the subset the LLM chose to include. You lose a sense of control — the output looks reasonable, but you have no measure of the gap between source and product
 
-**KnowledgeFlow takes a different position**: the LLM does exhaustive mechanical extraction (what it's good at), and you do semantic curation at checkpoints (what requires human judgment). The pipeline enforces this separation through hard constraints — not guidelines, but prohibitions the LLM cannot violate.
+KnowledgeFlow's design goal is therefore not "a better curation algorithm" — it's **pulling judgment authority back to the human side, demoting the LLM from curator to extraction tool, and proving that in this role, the LLM can perform more reliably and thoroughly than a human would.**
 
 ---
 
