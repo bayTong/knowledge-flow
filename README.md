@@ -5,6 +5,8 @@
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable reading map
 > as the interface between them.
+>
+> Battle-tested across 4 cross-domain knowledge bases covering LLM architecture, application development, and curation toolchain design — the [`examples/`](examples/) directory contains a complete reading map and curated output from one 25K-line dialogue.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -13,7 +15,6 @@
 | Why it's designed this way — hard constraints, two-stage, three-layer defense | [Key Design Decisions](#key-design-decisions) |
 | What files are in this repo | [Project Structure](#project-structure) |
 | How to get started | [Quick Start](#quick-start) |
-| Real-world usage data | [In Practice](#in-practice) |
 | Design philosophy | [Philosophy](#philosophy) |
 | Full SOP specification | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | v1.0 → v2.0 changelog | [`CHANGELOG.md`](CHANGELOG.md) |
@@ -178,18 +179,6 @@ knowledge-flow/
 6. **Run SOP-003 lint** to verify structural integrity.
 
 The full specification is at [`docs/sop-v2-full.md`](docs/sop-v2-full.md).
-
----
-
-## In Practice
-
-The SOP system has been used to manage 4 knowledge bases covering:
-- LLM agent architecture and internals
-- LLM application development (RAG, agents, knowledge graphs, retrieval)
-- Knowledge base curation toolchain design
-- Cross-domain knowledge synthesis
-
-The reading map example in this repository was produced from a 25K-line technical dialogue on LLM application development — demonstrating the rough reader's ability to handle ultra-long, multi-topic source material with transparent coverage boundaries.
 
 ---
 
