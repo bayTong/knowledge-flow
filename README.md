@@ -6,15 +6,6 @@
 > exhaustive extraction from human semantic curation, with an auditable reading map
 > as the interface between them.
 
-```
-knowledge-flow/
-├── docs/sop-v2-full.md            core deliverable (SOP-000 through SOP-006)
-├── examples/                      reading map sample + wiki page sample
-├── templates/SCHEMA-template.md   reusable knowledge base constitution template
-├── archive/v1.0/                  v1.0 archive
-└── CHANGELOG.md                   version history
-```
-
 ---
 
 ## The Curation Paradox
@@ -143,16 +134,29 @@ The layers don't overlap — each checks what the others don't, and they form a 
 
 ```
 knowledge-flow/
-├── README.md
+├── README.md                         English README
+├── README-zh.md                      Chinese README（中文文档）
+├── CHANGELOG.md                      Version history
+├── LICENSE                           MIT
 ├── docs/
-│   └── sop-v2-full.md          ← Full SOP specification (v2.0, 6 SOPs + appendices)
+│   └── sop-v2-full.md               Core deliverable (SOP-000 through SOP-006 + appendices)
 ├── templates/
-│   └── SCHEMA-template.md      ← Reusable SCHEMA template (7 minimum chapters)
+│   └── SCHEMA-template.md           Reusable knowledge base constitution template
 ├── examples/
-│   ├── reading-map-example.md  ← Real reading map from 25K-line technical dialogue
-│   └── wiki-page-example.md    ← Resulting wiki page after curation
-└── .gitignore
+│   ├── reading-map-example.md       Reading map from a 25K-line technical dialogue
+│   └── wiki-page-example.md         Resulting wiki page after curation
+└── archive/
+    └── v1.0/                         v1.0 historical archive
+        ├── README.md                  v1.0 limitations overview
+        └── sop-v1-original.md        v1.0 original SOP
 ```
+
+| Looking for | Start here |
+|------------|-----------|
+| How to use the methodology | [Quick Start](#quick-start) below, or jump to [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
+| Why this project is designed this way | [The Curation Paradox](#the-curation-paradox) |
+| What changed between v1.0 and v2.0 | [`CHANGELOG.md`](CHANGELOG.md) |
+| v1.0 original documents | [`archive/v1.0/`](archive/v1.0/) |
 
 ---
 

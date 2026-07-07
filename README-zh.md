@@ -5,15 +5,6 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化阅读地图作为人机之间的审查界面。
 
-```
-knowledge-flow/
-├── docs/sop-v2-full.md            核心交付物（SOP-000 至 SOP-006）
-├── examples/                      阅读地图样例 + wiki 页面样例
-├── templates/SCHEMA-template.md   可复用知识库宪法模板
-├── archive/v1.0/                  v1.0 归档
-└── CHANGELOG.md                   变更记录
-```
-
 ---
 
 ## 知识策展悖论
@@ -142,17 +133,29 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 
 ```
 knowledge-flow/
-├── README.md                      ← 英文 README
-├── README-zh.md                   ← 本文档
-├── LICENSE                        ← MIT
+├── README.md                         英文 README
+├── README-zh.md                      中文 README（本文档）
+├── CHANGELOG.md                      变更记录
+├── LICENSE                           MIT
 ├── docs/
-│   └── sop-v2-full.md            ← 完整 SOP 规范（SOP-000 至 SOP-006 + 附录）
+│   └── sop-v2-full.md               核心交付物（SOP-000 至 SOP-006 + 附录）
 ├── templates/
-│   └── SCHEMA-template.md        ← 可复用的知识库宪法模板（7 章起步）
+│   └── SCHEMA-template.md           可复用知识库宪法模板（7 章起步）
 ├── examples/
-│   ├── reading-map-example.md    ← 真实阅读地图：25K 行技术对话的粗读产物
-│   └── wiki-page-example.md      ← 策展入库后的 wiki 页面样例
+│   ├── reading-map-example.md       阅读地图样例（25K 行对话的粗读产物）
+│   └── wiki-page-example.md         wiki 页面样例（策展入库产出）
+└── archive/
+    └── v1.0/                         v1.0 历史版本归档
+        ├── README.md                  v1.0 局限性说明
+        └── sop-v1-original.md        v1.0 原始 SOP
 ```
+
+| 想看什么 | 从这里开始 |
+|---------|----------|
+| 方法论怎么用 | 往下看 [快速开始](#快速开始)，或直接读 [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
+| 这个项目为什么这样设计 | [知识策展悖论](#知识策展悖论) |
+| v1.0 和 v2.0 有什么区别 | [`CHANGELOG.md`](CHANGELOG.md) |
+| v1.0 原始文档 | [`archive/v1.0/`](archive/v1.0/) |
 
 ---
 
