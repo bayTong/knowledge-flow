@@ -1,8 +1,19 @@
+[中文文档](README-zh.md) · [English](README.md)
+
 # KnowledgeFlow
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable reading map
 > as the interface between them.
+
+```
+knowledge-flow/
+├── docs/sop-v2-full.md            core deliverable (SOP-000 through SOP-006)
+├── examples/                      reading map sample + wiki page sample
+├── templates/SCHEMA-template.md   reusable knowledge base constitution template
+├── archive/v1.0/                  v1.0 archive
+└── CHANGELOG.md                   version history
+```
 
 ---
 

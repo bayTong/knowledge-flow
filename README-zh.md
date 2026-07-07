@@ -1,7 +1,18 @@
+[English](README.md) · [中文文档](README-zh.md)
+
 # KnowledgeFlow
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化阅读地图作为人机之间的审查界面。
+
+```
+knowledge-flow/
+├── docs/sop-v2-full.md            核心交付物（SOP-000 至 SOP-006）
+├── examples/                      阅读地图样例 + wiki 页面样例
+├── templates/SCHEMA-template.md   可复用知识库宪法模板
+├── archive/v1.0/                  v1.0 归档
+└── CHANGELOG.md                   变更记录
+```
 
 ---
 
