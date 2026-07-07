@@ -72,3 +72,9 @@ SOP-005 → SOP-006
 - **8 条写入通用约束**
 - **批量摄入模式**：多原料时合并执行查重
 - **人类审查面缺失**——这是 v1.0 最根本的架构局限，也是驱动 v2.0 重构的核心动力
+
+### 归档位置
+
+v1.0 原始文档已归档至 [`archive/v1.0/`](archive/v1.0/)：
+- [`sop-v1-original.md`](archive/v1.0/sop-v1-original.md) — v1.0 完整 SOP 规范原文
+- [`README.md`](archive/v1.0/README.md) — v1.0 局限性说明
