@@ -1,10 +1,23 @@
-[中文文档](README-zh.md) · [English](README.md)
+[English](README.md) · [中文文档](README-zh.md)
 
 # KnowledgeFlow
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable reading map
 > as the interface between them.
+
+| Looking for | Jump to |
+|------------|---------|
+| The core problem this project solves | [The Curation Paradox](#the-curation-paradox) |
+| Full pipeline walkthrough | [The Pipeline](#the-pipeline) |
+| Why it's designed this way — hard constraints, two-stage, three-layer defense | [Key Design Decisions](#key-design-decisions) |
+| What files are in this repo | [Project Structure](#project-structure) |
+| How to get started | [Quick Start](#quick-start) |
+| Real-world usage data | [In Practice](#in-practice) |
+| Design philosophy | [Philosophy](#philosophy) |
+| Full SOP specification | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
+| v1.0 → v2.0 changelog | [`CHANGELOG.md`](CHANGELOG.md) |
+| v1.0 archive | [`archive/v1.0/`](archive/v1.0/) |
 
 ---
 
@@ -150,13 +163,6 @@ knowledge-flow/
         ├── README.md                  v1.0 limitations overview
         └── sop-v1-original.md        v1.0 original SOP
 ```
-
-| Looking for | Start here |
-|------------|-----------|
-| How to use the methodology | [Quick Start](#quick-start) below, or jump to [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
-| Why this project is designed this way | [The Curation Paradox](#the-curation-paradox) |
-| What changed between v1.0 and v2.0 | [`CHANGELOG.md`](CHANGELOG.md) |
-| v1.0 original documents | [`archive/v1.0/`](archive/v1.0/) |
 
 ---
 
