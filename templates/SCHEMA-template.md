@@ -24,7 +24,7 @@
 │   ├── papers/            ← 论文原文（只读）
 │   ├── transcripts/       ← 对话/访谈记录（只读）
 │   ├── assets/            ← 图片、图表等附件
-│   └── _reading-maps/     ← 粗读器产出的阅读地图
+│   └── _curation-maps/     ← 粗读器产出的策展地图
 ├── wiki/                   ← 第二层：Agent 整理后的结构化知识
 │   ├── entities/          ← 实体页
 │   └── queries/           ← 查询存档

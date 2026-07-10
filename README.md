@@ -3,7 +3,7 @@
 # KnowledgeFlow
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
-> exhaustive extraction from human semantic curation, with an auditable reading map
+> exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
 | Looking for | Jump to |
@@ -16,6 +16,8 @@
 | Real-world usage data | [In Practice](#in-practice) |
 | Design philosophy | [Philosophy](#philosophy) |
 | Full SOP specification | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
+| Build plan & roadmap | [`docs/build-plan.md`](docs/build-plan.md) |
+| Strategic vision | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
 | v1.0 → v2.0 changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 | v1.0 archive | [`archive/v1.0/`](archive/v1.0/) |
 
@@ -31,12 +33,12 @@ Two premises, each reasonable on its own, but together they form a paradox:
 
 The paradox: **the responsibility for curation lies with the human (only you know your goals and context), yet the human lacks the domain knowledge required to curate; meanwhile, the entity with knowledge-processing capability (the LLM) lacks the context to judge what matters to you, and its risks — extraction omissions, hallucinations — cannot be ignored.** Two independently valid premises point to a contradiction — who should curate?
 
-Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the LLM curate directly. The LLM reads the source, decides what's worth a page, writes summaries, assigns tags, builds links. This is fast and frictionless, but it has an unfixable defect: **LLM omissions are far harder to repair than LLM noise.** If the LLM over-extracts (noise), you delete the extra pages in seconds. If the LLM misses a critical concept, you never know it was skipped — because there's no reading map, no intermediate artifact between the raw source and the finished wiki. The reasoning is entirely inside the LLM's black box.
+Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the LLM curate directly. The LLM reads the source, decides what's worth a page, writes summaries, assigns tags, builds links. This is fast and frictionless, but it has an unfixable defect: **LLM omissions are far harder to repair than LLM noise.** If the LLM over-extracts (noise), you delete the extra pages in seconds. If the LLM misses a critical concept, you never know it was skipped — because there's no curation map, no intermediate artifact between the raw source and the finished wiki. The reasoning is entirely inside the LLM's black box.
 
 KnowledgeFlow takes a different position — **redistribute responsibility rather than make the LLM smarter**:
 
-- **LLM handles exhaustive extraction** — no filtering, no importance judgment (hard constraint C5). Every extraction is anchored to a source location (C2), uncertainty is explicitly marked (C3), and agent suggestions are structurally isolated from facts (C4). The output is a structured reading map
-- **You handle semantic judgment** — mark each entry in the reading map as "ingest," "ignore," or "need more sources." You don't need to trust the LLM's judgment; you only need to verify that it extracted everything (verifiable through section-by-section coverage and source citations)
+- **LLM handles exhaustive extraction** — no filtering, no importance judgment (hard constraint C5). Every extraction is anchored to a source location (C2), uncertainty is explicitly marked (C3), and agent suggestions are structurally isolated from facts (C4). The output is a structured curation map
+- **You handle semantic judgment** — mark each entry in the curation map as "ingest," "ignore," or "need more sources." You don't need to trust the LLM's judgment; you only need to verify that it extracted everything (verifiable through section-by-section coverage and source citations)
 - **LLM executes constrained writes** — the curation phase (SOP-002) only processes entries you've confirmed, operating under SCHEMA rules for deduplication, conflict resolution, and formatting
 
 The two-stage pipeline isn't primarily about efficiency — it's about **auditability**.
@@ -75,7 +77,7 @@ Raw Source
 │  · Gap analysis + SCHEMA proposals│
 │  · Zero wiki pages created        │  ← Hard constraint
 │                                    │
-│  Output: Reading Map (阅读地图)    │
+│  Output: Curation Map (策展地图)   │
 │  A structured, auditable artifact │
 │  with 9 sections                  │
 └──────────────────┬───────────────┘
@@ -91,7 +93,7 @@ Raw Source
 │  Phase 2: Curation (策展入库)     │
 │                                    │
 │  · Only processes human-confirmed │
-│    entries from the reading map   │
+│    entries from the curation map  │
 │  · Deduplication against existing │
 │    wiki pages (full-text search)  │
 │  · Decision tree: create / append │
@@ -115,7 +117,7 @@ The rough reader operates under 7 hard constraints (C1–C7), four of which are 
 
 | Constraint | Type | Why |
 |------|:---:|------|
-| C1: Never create wiki pages | ☒ | The rough reader produces reading maps, not finished artifacts |
+| C1: Never create wiki pages | ☒ | The rough reader produces curation maps, not finished artifacts |
 | C2: Every extraction must cite its source location | ☒ | Traceability = verifiability = correctability |
 | C3: Uncertainty must be explicitly marked | ☒ | The core value of the rough reader over direct curation |
 | C4: Agent suggestions must be structurally separated from facts | ☒ | Prevents suggestion contamination of the factual layer |
@@ -127,9 +129,9 @@ Telling an LLM "you should try to do X" gets diluted. Telling it "you must never
 
 ### 2. Two-Stage Pipeline with a Human Audit Surface
 
-Extraction and curation are **separate SOPs** with a mandatory human review checkpoint between them. The reading map is the audit surface — a structured artifact you can reason about before any permanent changes are made to your knowledge base.
+Extraction and curation are **separate SOPs** with a mandatory human review checkpoint between them. The curation map is the audit surface — a structured artifact you can reason about before any permanent changes are made to your knowledge base.
 
-This separation solves the "paradox of curation": you don't yet know the domain, so you can't judge extraction quality on the fly. The reading map gives you a pause point — you review it, mark what matters, and then the LLM executes constrained writes.
+This separation solves the "paradox of curation": you don't yet know the domain, so you can't judge extraction quality on the fly. The curation map gives you a pause point — you review it, mark what matters, and then the LLM executes constrained writes.
 
 ### 3. Three-Layer Defense System
 
@@ -152,11 +154,22 @@ knowledge-flow/
 ├── CHANGELOG.md                      Version history
 ├── LICENSE                           MIT
 ├── docs/
-│   └── sop-v2-full.md               Core deliverable (SOP-000 through SOP-006 + appendices)
+│   ├── sop-v2-full.md               Core deliverable (SOP-000 through SOP-006 + appendices)
+│   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
+│   └── second-brain-vision.md       Strategic vision（战略愿景）
+├── prompts/                          LLM-agnostic prompt templates（提示词模板）
+│   ├── README.md                    Template usage guide
+│   ├── rough-reader.md              SOP-001 single-pass rough reader
+│   ├── rough-reader-pass1-entities.md   Multi-pass Pass 1: entities & concepts
+│   ├── rough-reader-pass2-relationships.md  Multi-pass Pass 2: relationships
+│   ├── rough-reader-pass3-claims.md    Multi-pass Pass 3: claims & arguments
+│   ├── curator.md                   SOP-002 curation & ingestion
+│   ├── lint.md                      SOP-003 health scan
+│   └── extraction-interface.md      Extraction interface specification
 ├── templates/
 │   └── SCHEMA-template.md           Reusable knowledge base constitution template
 ├── examples/
-│   ├── reading-map-example.md       Reading map from a 25K-line technical dialogue
+│   ├── curation-map-example.md      Curation map from a 25K-line technical dialogue
 │   └── wiki-page-example.md         Resulting wiki page after curation
 └── archive/
     └── v1.0/                         v1.0 historical archive
@@ -172,18 +185,18 @@ knowledge-flow/
 
 1. **Define your domain** — one or two intersecting knowledge areas.
 2. **Copy `templates/SCHEMA-template.md`** to `schema/SCHEMA.md` in your knowledge base directory and fill in the placeholders.
-3. **Feed your first source** to an LLM, instructing it to execute SOP-001 (the rough reader). It will produce a reading map — no wiki pages yet.
-4. **Review the reading map** — mark entries as "ingest," "ignore," or "need more sources." Adjust SCHEMA if the rough reader suggested changes.
-5. **Tell the LLM to execute SOP-002** — it will create wiki pages from only the entries you confirmed.
-6. **Run SOP-003 lint** to verify structural integrity.
+3. **Feed your first source** to an LLM using `prompts/rough-reader.md` — it will produce a curation map. No wiki pages yet.
+4. **Review the curation map** — mark entries as "ingest," "ignore," or "need more sources." Adjust SCHEMA if the rough reader suggested changes.
+5. **Tell the LLM to execute SOP-002** using `prompts/curator.md` — it will create wiki pages from only the entries you confirmed.
+6. **Run SOP-003 lint** using `prompts/lint.md` to verify structural integrity.
 
-The full specification is at [`docs/sop-v2-full.md`](docs/sop-v2-full.md).
+Full specification: [`docs/sop-v2-full.md`](docs/sop-v2-full.md). Prompt templates: [`prompts/`](prompts/).
 
 ---
 
 ## In Practice
 
-> Battle-tested across 4 cross-domain knowledge bases covering LLM architecture, application development, and curation toolchain design — the [`examples/`](examples/) directory contains a complete reading map and curated output from one 25K-line dialogue.
+> Battle-tested across 4 cross-domain knowledge bases covering LLM architecture, application development, and curation toolchain design — the [`examples/`](examples/) directory contains a complete curation map and curated output from one 25K-line dialogue.
 
 ---
 
