@@ -159,12 +159,12 @@ knowledge-flow/
 │   └── second-brain-vision.md       战略愿景
 ├── prompts/                          LLM-agnostic 提示词模板
 │   ├── README.md                    模板使用说明
-│   ├── rough-reader.md              SOP-001 单轮次粗读器
-│   ├── rough-reader-pass1-entities.md   多轮次提取 Pass 1：实体与概念
-│   ├── rough-reader-pass2-relationships.md  多轮次提取 Pass 2：关系提取
-│   ├── rough-reader-pass3-claims.md    多轮次提取 Pass 3：论点与主张
-│   ├── curator.md                   SOP-002 策展入库
-│   ├── lint.md                      SOP-003 健康扫描
+│   ├── sop-001-rough-reader.md              组装模板（三 Pass 输出 → 完整策展地图）
+│   ├── sop-001-pass1-entities.md       Pass 1：全景概括 + 实体清单
+│   ├── sop-001-pass2-relationships.md  Pass 2：关系提取
+│   ├── sop-001-pass3-claims.md         Pass 3：论点与主张提取
+│   ├── sop-002-curator.md                   SOP-002 策展入库
+│   ├── sop-003-lint.md                      SOP-003 健康扫描
 │   └── extraction-interface.md      提取接口技术规范
 ├── templates/
 │   └── SCHEMA-template.md           可复用知识库宪法模板（7 章起步）
@@ -185,10 +185,10 @@ knowledge-flow/
 
 1. **定义你的领域**——一个或两个交织的知识领域，写清楚「这个知识库覆盖什么」。
 2. **复制 `templates/SCHEMA-template.md`** 到你知识库的 `schema/SCHEMA.md`，填入实际信息。
-3. **把第一份原料交给 LLM**，使用 `prompts/rough-reader.md` 作为提示词，让它执行 SOP-001（粗读器）。它会产出一份策展地图——此时没有任何 wiki 页面被创建。
+3. **把第一份原料交给 LLM**，依次使用 `prompts/sop-001-pass1-entities.md` → `sop-001-pass2-relationships.md` → `sop-001-pass3-claims.md` → `sop-001-rough-reader.md` 执行四轮调用。最终产出一份策展地图——此时没有任何 wiki 页面被创建。
 4. **审核策展地图**——逐条标记「确认入库」「忽略」或「待更多原料」。如果粗读器提了 SCHEMA 调整建议，决定是否接受。
-5. **让 LLM 执行 SOP-002**（策展入库），使用 `prompts/curator.md`——它只处理你确认过的条目，在 SCHEMA 约束下写入 wiki 页面。
-6. **跑一次 SOP-003 Lint**，使用 `prompts/lint.md` 验证结构完整性。
+5. **让 LLM 执行 SOP-002**（策展入库），使用 `prompts/sop-002-curator.md`——它只处理你确认过的条目，在 SCHEMA 约束下写入 wiki 页面。
+6. **跑一次 SOP-003 Lint**，使用 `prompts/sop-003-lint.md` 验证结构完整性。
 
 完整规范见 [`docs/sop-v2-full.md`](docs/sop-v2-full.md)。提示词模板见 [`prompts/`](prompts/)。
 

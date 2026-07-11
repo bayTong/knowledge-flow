@@ -1,8 +1,8 @@
 # 外置第二大脑 · 建设规划
 
-> 本文档是外置第二大脑项目的**唯一权威路线图**。战略愿景见 [`docs/second-brain-vision.md`](second-brain-vision.md)。
-> 从知识策展工具到 AI 外置第二大脑的完整演进方案。
-> v2.1 已合并 project-gap-analysis.md 和 second-brain-roadmap.md（精简为 second-brain-vision.md）。
+> 本文档是外置第二大脑项目的**唯一权威路线图**。战略愿景见 [`docs/second-brain-vision.md`](second-brain-vision.md)
+> 从知识策展工具到 AI 外置第二大脑的完整演进方案
+> v2.1 已合并 project-gap-analysis.md 和 second-brain-roadmap.md（精简为 second-brain-vision.md）
 
 ---
 
@@ -30,10 +30,10 @@
 
 不是「AI 帮你记笔记」，而是 **AI 智能体作为持续运行的认知外挂**：
 
-- **摄入管线**：AI 穷举提取 → 人审 → 策展入库。人做价值判断，AI 做不遗漏的机械提取。
-- **持久记忆**：知识库作为 AI 的跨会话长期记忆。AI 在对话中主动检索已有知识，而非从零开始。
-- **元认知监控**：独立 Agent 定期扫描知识库健康度——遗漏、漂移、盲区、结构趋势。
-- **自我进化**：系统从人的审核反馈中学习自己的盲区，持续改进提取和策展质量。
+- **摄入管线**：AI 穷举提取 → 人审 → 策展入库。人做价值判断，AI 做不遗漏的机械提取
+- **持久记忆**：知识库作为 AI 的跨会话长期记忆。AI 在对话中主动检索已有知识，而非从零开始
+- **元认知监控**：独立 Agent 定期扫描知识库健康度——遗漏、漂移、盲区、结构趋势
+- **自我进化**：系统从人的审核反馈中学习自己的盲区，持续改进提取和策展质量
 
 ### 核心原则
 
@@ -137,7 +137,7 @@
 
 ## 四、LLM 的四项根本局限与系统对策
 
-这四个局限是当前 LLM 技术的硬边界，架构不能「解决」它们，只能**降低伤害**、**把不可消除的部分交还给人类**。
+这四个局限是当前 LLM 技术的硬边界，架构不能「解决」它们，只能**降低伤害**、**把不可消除的部分交还给人类**
 
 ### 局限 1：无真正语义理解
 
@@ -167,7 +167,7 @@
 
 ### 局限 3：无自主价值判断
 
-> LLM 不能判断「这个方向值不值得深挖」。
+> LLM 不能判断「这个方向值不值得深挖」
 
 **架构对策**：
 
@@ -179,7 +179,7 @@
 
 ### 局限 4：无真正创造性连接
 
-> LLM 只在表层做相似度匹配，不能跨领域产生新洞见。
+> LLM 只在表层做相似度匹配，不能跨领域产生新洞见
 
 **架构对策**：
 
@@ -193,7 +193,7 @@
 
 ## 五、阶段 0：项目基础补全
 
-**目标**：让 KnowledgeFlow 成为「读 README 能理解 + 拿模板就能用」的完整开源项目。
+**目标**：让 KnowledgeFlow 成为「读 README 能理解 + 拿模板就能用」的完整开源项目
 
 ### 5.1 `prompts/` 目录 — LLM-agnostic 提示词模板 ✅ v2.1 已完成
 
@@ -202,18 +202,17 @@
 | 文件 | 内容 | 说明 |
 |------|------|------|
 | `prompts/README.md` | Prompt 模板使用说明 | 解释模板格式、占位符替换规则、如何接入不同 LLM 工具 |
-| `prompts/rough-reader.md` | 策展地图生成（单轮次） | 快速上手版。含 7 字段提取接口、5 级不确定性分类、C1-C7 硬约束。占位符：`{{SOURCE_CONTENT}}`, `{{KB_DOMAIN}}` |
-| `prompts/rough-reader-pass1-entities.md` | 多轮次 Pass 1：实体与概念 | 仅关注「源文中有哪些实体和概念」。输入：`{{SOURCE_CONTENT}}`；输出：实体/概念列表 |
-| `prompts/rough-reader-pass2-relationships.md` | 多轮次 Pass 2：关系提取 | 仅关注「Pass 1 的实体/概念之间的关系」。输入：`{{SOURCE_CONTENT}}` + `{{PASS1_OUTPUT}}`；输出：关系列表（6 种类型） |
-| `prompts/rough-reader-pass3-claims.md` | 多轮次 Pass 3：论点提取 | 仅关注「作者的核心论点和具体主张」。输入：`{{SOURCE_CONTENT}}` + `{{PASS1_OUTPUT}}` + `{{PASS2_OUTPUT}}`；输出：论点列表 |
-| `prompts/curator.md` | SOP-002 策展入库 | 基于审核过的策展地图驱动写入。含 4 种页面模板 + 8 项通用约束。占位符：`{{CURATION_MAP}}`, `{{SCHEMA_MD}}`, `{{INDEX_MD}}` |
-| `prompts/lint.md` | SOP-003 健康扫描 | 9 项检查的触发条件 + 3 级严重度定义 + 自动修复边界声明 |
+| `prompts/sop-001-rough-reader.md` | 组装模板——将三份 Pass 输出组装为完整策展地图 | 补全第 6/7/8/9 节。输入：`{{PASS1_OUTPUT}}` + `{{PASS2_OUTPUT}}` + `{{PASS3_OUTPUT}}` |
+| `prompts/sop-001-pass1-entities.md` | 多轮次 Pass 1：实体与概念 | 仅关注「源文中有哪些实体和概念」。输入：`{{SOURCE_CONTENT}}`；输出：实体/概念列表 |
+| `prompts/sop-001-pass2-relationships.md` | 多轮次 Pass 2：关系提取 | 仅关注「Pass 1 的实体/概念之间的关系」。输入：`{{SOURCE_CONTENT}}` + `{{PASS1_OUTPUT}}`；输出：关系列表（6 种类型） |
+| `prompts/sop-001-pass3-claims.md` | 多轮次 Pass 3：论点提取 | 仅关注「作者的核心论点和具体主张」。输入：`{{SOURCE_CONTENT}}` + `{{PASS1_OUTPUT}}` + `{{PASS2_OUTPUT}}`；输出：论点列表 |
+| `prompts/sop-002-curator.md` | SOP-002 策展入库 | 基于审核过的策展地图驱动写入。含 4 种页面模板 + 8 项通用约束。占位符：`{{CURATION_MAP}}`, `{{SCHEMA_MD}}`, `{{INDEX_MD}}` |
+| `prompts/sop-003-lint.md` | SOP-003 健康扫描 | 9 项检查的触发条件 + 3 级严重度定义 + 自动修复边界声明 |
 | `prompts/extraction-interface.md` | 提取接口技术规范 | 独立文档。定义每个字段的类型、约束、边界情况、示例。5 级不确定性分类详解。关系提取的 explicit vs implicit 规则 |
 
 **设计要点**：
 - 每个 prompt 模板自包含，标注输入、输出格式、硬约束
 - 占位符命名一致（如 `{{SOURCE_CONTENT}}` 在不同模板中含义相同）
-- 多轮次模板可以独立使用（不想用多轮次，只用 `rough-reader.md` 做单轮次提取）
 - `extraction-interface.md` 是权威的格式规范，所有 prompt 模板以它为准
 
 ### 5.2 `scripts/` 目录 — 参考实现脚本（P1 强烈建议）
@@ -281,19 +280,19 @@
 
 ```
 Step 3a: Pass 1 — 实体与概念提取
-  加载: rough-reader-pass1-entities.md
+  加载: sop-001-pass1-entities.md
   任务: 仅关注「源文中有哪些实体和概念」
   输入: 源文
   输出: 实体和概念列表
 
 Step 3b: Pass 2 — 关系提取
-  加载: rough-reader-pass2-relationships.md
+  加载: sop-001-pass2-relationships.md
   任务: 仅关注「Pass 1 的实体/概念之间是什么关系」
   输入: 源文 + Pass 1 的输出
   输出: 关系列表（类型：依赖/包含/对比/因果/替代/互补）
 
 Step 3c: Pass 3 — 论点与主张提取
-  加载: rough-reader-pass3-claims.md
+  加载: sop-001-pass3-claims.md
   任务: 仅关注「作者的核心论点和具体主张是什么」
   输入: 源文 + Pass 1 + Pass 2 的输出
   输出: 论点列表（每个论点的出处、确定性、可验证性）
@@ -365,9 +364,9 @@ Step 4.5: 聚类辅助整理
 | 文件 | 更新内容 | 优先级 |
 |------|---------|--------|
 | `docs/sop-v2-full.md` | SOP-001 Step 3 拆分为 3a/3b/3c；新增 Step 4.5（聚类辅助审核） | P1 |
-| `prompts/rough-reader-pass1-entities.md` | Pass 1 提示词 | ✅ v2.1 |
-| `prompts/rough-reader-pass2-relationships.md` | Pass 2 提示词 | ✅ v2.1 |
-| `prompts/rough-reader-pass3-claims.md` | Pass 3 提示词 | ✅ v2.1 |
+| `prompts/sop-001-pass1-entities.md` | Pass 1 提示词 | ✅ v2.1 |
+| `prompts/sop-001-pass2-relationships.md` | Pass 2 提示词 | ✅ v2.1 |
+| `prompts/sop-001-pass3-claims.md` | Pass 3 提示词 | ✅ v2.1 |
 
 ---
 
@@ -663,10 +662,11 @@ SCHEMA.md 新增：
 - **非阻塞**：深度语义检查不应阻塞日常摄入管道
 - **GBrain 验证**：Dream Cycle 独立于写入 Agent 的设计在 146K 页面规模上已被验证
 
-### 为什么多轮次提取优于单轮次
+### 为什么三 Pass 分治优于一次性提取
 
-- **认知负荷管理**：单轮次要求 LLM 同时识别实体、判断关系、提取论点 → 注意力分散
+- **认知负荷管理**：一次性要求 LLM 同时识别实体、判断关系、提取论点 → 注意力分散，三个维度互相稀释
 - **三轮分治**：每轮只关注一个维度 → 每轮的提取深度和完整度都更高
+- **组装阶段独立**：缺口分析、SCHEMA 建议需要看到全部提取结果才能判断——任何单个 Pass 没有这个全局视野。组装阶段作为独立的第 4 次 LLM 调用，拥有三份 Pass 的完整输出
 - **可审计**：三轮产出独立可检查 → 如果关系提取质量差，可以只调整 Pass 2 的 prompt，不影响 Pass 1 和 3
 
 ### 为什么聚类不能替代提取但能辅助审核
@@ -695,12 +695,12 @@ SCHEMA.md 新增：
 
 | 项目 | 工作量 | 状态 |
 |------|--------|------|
-| `prompts/` 目录 + 8 个文件（含 README） | 中 | ☒ 待实施 |
-| `docs/curation-paradox.md` | 低（从 Hermes skill 提取脱敏） | ☒ 待实施 |
-| 更新 `README.md` + `README-zh.md` | 低 | ☒ 待实施 |
-| 更新 `CHANGELOG.md`（v2.1 条目） | 低 | ☒ 待实施 |
-| 检查 `.gitignore` | 低 | ☒ 待实施 |
-| `docs/sop-v2-full.md` 中「策展地图」→「策展地图」 | 低 | ☒ 待实施 |
+| `prompts/` 目录 + 8 个文件（含 README） | 中 | ✅ v2.1 |
+| `docs/curation-paradox.md` | 低（从 skill reference 提取脱敏） | P1 — 待实施 |
+| 更新 `README.md` + `README-zh.md` | 低 | ✅ v2.1 |
+| 更新 `CHANGELOG.md`（v2.1 条目） | 低 | ✅ v2.1 |
+| 检查 `.gitignore` | 低 | ✅ v2.1 |
+| `docs/sop-v2-full.md` 中「阅读地图」→「策展地图」 | 低 | ✅ v2.1 |
 
 ### P1（强烈建议 — 提升项目完整性和可信度）
 
@@ -759,7 +759,7 @@ SCHEMA.md 新增：
 
 1. **P0 已通过 v2.1 完成**——`prompts/` 8 个模板文件已就位，术语已统一，文档已合并。当前优先推进 P1（`scripts/` + SOP 多轮次提取合并 + 聚类辅助审核）。
 2. P1 完成后 `git commit` 一次——保持 commit 粒度清晰。
-3. 多轮次提取的三个子 prompt 已和单轮次 `rough-reader.md` 一起创建在 `prompts/` 目录中。
+3. 三 Pass + 组装模板已全部创建在 `prompts/` 目录中。
 4. MC-001 的文档用独立文件起草（`docs/mc-001-metacognition.md`），审核通过后决定是否合并到 `sop-v2-full.md`。
 5. 命名变更（阅读地图→策展地图）已在 v2.1 阶段一次性完成。
 6. Inbox 模式是双轨制的扩展，不应在 P0-P1 阶段引入——先让重管道（轨道 A）跑稳，再加速通道 B。

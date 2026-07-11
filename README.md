@@ -159,12 +159,12 @@ knowledge-flow/
 │   └── second-brain-vision.md       Strategic vision（战略愿景）
 ├── prompts/                          LLM-agnostic prompt templates（提示词模板）
 │   ├── README.md                    Template usage guide
-│   ├── rough-reader.md              SOP-001 single-pass rough reader
-│   ├── rough-reader-pass1-entities.md   Multi-pass Pass 1: entities & concepts
-│   ├── rough-reader-pass2-relationships.md  Multi-pass Pass 2: relationships
-│   ├── rough-reader-pass3-claims.md    Multi-pass Pass 3: claims & arguments
-│   ├── curator.md                   SOP-002 curation & ingestion
-│   ├── lint.md                      SOP-003 health scan
+│   ├── sop-001-rough-reader.md              Assembly template (3-pass outputs → full 9-section map)
+│   ├── sop-001-pass1-entities.md   Pass 1: panorama + entities
+│   ├── sop-001-pass2-relationships.md  Pass 2: relationships
+│   ├── sop-001-pass3-claims.md    Pass 3: claims & arguments
+│   ├── sop-002-curator.md                   SOP-002 curation & ingestion
+│   ├── sop-003-lint.md                      SOP-003 health scan
 │   └── extraction-interface.md      Extraction interface specification
 ├── templates/
 │   └── SCHEMA-template.md           Reusable knowledge base constitution template
@@ -185,10 +185,10 @@ knowledge-flow/
 
 1. **Define your domain** — one or two intersecting knowledge areas.
 2. **Copy `templates/SCHEMA-template.md`** to `schema/SCHEMA.md` in your knowledge base directory and fill in the placeholders.
-3. **Feed your first source** to an LLM using `prompts/rough-reader.md` — it will produce a curation map. No wiki pages yet.
+3. **Feed your first source** to an LLM using four prompts in sequence: `prompts/sop-001-pass1-entities.md` → `sop-001-pass2-relationships.md` → `sop-001-pass3-claims.md` → `sop-001-rough-reader.md`. This produces a curation map — no wiki pages yet.
 4. **Review the curation map** — mark entries as "ingest," "ignore," or "need more sources." Adjust SCHEMA if the rough reader suggested changes.
-5. **Tell the LLM to execute SOP-002** using `prompts/curator.md` — it will create wiki pages from only the entries you confirmed.
-6. **Run SOP-003 lint** using `prompts/lint.md` to verify structural integrity.
+5. **Tell the LLM to execute SOP-002** using `prompts/sop-002-curator.md` — it will create wiki pages from only the entries you confirmed.
+6. **Run SOP-003 lint** using `prompts/sop-003-lint.md` to verify structural integrity.
 
 Full specification: [`docs/sop-v2-full.md`](docs/sop-v2-full.md). Prompt templates: [`prompts/`](prompts/).
 
