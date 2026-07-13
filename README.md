@@ -79,7 +79,7 @@ Raw Source
 │                                    │
 │  Output: Curation Map (策展地图)   │
 │  A structured, auditable artifact │
-│  with 9 sections                  │
+│  with 10 sections (incl. coverage) │
 └──────────────────┬───────────────┘
                    │
                    ▼
@@ -159,13 +159,17 @@ knowledge-flow/
 │   └── second-brain-vision.md       Strategic vision（战略愿景）
 ├── prompts/                          LLM-agnostic prompt templates（提示词模板）
 │   ├── README.md                    Template usage guide
-│   ├── sop-001-rough-reader.md              Assembly template (3-pass outputs → full 9-section map)
-│   ├── sop-001-pass1-entities.md   Pass 1: panorama + entities
-│   ├── sop-001-pass2-relationships.md  Pass 2: relationships
-│   ├── sop-001-pass3-claims.md    Pass 3: claims & arguments
-│   ├── sop-002-curator.md                   SOP-002 curation & ingestion
-│   ├── sop-003-lint.md                      SOP-003 health scan
-│   └── extraction-interface.md      Extraction interface specification
+│   ├── sop-001-modeA.md             Default: single-pass extraction (sections 1-9)
+│   ├── sop-001-modeA-auditor.md     Default: independent coverage auditor (section 10)
+│   ├── sop-001-modeA-fast.md        Optional fast path (self-check coverage)
+│   ├── sop-001-modeB-pass1-entities-claims.md  Mode B Pass 1: entities + claims
+│   ├── sop-001-modeBC-pass2-relationships.md   Shared B/C: relationships
+│   ├── sop-001-modeBC-assembler.md             Shared B/C: assembler + coverage report
+│   ├── sop-001-modeC-pass1-entities.md         Mode C Pass 1: entities only
+│   ├── sop-001-modeC-pass3-claims.md           Mode C Pass 3: claims only
+│   ├── sop-002-curator.md           SOP-002 curation & ingestion
+│   ├── sop-003-lint.md              SOP-003 health scan
+│   └── extraction-interface.md      Extraction interface + coverage report spec
 ├── templates/
 │   └── SCHEMA-template.md           Reusable knowledge base constitution template
 ├── examples/
@@ -185,7 +189,7 @@ knowledge-flow/
 
 1. **Define your domain** — one or two intersecting knowledge areas.
 2. **Copy `templates/SCHEMA-template.md`** to `schema/SCHEMA.md` in your knowledge base directory and fill in the placeholders.
-3. **Feed your first source** to an LLM using four prompts in sequence: `prompts/sop-001-pass1-entities.md` → `sop-001-pass2-relationships.md` → `sop-001-pass3-claims.md` → `sop-001-rough-reader.md`. This produces a curation map — no wiki pages yet.
+3. **Feed your first source** to an LLM using the default template `prompts/sop-001-modeA.md` — this produces a 9-section curation map in a single LLM call. Then run `prompts/sop-001-modeA-auditor.md` for the independent coverage report (section 10). See `prompts/README.md` for all extraction modes.
 4. **Review the curation map** — mark entries as "ingest," "ignore," or "need more sources." Adjust SCHEMA if the rough reader suggested changes.
 5. **Tell the LLM to execute SOP-002** using `prompts/sop-002-curator.md` — it will create wiki pages from only the entries you confirmed.
 6. **Run SOP-003 lint** using `prompts/sop-003-lint.md` to verify structural integrity.

@@ -2,7 +2,41 @@
 
 ---
 
-## v2.1 — 2026-07-11
+## v2.2 — 2026-07-13
+
+### 自适应提取分层 + 独立覆盖审计
+
+核心变更：从一刀切多轮次改为自适应模式——默认单次提取 + 独立覆盖审计，长文自动升级。
+
+**新增文件**：
+- `prompts/sop-001-modeA.md` — Mode A 提取模板（第 1-9 节，默认推荐）
+- `prompts/sop-001-modeA-fast.md` — Mode A-fast 快速路径（含自检覆盖报告）
+- `prompts/sop-001-modeA-auditor.md` — Mode A 独立覆盖审计员（第 10 节）
+- `prompts/sop-001-modeB-pass1-entities-claims.md` — Mode B Pass 1（实体+论点合并）
+
+**改名**：统一 `modeA/modeB/modeBC/modeC` 命名规则
+- `sop-001-rough-reader.md` → `sop-001-modeBC-assembler.md`
+- `sop-001-pass1-entities.md` → `sop-001-modeC-pass1-entities.md`
+- `sop-001-pass2-relationships.md` → `sop-001-modeBC-pass2-relationships.md`
+- `sop-001-pass3-claims.md` → `sop-001-modeC-pass3-claims.md`
+
+**策展地图新第 10 节「覆盖报告」**（不新增 LLM 调用）：
+- Mode A 默认：独立审计（auditor 对照源文）
+- Mode A-fast 可选：自检覆盖
+- Mode B/C：交叉校验（assembler 对照独立 Pass 产出）
+
+**四种提取模式**：
+- Mode A（默认）：提取 + 独立审计 + 策展 = 3 次 LLM
+- Mode A-fast：提取含自检 + 策展 = 2 次 LLM（< 3000 字可选）
+- Mode B：2 Pass + 轻量组装 + 策展 = 4 次 LLM（> 10000 字自动触发）
+- Mode C：3 Pass + 完整组装 + 策展 = 5 次 LLM（人审触发）
+
+**文档更新**：
+- `extraction-interface.md` 新增第 10 节覆盖报告格式
+- `prompts/README.md` 重写（四种模式选择指南 + 人审流程）
+- `docs/sop-v2-full.md` 策展地图 9→10 节，字数阈值统一
+- `docs/build-plan.md` 阶段 1 更新
+- `docs/adaptive-extraction-plan.md` — 新增修改方案文档
 
 ### 项目工程化补全——prompts/ 目录 + 术语统一 + 文档合并
 

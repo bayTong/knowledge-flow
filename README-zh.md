@@ -79,7 +79,7 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 │  · Agent 建议严格隔离在独立节      │
 │  · ☒ 不得创建任何 wiki 页面       │
 │                                    │
-│  产出：策展地图（9 节结构化文档）  │
+│  产出：策展地图（10 节，含覆盖报告）  │
 └──────────────────┬───────────────┘
                    │
                    ▼
@@ -159,10 +159,14 @@ knowledge-flow/
 │   └── second-brain-vision.md       战略愿景
 ├── prompts/                          LLM-agnostic 提示词模板
 │   ├── README.md                    模板使用说明
-│   ├── sop-001-rough-reader.md              组装模板（三 Pass 输出 → 完整策展地图）
-│   ├── sop-001-pass1-entities.md       Pass 1：全景概括 + 实体清单
-│   ├── sop-001-pass2-relationships.md  Pass 2：关系提取
-│   ├── sop-001-pass3-claims.md         Pass 3：论点与主张提取
+│   ├── sop-001-modeA.md             默认：单次提取（第 1-9 节）
+│   ├── sop-001-modeA-auditor.md     默认：独立覆盖审计员（第 10 节）
+│   ├── sop-001-modeA-fast.md        可选快速路径（含自检覆盖）
+│   ├── sop-001-modeB-pass1-entities-claims.md  模式 B Pass 1：实体+论点
+│   ├── sop-001-modeBC-pass2-relationships.md   B/C 共享：关系提取
+│   ├── sop-001-modeBC-assembler.md             B/C 共享：组装器 + 覆盖报告
+│   ├── sop-001-modeC-pass1-entities.md         模式 C Pass 1：实体
+│   ├── sop-001-modeC-pass3-claims.md           模式 C Pass 3：论点
 │   ├── sop-002-curator.md                   SOP-002 策展入库
 │   ├── sop-003-lint.md                      SOP-003 健康扫描
 │   └── extraction-interface.md      提取接口技术规范
@@ -185,7 +189,7 @@ knowledge-flow/
 
 1. **定义你的领域**——一个或两个交织的知识领域，写清楚「这个知识库覆盖什么」。
 2. **复制 `templates/SCHEMA-template.md`** 到你知识库的 `schema/SCHEMA.md`，填入实际信息。
-3. **把第一份原料交给 LLM**，依次使用 `prompts/sop-001-pass1-entities.md` → `sop-001-pass2-relationships.md` → `sop-001-pass3-claims.md` → `sop-001-rough-reader.md` 执行四轮调用。最终产出一份策展地图——此时没有任何 wiki 页面被创建。
+3. **把第一份原料交给 LLM**，使用默认模板 `prompts/sop-001-modeA.md` 一次性生成 9 节策展地图，再用 `prompts/sop-001-modeA-auditor.md` 生成独立覆盖报告（第 10 节）。参见 `prompts/README.md` 了解全部提取模式。
 4. **审核策展地图**——逐条标记「确认入库」「忽略」或「待更多原料」。如果粗读器提了 SCHEMA 调整建议，决定是否接受。
 5. **让 LLM 执行 SOP-002**（策展入库），使用 `prompts/sop-002-curator.md`——它只处理你确认过的条目，在 SCHEMA 约束下写入 wiki 页面。
 6. **跑一次 SOP-003 Lint**，使用 `prompts/sop-003-lint.md` 验证结构完整性。
