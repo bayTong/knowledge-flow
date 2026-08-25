@@ -18,6 +18,7 @@
 | Full SOP specification | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | Build plan & roadmap | [`docs/build-plan.md`](docs/build-plan.md) |
 | Strategic vision | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
+| Audit findings & fix checklist | [`docs/improvement-action-plan.md`](docs/improvement-action-plan.md) |
 | v1.0 → v2.0 changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 | v1.0 archive | [`archive/v1.0/`](archive/v1.0/) |
 
@@ -156,7 +157,10 @@ knowledge-flow/
 ├── docs/
 │   ├── sop-v2-full.md               Core deliverable (SOP-000 through SOP-006 + appendices)
 │   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
-│   └── second-brain-vision.md       Strategic vision（战略愿景）
+│   ├── second-brain-vision.md       Strategic vision（战略愿景）
+│   ├── curation-paradox.md          The curation paradox argument
+│   ├── adaptive-extraction-plan.md  Adaptive extraction tiers design
+│   └── improvement-action-plan.md   Evaluation findings & fix checklist（评估整改清单）
 ├── prompts/                          LLM-agnostic prompt templates（提示词模板）
 │   ├── README.md                    Template usage guide
 │   ├── sop-001-modeA.md             Default: single-pass extraction (sections 1-9)
@@ -170,6 +174,10 @@ knowledge-flow/
 │   ├── sop-002-curator.md           SOP-002 curation & ingestion
 │   ├── sop-003-lint.md              SOP-003 health scan
 │   └── extraction-interface.md      Extraction interface + coverage report spec
+├── scripts/                          Reference implementation (Python, zero deps)
+│   ├── lint.py                      SOP-003 lint scanner
+│   ├── link-validator.py            Wikilink validator
+│   └── index-generator.py           index.md generator
 ├── templates/
 │   └── SCHEMA-template.md           Reusable knowledge base constitution template
 ├── examples/

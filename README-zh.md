@@ -18,6 +18,7 @@
 | 完整 SOP 规范原文 | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | 建设规划与路线图 | [`docs/build-plan.md`](docs/build-plan.md) |
 | 战略愿景 | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
+| 评估发现与整改清单 | [`docs/improvement-action-plan.md`](docs/improvement-action-plan.md) |
 | v1.0 → v2.0 变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
 | v1.0 历史归档 | [`archive/v1.0/`](archive/v1.0/) |
 
@@ -156,7 +157,10 @@ knowledge-flow/
 ├── docs/
 │   ├── sop-v2-full.md               核心交付物（SOP-000 至 SOP-006 + 附录）
 │   ├── build-plan.md                建设规划与路线图（外置第二大脑建设规划）
-│   └── second-brain-vision.md       战略愿景
+│   ├── second-brain-vision.md       战略愿景
+│   ├── curation-paradox.md          策展悖论论述
+│   ├── adaptive-extraction-plan.md  自适应提取分层设计方案
+│   └── improvement-action-plan.md   评估发现与整改清单
 ├── prompts/                          LLM-agnostic 提示词模板
 │   ├── README.md                    模板使用说明
 │   ├── sop-001-modeA.md             默认：单次提取（第 1-9 节）
@@ -170,6 +174,10 @@ knowledge-flow/
 │   ├── sop-002-curator.md                   SOP-002 策展入库
 │   ├── sop-003-lint.md                      SOP-003 健康扫描
 │   └── extraction-interface.md      提取接口技术规范
+├── scripts/                         参考实现脚本（纯 Python 标准库）
+│   ├── lint.py                      SOP-003 Lint 扫描器
+│   ├── link-validator.py            Wikilink 验证器
+│   └── index-generator.py           index.md 生成器
 ├── templates/
 │   └── SCHEMA-template.md           可复用知识库宪法模板（7 章起步）
 ├── examples/

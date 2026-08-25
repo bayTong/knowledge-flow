@@ -2,6 +2,19 @@
 
 ---
 
+## v2.2.1 — 2026-08-24
+
+### 脚本与规范对齐（improvement-action-plan P0-1 / P0-2 / P0-3）
+
+- **SOP-003 检查项 6 升级为两档阈值**：>300 行警告（拆分候选）、>500 行错误（必须拆分红线）。原 500 行红线仅存在于脚本实现（`LINE_LIMIT_ERROR`），现写入规范——脚本与规范自创口径的分歧按「对规范是净改进」方向解决
+- **SCHEMA 模板第五章注册格式标准化**：注册标签统一以反引号包裹（`` `标签名` ``，不带 `#`），`templates/SCHEMA-template.md` 与 `docs/sop-v2-full.md` SOP-000 内嵌模板同步；`scripts/lint.py` 标签审计改为解析该格式（只认标签体系章内的表格行，向后兼容 `` `#标签` `` 旧格式），并实现「已注册但未使用」提醒——修复原实现对模板格式 SCHEMA 解析恒为空集、标签审计静默失效的缺陷
+- **lint.py 补齐 4 项缺失检查**：index 完整性（检查 3）、日志轮转（检查 7，仅报告）、entity 孤立（检查 8，Error 级）、图谱过滤规则（检查 9，仅报告；非 Obsidian 知识库跳过）
+- **lint.py 口径对齐**：frontmatter 检查从 3 字段扩展至 7 字段 + type 合法性 + title 格式匹配（检查 4）；孤立页面从 Notice 升为 Error（检查 2，与 SOP-003 输出级别一致）；新增行内代码 wikilink 排除（检查 1，SOP-003 实现说明要求）；所有消息加 `[检查N]` 前缀，与 SOP-003 检查项编号一一对应
+- **脚本 Windows 健壮性**：三个脚本 stdout/stderr 重配置为 UTF-8（修复 GBK 控制台 `UnicodeEncodeError` 崩溃）、文件读取改为 `utf-8-sig`（修复带 BOM 文件 frontmatter 误判缺失）
+- **index-generator.py 对齐 SCHEMA 规范**：slug 改为纯文件名（不含路径与扩展名，SCHEMA 第六章）；条目尾注从「type — tags」改为机械式一句话摘要（正文首段截断，frontmatter 缺失时降级为文件名，注明建议人工润色）；分组对齐第七章（concept/comparison 按模块、entity 归「实体」段、query 归「问答」段）；头部统计行对齐 SOP-000 步骤 4 模板；`--write` 显式 LF 写入，预览输出与写入内容字节级一致；文档字符串补免责说明（全量重生成会覆盖手工摘要，建议配合 git 审阅）
+
+---
+
 ## v2.2 — 2026-07-13
 
 ### 自适应提取分层 + 独立覆盖审计
