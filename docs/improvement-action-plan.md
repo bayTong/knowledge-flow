@@ -1,8 +1,10 @@
 # KnowledgeFlow 改进执行方案（评估整改清单）
 
-> 本文档基于 2026-08-24 的两轮评估（全项目评估 + 独立执行清单）整理合并，将全部已核实的问题转化为可执行、可验收的任务清单。
-> 与 [`build-plan.md`](build-plan.md) 的关系：build-plan 是长期路线图（阶段 0-3）；本文档是**当前版本缺陷的整改清单**，全部完成后回填 build-plan 的对应状态。
-> 执行状态用 `- [ ]` / `- [x]` 勾选跟踪。每条任务必须满足「验收标准」才算完成。
+> **状态：Draft（旧版整改清单；2026-09-01）**：本文继续记录旧版文档、样例和维护脚本缺陷，但不决定新捕获架构的优先级。与新治理基线冲突的任务应先按[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)重新归类，不能据此恢复已暂停的旧 SOP-002。
+>
+> 本文档基于 2026-08-24 的两轮评估（全项目评估 + 独立执行清单）整理合并，记录旧基线下已核实的问题和当时的验收任务。
+> 与 [`build-plan.md`](build-plan.md) 的关系：两者都保留为 Draft；本文的未完成项不能自动取得当前实施优先级。
+> `- [ ]` / `- [x]` 只记录旧整改批次的执行状态，不表示新治理链路的功能门禁已经通过。
 
 ---
 
@@ -126,13 +128,16 @@
 2. 新建 `scripts/README.md`：用法、平台注意事项（BOM / 编码）、`--json` 输出契约、与 SOP-003 的检查项映射
 3. 更新 `docs/build-plan.md`：
    - 「当前缺失的」表中 `scripts/` 一行状态改为 ✅，标注完成日期与本次修复内容
-   - 「实施建议」第 1 条与第 2 条相应改写（scripts 已完成，下一步优先 MC-001）
+   - 「实施建议」第 1 条与第 2 条相应改写（scripts 已完成；按当前治理基线，下一步是明确授权后的 C2）
 4. 核对 README ×2 结构树与 `git ls-files` 一致（scripts/、docs/curation-paradox.md、docs/adaptive-extraction-plan.md 已随本方案文档同步补入；`.gitignore` 等刻意不展示的根文件列入显式豁免清单）
 
 **验收**：
 - [ ] `git status` 干净；`git ls-files scripts/` 列出 3 个 `.py` 文件
-- [ ] README ×2 结构树条目与 `git ls-files` 一一对应（显式豁免清单之外）
-- [ ] build-plan 中不存在「scripts 待建设」的过期表述
+- [x] README ×2 结构树条目与 `git ls-files` 一一对应（显式豁免清单之外）
+- [x] build-plan 中不存在「scripts 待建设」的过期表述
+
+> 注：首条「git status 干净」在本批修改提交后成立（2026-08-25 清理 .eval-tmp、补 scripts/README.md、
+> README 树补两份规划文档、build-plan 状态回填后，随下一次 commit 完成）。
 
 ---
 

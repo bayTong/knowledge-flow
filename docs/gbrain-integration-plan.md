@@ -1,9 +1,10 @@
-# KnowledgeFlow × GBrain 集成方案
+# KnowledgeFlow × GBrain 集成研究（历史研究与远期候选）
 
-> 本文档是 KnowledgeFlow 与 [GBrain](https://github.com/garrytan/gbrain) 集成的**唯一权威规划文档**。
-> 定位为「可视化知识管理项目」的设计方案,与 [`docs/build-plan.md`](build-plan.md)(建设路线图)并列。
-> GBrain 本地源码:git clone 位于 `E:\Workstation\code_space\gbrain\gbrain`
-> (master HEAD `4e4677b1`,v0.46.28.0 + 7 个发布后修复提交;2026-08-25 复核)。
+> **状态：Draft（部分内容已被当前治理基线取代；2026-09-01）**
+> 本文保留 GBrain 能力盘点、Dream/Minions、安全风险和可视化研究价值。正文中的“已决策”、阶段清单、命令、工期和远程架构均形成于旧基线，未经 2026-09-01 重新批准，不得执行。捕获第一原件、Global Intake、最小 GBrain POC 和人工闸门只以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及 [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)为准。
+> GBrain 本地源码快照位于 `E:\Workstation\code_space\gbrain-master`（v0.46.28.0，用户于 2026-08-24 获取；2026-09-03 只读复核该目录存在且没有可用于确认提交 HEAD 的 `.git` 元数据）。
+
+当前唯一获批的 GBrain 近端结论是：先完成本地 Capture Store；随后才可做一个可关闭、可重试的异步 POC，将未审核文本通过薄适配器直接写入专用本地 PGLite 范围 `knowledgeflow-intake`。POC 默认 keyless、非联邦，不同步现有 KB，不启用 Dream、Minions、自动语义加工、OAuth 或远程身份。本文其余内容全部是以后逐项重新提案的候选资料。
 
 ---
 
@@ -35,77 +36,62 @@
 知识图谱、任务队列(Minions)、MCP 服务、技能体系,但它的哲学是**低摩擦直接写、事后加工**,
 没有「深度内容入库前的人审闸门」。
 
-集成的本质:**KnowledgeFlow 提供「怎么把知识管对」的策展纪律,GBrain 提供「知识存哪、怎么查、怎么连、怎么跑」的引擎能力**。不是二选一,也不是 fork 其中一个,而是把 KnowledgeFlow 的管线作为 GBrain 之上的技能层 + 审核层。
+候选集成关系是：KnowledgeFlow 提供策展纪律，GBrain 可提供派生检索、图谱和任务能力。但当前本地 Capture Store 才是捕获规范原件，尚未批准把 KnowledgeFlow 整体实现为 GBrain 之上的技能层。
 
 ### 1.2 目标
 
 1. 深度内容(长篇幅资料 / 研究 / 学习材料)入库**不黑盒**:人能看到资料是什么、有哪些主要内容、要不要入库怎么入库,审核通过后才策展写入。
-2. 轻量内容(灵感 / 随手笔记 / 自动搜集)保持**低摩擦**:系统直接写,只做事后加工,不做先审。
+2. 轻量内容(灵感 / 随手笔记 / 自动搜集)保持**低摩擦**：先直接保存为本地未审核 Capture Item；是否镜像到 GBrain、是否进入后续语义加工是独立步骤。
 3. 所有轨道的**后续更新、关联调整**走「报告 + 提醒 + 人确认后确定性执行」,机器不静默改语义。
 4. 以 GBrain 的数据(图、轨迹、覆盖报告、健康指标)为原料,构建**可视化知识管理界面**。
 
-### 1.3 文档治理与取代关系
+### 1.3 文档治理关系
 
-现有四份规划文档,分工已清晰(2026-08-24 起):
-
-- `build-plan.md` — 长期路线图(阶段 0-3)
-- `improvement-action-plan.md` — 当前版本缺陷整改清单(P0/P1/P2,P0-1/P0-2 已完成)
-- `qq-qa-bot-plan.md` — 问答入口怎么搭(QQ 通道 + dsh + 检索层)
-- 本方案 — 存储/检索引擎集成(GBrain)
-
-本方案**取代了 build-plan 的一部分设计**:多知识库路由表 + unified-index.json(改为 brain/source 两轴)、
-MC-001 的落地方式(改为 Dream Cycle + Minions 复用)、Hermes cron 假设(改为 Minions 调度)——
-连带 `second-brain-vision.md` 中对应段落过时。
-
-漂移防治不再靠本方案自设流程,而**并入 improvement-action-plan 的既有机制**:
-
-1. **P1-1 `doc-check.py` 一致性护栏**:本方案的跨文档引用纳入其比对范围;
-2. **P2-4 状态标注**:build-plan / vision 的「规划中 vs 已实现」标注与本方案的取代标注一并执行;
-3. 四份规划文档与 P0-1/P0-2 的修改一起纳入 **P0-4** 提交范围,不再各自 untracked 漂移。
-
-本方案定位为「引擎集成的分册」,不新增「唯一权威」名号。
+2026-08-24 的四份规划文档分工和相互“取代”关系已经失效。本方案现在只是 GBrain 研究分册，不取代 `build-plan.md`，也不决定当前 MVP。若远期启用其中某项能力，必须先形成独立提案，并由设计权威登记逐项批准。
 
 ---
 
 ## 二、结论摘要:三条权限轨
 
-> 这是全部讨论收敛出的核心结论。详细论证见第五节。
+> **历史模型，非当前执行路由。** 当前执行路由见《捕获与路由规范》；下表仅用于理解早期方案如何区分权限轨。
 
 | 轨道 | 内容类型 | 写入时机 | 审核方式 | 落地机制 |
 |---|---|---|---|---|
-| **B-捕获** | 灵感、想法、随手笔记 | 直接写 | 无先审,事后加工 | `gbrain capture` + signal-detector + inbox |
-| **B-搜集** | 自动搜集(API / 网页 / 会话记录) | 直接写 + 留痕 | 主张级 / 实体级报告制人审 | enrich 管线 + `put_raw_data` + take_proposals / contradictions |
-| **A-策展** | 长篇幅深度研究材料 | **人审后写** | 策展地图级先审 + 事后报告制 | SOP-001/002 技能 + curation_map 页面 |
+| **B-捕获** | 灵感、想法、随手笔记 | 本地原件立即保存 | 无先审,事后处理 | Capture Store + 可选异步 GBrain 未审核镜像 |
+| **B-搜集** | 自动搜集(API / 网页 / 会话记录) | 原始输入/响应直接保存 | 机器论断只形成提案 | Capture Payload + 后续派生候选 |
+| **A-策展** | 长篇幅深度研究材料 | 原料先保存，可信知识后写 | 策展地图级先审 | SOP-001 提案 + 待重构的新 SOP-002 |
 | **维护** | 所有轨道的更新 / 关联调整 | 报告 + 确认后写 | 报告制人审,确认即执行 | drift / contradictions / propose_takes |
 
 **triage 规则(何时走哪条轨):**
 
-> 当「漏掉」比「多写」更不可修复时走轨道 A;反过来走轨道 B。
-> 「多写」的噪音删除只需几秒;「漏掉」的关键概念一旦漏了,人永远不知道它没被提取。
+> 当「漏掉」比「多写」更不可修复时，可向用户建议深度策展；反过来可建议仅捕获。
+> 这只能是人工选择处理方式的启发，不是模型自动路由或自动写入规则。
 
-这个规则就是策展悖论的自然延伸,也是唯一的判据,不需要更复杂的分类。
+当前路由仍以用户明确选择和《捕获与路由规范》的状态机为准。
 
 ---
 
 ## 三、结合点总览
 
+> 本节记录旧方案曾设想的能力映射，不是当前实现清单；涉及写入、调度或共享索引的条目必须重新提案。
+
 按管线逐段对齐 KnowledgeFlow 概念与 GBrain 能力:
 
 | KnowledgeFlow 概念 | GBrain 对应物 | 结合方式 |
 |---|---|---|
-| wiki 仓库(markdown + frontmatter + wikilink) | brain repo + page | `sources add` + `sync --watch` 增量同步,文件即 system of record |
-| SCHEMA.md(页面 type / 关系 type) | schema packs(类型分类法) | SCHEMA 映射为自定义 pack;frontmatter type → 类型,关系 → typed links |
-| 原料 + SHA256 溯源指纹(C2 硬约束) | `put_raw_data`(raw_data 表) | 溯源从「文档约定」变成「机器强制」 |
-| SOP-001 策展地图(10 节) | 作为一等页面(type: curation_map) | `add_link` 链回原料页,「用完即弃的中间产物」变成可检索的持久审计工件 |
-| 人审断点 | 无页面级先审(GBrain 的缺口) | **新建**:策展地图 `status: pending-review → approved` 状态流 |
-| SOP-002 策展入库 | `put_page` / `add_link` / `add_tag` / `add_timeline_entry` | 写成 GBrain 技能,SCHEMA 约束做写前校验 + 写后自检 |
+| wiki 仓库(markdown + frontmatter + wikilink) | brain repo + page | 可研究只读同步或派生索引；Markdown/Git 仍是可信内容真源 |
+| SCHEMA.md(页面 type / 关系 type) | schema packs(类型分类法) | 仅是候选映射；不得由 GBrain 自动反向修改 SCHEMA |
+| Capture Payload + SHA256 溯源指纹 | `put_raw_data` 或未审核 page | 本地 Capture Store 先提交；GBrain 只保存可重建镜像和本地版本/哈希引用 |
+| SOP-001 策展地图(10 节) | 候选 page(type: curation_map) | 必须位于 proposal 查询范围；隔离实证前不得进入默认可信检索 |
+| 人审断点 | 无页面级先审(GBrain 的缺口) | 状态、精确批准和审计协议由 KnowledgeFlow 定义，不能只依赖 GBrain 页面状态 |
+| 新 SOP-002 可信写入 | 可候选调用 `put_page` / `add_link` 等确定性操作 | SOP-002 尚未重构，当前不得实现写库技能或沿用旧批准语义 |
 | SOP-003 lint / 三个 Python 脚本 | `gbrain doctor` / `orphans` / `check-resolvable`(均有 --json) | 文件层脚本继续跑,引擎层 doctor 互补 |
-| MC-001 元认知六维度 | Dream Cycle + Minions + eval | 逐维度复用,见第六节;定时执行用 Minions + cron-scheduler skill |
-| 多知识库路由表 + 联合索引 | brain ⊥ source 两轴 + mounts + 联邦搜索 | **删掉自建设计**:每个 KB = 一个 source(一个脑库多 source),各 KB 的 SCHEMA.md = per-source schema pack |
-| 主动检索规范 | `volunteer_context`(push 上下文)+ `search` / `think` | 直接复用 |
-| 可视化(新增部分) | admin SPA 先例 + `traverse_graph` / `find_trajectory` | 新建独立 viz 应用,见第七、八节 |
+| MC-001 元认知六维度 | Dream Cycle + Minions + eval | 逐维度评估复用或自建；不得预设统一运行时 |
+| 多知识库路由表 + 联合索引 | brain/source 两轴 + mounts + 联邦搜索 | 与自建只读索引并列比较；不在实证前删除任何设计 |
+| 主动检索规范 | `volunteer_context` + `search` / `think` | 远期候选；先完成可信/未审核/proposal 查询隔离 |
+| 可视化(新增部分) | admin SPA 先例 + `traverse_graph` / `find_trajectory` | 远期候选；交互与权限协议稳定后再选技术栈 |
 
-**结论:** 集成不要求改造 GBrain 核心;需要新建的只有两类东西——**策展地图级审核面**(GBrain 完全没有)和**统一审核看板**(收拢 GBrain 已有的散落机制)。
+**当前结论:** 这里只能确认 GBrain 可能提供若干底层原语，不能据此断言“只需新建两类东西”。适配器、状态机、隔离、批准、事务、回滚和查询边界都必须分别实证和设计。
 
 ---
 
@@ -131,7 +117,7 @@ MC-001 的落地方式(改为 Dream Cycle + Minions 复用)、Hermes cron 假设
 ┌───────────────▼────────────────────────────────────────────┐
 │  knowledge-flow 知识库仓库(markdown,人审断点所在地)            │
 │  轨道 A:策展地图 → 人审 → 入库                                │
-│  轨道 B:capture / enrich 直接写                              │
+│  轨道 B:本地 Capture；可选异步镜像到未审核范围                 │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -188,22 +174,9 @@ KnowledgeFlow 已有的规范「不同内容建立不同知识库」在 GBrain �
 什么情况下才拆成多个 brain(多个数据库):数据归属不同、生命周期不同、或需要共享给团队的 KB。
 判据沿用 GBrain 文档的规则——**数据 owner 变了才是 brain 边界,owner 不变只是主题不同则是 source 边界**。
 
-部署演进(已决策):**初期纯本地单机(PGLite),长期远程多端。** 因为集成面走 MCP 服务模式,
-从本地切远程不需要重新架构:`gbrain serve --http` + 换 Postgres/Supabase 引擎即可,数据与接口不变。
-GBrain 获取方式(已解决):网络已通,git clone 完成于 `E:\Workstation\code_space\gbrain\gbrain`
-(master HEAD `4e4677b1`,比 zip 快照 `67e7e8a9` 新 7 个提交,内容差异已复核、不推翻本方案任何结论)。
-Phase 0 以此 clone 为准。
+长期部署设想仍是**初期纯本地单机(PGLite),长期按真实需求评估远程多端**。远程 HTTP、OAuth、Postgres/Supabase 不属于 MVP 默认前置，不能仅因 GBrain 支持而提前引入。
 
-**仓库整理待办(不阻塞 Phase 0,但别拖):** 目前同一台机器上有三份 GBrain 副本,极易拿错版本:
-
-| 路径 | 版本 | 处置建议 |
-|---|---|---|
-| `E:\Workstation\code_space\gbrain\gbrain` | master HEAD(0.46.28.0+7) | **保留为唯一权威 clone** |
-| `E:\Workstation\code_space\gbrain`(外层) | 0.42.44.0(6 月旧版) | 删除或归档;它现在只是新 clone 的"包装目录" |
-| `E:\Workstation\code_space\gbrain-master`(zip 解压) | 0.46.28.0(落后 7 提交,无 .git) | 删除或归档,已被 clone 取代 |
-
-理想布局是直接把权威 clone 放在 `E:\Workstation\code_space\gbrain`(拆掉嵌套)。
-删除属破坏性操作,动手前先备份或与我确认。
+本轮可核对的 GBrain 源码快照是 `E:\Workstation\code_space\gbrain-master`，版本 `0.46.28.0`，无 `.git` 元数据，因此不能从该目录证明提交 HEAD。本文早期关于其他 clone、提交号和“删除/归档副本”的记录均视为 2026-08-25 的历史盘点，未在本轮重新验证；任何副本整理都是单独的破坏性操作，不属于本方案执行步骤。
 
 ### 4.3 规模边界与引擎切换
 
@@ -233,9 +206,9 @@ GBrain 官方文档给出的量级分层(已核实 `docs/ENGINES.md` 与 README)
 **可视化层有它自己的、更早的实用边界**(与存储上限无关):图视图全量渲染到几千节点就会拥挤,
 届时需要子图 / 折叠 / 按 source 分层。G6 原生支持这些,方案已按「多库 + 全量图起步、到量级再分层」预留。
 
-### 4.4 双入口系统形态(2026-08-24 起)
+### 4.4 旧方案中的双入口系统形态(2026-08-25 草案)
 
-项目现为两个并行的产品入口,共享同一个 GBrain 引擎与同一份索引:
+旧方案曾设想两个并行产品入口共享一个 GBrain 引擎与索引。当前并未批准该共享关系；未来若启用，可信知识、未审核捕获和提案必须先完成查询隔离实证：
 
 ```
 ┌──────────────────────────┐        ┌──────────────────────────┐
@@ -260,26 +233,26 @@ GBrain 官方文档给出的量级分层(已核实 `docs/ENGINES.md` 与 README)
 
 ---
 
-## 五、写入权限模型(核心)
+## 五、旧方案的写入权限模型
 
 ### 5.1 三条权限轨的完整定义
 
-**轨道 B-捕获(直接写,无先审)**
+**轨道 B-捕获(仅直接保存到未审核层,无先审)**
 
 - 对象:灵感、想法、随手笔记、临时备忘。
-- 机制:`gbrain capture`(默认落 `inbox/YYYY-MM-DD-<hash8>`)+ signal-detector 环境捕获。
+- 机制:当前先写本地 Capture Store；`gbrain capture` + signal-detector 只是旧方案，是否使用须等待异步镜像 POC。
 - 理由:噪音删除代价低,漏写几乎无代价——先审反而杀死了「随手记」的摩擦优势。
 
-**轨道 B-搜集(直接写 + 留痕,主张级事后人审)**
+**轨道 B-搜集(原始响应可直接保存 + 留痕,机器论断只形成提案)**
 
 - 对象:网页、API、会话记录等机器搜集的内容。
-- 机制:enrich 管线(分层 spend)+ 原始响应先存 `put_raw_data` 留痕 + 逐事实 `[Source: ...]` 引用。
+- 机制:原始输入/响应先保存为本地可验证 Payload；enrich、`put_raw_data` 和 take proposal 都是后续候选。
 - 理由:机器生成的内容量大且可重跑,不值得页面级先审;但机器写出的**论断**需要人审,因此走主张级(take_proposals)报告制。
 
 **轨道 A-策展(先审后写)**
 
 - 对象:长篇幅资料、研究材料、需要系统性学习管理的文档。
-- 机制:SOP-001 生成策展地图(含覆盖报告)→ 人在审核面逐条标记「确认入库 / 忽略 / 待更多原料」→ SOP-002 只处理确认条目。
+- 机制:SOP-001 生成策展地图(含覆盖报告)→ 人审核绑定精确输入版本的变更提案 → 等待新 SOP-002 按事务与回滚协议执行。
 - 理由:遗漏代价高,且入库过程必须对人透明——这是 KnowledgeFlow 的核心价值,GBrain 没有,必须新建。
 
 **维护轨(所有轨道的更新 / 关联调整)**
@@ -319,7 +292,7 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 |---|---|---|
 | config 阶段开关(`dream.<phase>.enabled` / `cycle.<phase>.enabled`) | patterns、synthesize、drift、conversation_facts_backfill、enrich_thin、skillopt | cycle.ts 的 onceForPhase 注释块 |
 | pack-gating(`packDeclaresPhase`) | 仅 extract_atoms、synthesize_concepts(schema pack 未声明该阶段则跳过) | cycle.ts v0.41 T9 |
-| per-source 隐式循环只跑确定性阶段 | 对非默认 source 的 `dream --source X` 只跑 SOURCE_FRESHNESS_PHASES(lint/backlinks/sync/extract/extract_facts/recompute_emotional_weight) | resolveCyclePhases |
+| per-source 隐式循环并非安全(陷阱) | 裸 `dream --source X` 跑 SOURCE_FRESHNESS_PHASES,其中含**无 config 开关的破坏性 extract_facts**(wipe-and-reinsert,cycle.ts:2308)——对轨道 A 不构成保护,反而诱导误用 | resolveCyclePhases |
 | 调度层显式 phase 列表 | **consolidate 与 extract_facts 未发现 config 开关**,只能在调度时用显式 `--phase` 列表排除 | cycle.ts consolidate/extract_facts dispatch 无 enabled gate |
 | `--dry-run` 预览 | 全阶段可预览不写(注意:synthesize 的 dry-run 仍可能产生 LLM 调用) | dream.ts |
 
@@ -331,8 +304,22 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 这样轨道 A「只读」自然成立——因为全脑没有任何阶段再自动改语义。
 代价:概念自动合成的**静默路径**关闭——但不是舍弃该能力,而是降级为**提案制**(报告制合成,见 5.4):机器扫库 → 草拟概念提案(附证据锚定)→ 人审批准 → SOP-002 确定性写入。快轨的单条论断仍走 take 提案人审。
 
-**此结论作为 Phase 0 的强制实证项**(见 Phase 0 步骤 7):在试点 KB 上跑一轮完整 Dream Cycle,
-前后对比文件哈希,验证「关闭自动改语义阶段后,知识库原文件零改动」。这一个实验同时验证或证伪整个第五节。
+### 5.2.2 红线:autopilot 与裸调用(2026-08-25 源码复核补漏)
+
+三层关闭有一个共同前提——执行 dream 的一方遵从调度指令。**autopilot 不经过任何一层**:
+`src/commands/autopilot-fanout.ts:482` 硬编码 per-source 扇出 `phases: SOURCE_FRESHNESS_PHASES`,
+`:613` 硬编码全局维护 `phases: MAINTENANCE_PHASES`(全部 mixed+global),两处都不读 config 白名单。
+而 SOURCE_FRESHNESS_PHASES 含无开关的破坏性 extract_facts——onboarding 流程若引导开启 autopilot,
+夜间扇出就会对每个 source(含轨道 A)静默执行机器语义写入,击穿全部安全设计。
+
+**红线(不可协商):**
+
+1. 本架构**禁用 autopilot 自动调度**;Phase 0 验收须显式确认未启用。
+2. 一切 dream 调用必须携带**显式 `--phase` 白名单**;裸 `gbrain dream` 与裸 `dream --source X` 一律视为违规。
+3. 周期性任务只通过 Minions cron 提交显式 phase 列表(pack-gating 与 config 开关为第二、三道防线)。
+
+**此结论作为 Phase 0 的强制实证项**(见 Phase 0 步骤 7):在试点 KB 副本上跑 Dream Cycle,
+前后对比文件哈希 + DB 计数,验证「三层关闭 + autopilot 禁用后,原文件零改动」。该实验同时验证或证伪整个第五节。
 
 ### 5.3 权限边界总表
 
@@ -340,7 +327,7 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 |---|---|
 | 结构维护:lint、backlinks、embed、sync、purge | 策展地图逐条确认 / 忽略 / 待更多原料 |
 | 报告生成:drift、contradictions、take_proposals | 轨道 A 的页面写入(SOP-002) |
-| 轨道 B 直接写入(capture / enrich + 留痕) | 轨道 B 机器论断的 promote(take accept) |
+| 轨道 B 保存未审核 capture / 原始响应并留痕 | 轨道 B 机器论断的 promote(take accept) |
 | inbox 扫描与提升建议 | 更新 / 合并 / 拆分 / 关联调整的落地 |
 | (自动语义写入:不存在——三层关闭后全脑无静默语义路径) | 概念合成提案的逐条批准与落地(见 5.4) |
 
@@ -358,9 +345,9 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 | 实体清单 + 原文引用 | 概念清单 + 证据引用(哪些页面、哪些段落支撑该概念) |
 | 覆盖报告(原文哪些节被扫过) | 扫描范围声明(哪个 source、哪个时间窗) |
 | 人逐条标记 确认 / 忽略 / 待更多原料 | 人逐个概念标记 确认 / 忽略 |
-| SOP-002 只处理 approved 条目 | SOP-002 原样复用,零改造 |
+| 旧方案要求 SOP-002 只处理 approved 条目 | “SOP-002 原样复用”假设已经失效；两类提案都必须等待新 SOP-002 的精确批准、事务和回滚协议 |
 
-**落地细节(六项决策)**:
+**旧方案的六项候选选择（均需重新提案）**:
 
 | 决策点 | 选择 | 理由 |
 |---|---|---|
@@ -391,7 +378,8 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 | reports skill + morning briefing | cron 输出 / 用户询问 | 定时摘要存 `reports/{category}/{date}.md`,交付前过 Actionability Gate | 用户主动读 | 每日简报入口 |
 | ask-user 选择门 | 决策点 | 呈递 2-4 选项后**停轮等人** | 用户响应触发下一轮 | 危险操作 / 路由决策 |
 
-> 以上是 GBrain 的现成机制;**报告制合成(概念合成的提案制形态)是本方案新建的第七个机制**——GBrain 没有对应物,设计见 5.4。
+> 以上六个是 GBrain 的**现成**机制;**报告制合成(概念合成的提案制形态)是本方案新建的第二个机制**
+> (第一个是第七节的统一审核面)——GBrain 没有对应物,设计见 5.4。
 
 两个复用时的纪律:
 
@@ -443,6 +431,8 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 
 ## 八、分阶段路线图
 
+> **本节是历史路线图，不得照单执行。** 当前顺序是先实现本地文本 Capture Store，再做人工路由和 SOP-000A，最后才评估最小 GBrain 异步镜像 POC。
+
 ### Phase 0 — 零代码验证(1 天)
 
 **目标:** 证明「文件层 + 引擎层」的粘合成立,再写任何代码。
@@ -459,18 +449,24 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 
 **逐步清单(Windows PowerShell)**
 
+- [ ] **0a. 副本与基准快照(任何破坏性步骤前)**
+  - 旧清单曾假设存在三份 GBrain 副本，并要求实验只使用 Curator_Design 副本；该环境盘点本轮未复核，不能直接沿用
+  - 副本:`Copy-Item E:\KnowledgeBase\Curator_Design E:\KnowledgeBase\_exp-curator-design -Recurse`,
+    注册为实验专用 source `exp-curator-design`
+  - 基准:真库与副本各自 `Get-ChildItem <path> -Recurse -File | Get-FileHash | Out-File hashes-before.csv`;
+    并记录 `gbrain stats` 的 pages / links / facts 计数快照(文件哈希测不到 DB 层写入)
 - [ ] **0. 安装 Bun**(GBrain 的运行时,要求 ≥ 1.3.10)
   - 方式一(已确认可用):`winget install --id Oven-sh.Bun -e`
   - 方式二(官方脚本):`powershell -c "irm bun.sh/install.ps1 | iex"`
   - 重开终端验证:`bun --version`
 - [ ] **1. 安装依赖**(唯一需要网络的一步;失败 = 本阶段的阻塞点)
-  - `cd E:\Workstation\code_space\gbrain\gbrain`
+  - 历史命令使用了旧 clone 路径；当前只确认 `E:\Workstation\code_space\gbrain-master` 存在。未来若执行 POC，必须根据当时源码重新生成安装步骤。
   - `bun install`
   - 验证:`node_modules` 生成、命令无报错;`[gbrain] postinstall skipped` 提示属正常,忽略
   - 网络不通的备选:`bun config set registry https://registry.npmmirror.com` 后重试
 - [ ] **2. 建立 gbrain 命令入口**
   - 在 clone 目录执行:`bun link`(Windows 会生成 gbrain shim 进 PATH)
-  - 验证:`gbrain --version` 输出 `0.46.28.0`
+  - 历史记录曾假设机器上有三份副本；本轮未复核该数量和 PATH 状态，不作为当前事实。
 - [ ] **3. 初始化本地脑(PGLite)**
   - 先 keyless 验证管道:`gbrain init --pglite --no-embedding`
   - 验证:`gbrain doctor` 核心项通过;数据落在 `~/.gbrain/brain.pglite`
@@ -488,21 +484,26 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
   - `gbrain think "..."` → 需 chat key(DeepSeek),keyless 时此步跳过
   - `gbrain search --explain "..."` → 看混合检索各阶段归因(向量臂需 embedding key)
 - [ ] **7. Dream Cycle 实证(第五节安全生命线的验证,不可跳过)**
-  1. 快照文件哈希:`Get-ChildItem E:\KnowledgeBase\Curator_Design -Recurse -File | Get-FileHash | Out-File hashes-before.csv`
-  2. 预览:`gbrain dream --dry-run --json` → 记录哪些阶段计划执行、哪些会写页面
-  3. 基线观察:直接跑一轮完整 `gbrain dream --json` → 对比哈希,记录**未加控制时**哪些阶段改了哪些文件
-     (预期 synthesize 的反向写盘在此暴露)
+  1. **构造输入,防止假阴性(全程在副本 source `exp-curator-design` 上跑)**:新脑上 synthesize 会因未配
+     corpus dir 而 skip(synthesize.ts:389)、patterns 会因证据不足 skip(patterns.ts:143)——不构造输入
+     则基线必然零写盘,实验测不出任何东西。显式 `config set dream.synthesize.enabled true` +
+     配 corpus dir 放入 transcript 文件 + 造足量 reflection 记录,让危险阶段真正跑起来
+  2. 预览:`gbrain dream --dry-run --json` → 记录哪些阶段计划执行;
+     **注意 extract 在 dry-run 下必然 skip(无 dry-run 模式,cycle.ts 注释自认)——预览能看 phase 列表,不能看「哪些会写」**
+  3. 基线观察(仅副本):跑一轮**显式 phase 列表的** dream → 文件哈希 + DB 计数对比,
+     记录未加控制时哪些阶段改了哪些文件
   4. 三层关闭:config 关 synthesize/patterns 等 + pack 不声明 extract_atoms/synthesize_concepts +
-     显式 phase 列表排除 consolidate/extract_facts → 再跑一轮 → 对比哈希
-  5. 结论回填 5.2.1:哪个开关有效、哪个阶段仍写盘、缺口在哪
+     显式 phase 列表排除 consolidate/extract_facts → 再跑一轮 → 文件哈希 + DB 计数对比
+  5. 结论回填 5.2.1 / 5.2.2:哪个开关有效、哪个阶段仍写盘/写库、缺口在哪
 - [ ] **8. 验收对照**
   - 文件层照旧是人审断点、GBrain 只做引擎——同步不改变任何 KB 原文件
-  - 步骤 7 证实在三层关闭后知识库原文件零改动(仅允许预期的确定性阶段行为)
+  - 步骤 7 证实在三层关闭后副本原文件零改动 + DB 计数不变
+  - **确认 autopilot 未启用**(`gbrain autopilot --status` 无运行/调度),且无裸 dream 调用记录
   - 知识库页面可检索、可出图;结论成立则进入 Phase 1
 
 **通过标准:** 步骤 0-8 全部打勾;`search` 命中 Curator_Design 页面,`graph-query` 出图,
-且步骤 7 证实「三层关闭后 `E:\KnowledgeBase` 原文件零改动」。步骤 7 若证伪(仍有关闭不住的写盘),
-第五节须重写,不进入 Phase 1。
+且步骤 7 证实「三层关闭 + autopilot 禁用后,副本原文件与 DB 计数均零改动」。
+步骤 7 若证伪(仍有关闭不住的写盘/写库),第五节须重写,不进入 Phase 1。
 
 ### Phase 1 — 管道落地(核心阶段)
 
@@ -512,7 +513,7 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 
 - 写三个 GBrain 技能并打包成 skillpack:`sop-001-extract`(穷举提取 → 策展地图页面)、`sop-002-curate`(只处理 approved 条目,写前查重 + SCHEMA 校验)、`sop-003-lint`(写后自检)。
 - 策展地图定为页面类型 `curation_map`,`add_link` 链回原料页;frontmatter 携带 `status: pending-review`。
-- 人审闸门:交付**专门的网页看板最小版**(已决策)——策展地图逐条标记「确认入库 / 忽略 / 待更多原料」+
+- 人审闸门:旧方案曾设想交付**专门的网页看板最小版**——策展地图逐条标记「确认入库 / 忽略 / 待更多原料」+
   take 提案 accept / reject,把 status 改为 `approved`,SOP-002 只读 approved。与 Phase 3 完整看板解耦,
   先立闸门再美化。
 - 原料溯源:`put_raw_data` 存原始资料 + SHA256 指纹(C2 硬约束机器化)。
@@ -523,18 +524,21 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 
 **目标:** 把 MC-001 六维度用 GBrain 原生能力落地,不重造。
 
-| MC-001 维度 | GBrain 落地 | 省掉的活 |
+| MC-001 维度 | GBrain 落地 | 复用类型 |
 |---|---|---|
-| 1 遗漏检测 | chunk embeddings + contradictions 配对管线 | 自建 embedding 比对 |
-| 2 质量抽检 | Minions cron job + `gbrain think` | Hermes skill |
-| 3 跨页面关联发现 | chunk embeddings 查「高相似无链接」页对 | 自建 unified-index.json |
-| 4 概念漂移 | `find_trajectory` + timeline | log.md 手工解析 |
-| 5 结构趋势 | `gbrain doctor` / `orphans`(均 --json) | 自写规则统计 |
-| 6 仪表盘 | viz 应用接入 doctor 数据 | 自建 kb-health.html |
+| 1 遗漏检测 | 「源文段落 vs 提取项」覆盖比对**需自建**(基于 chunk embeddings 原语);contradictions 检测的是冲突 take,**不是遗漏** | **基于原语自建** |
+| 2 质量抽检 | Minions cron job + `gbrain think` | 原生复用 |
+| 3 跨页面关联发现 | 「高相似无链接页对」查询**无原生操作,需自建**(chunk embeddings 原语之上) | **基于原语自建** |
+| 4 概念漂移 | `find_trajectory` + timeline | 原生复用 |
+| 5 结构趋势 | `gbrain doctor` / `orphans`(均 --json) | 原生复用 |
+| 6 仪表盘 | viz 应用接入 doctor 数据 | 原生复用 |
+
+维度 1/3 与维度 2/4/5/6 的工作量不在同一数量级——「基于原语自建」是技能开发,不是配置。
+Phase 2 工时估计须据此拆分,不得按「全复用」口径排期。
 
 - 定时执行改用 Minions + cron-scheduler skill,替代 build-plan 中的 Hermes cron 假设。
 - 成本上限复用 GBrain 的 spend controls,替代「手工数 LLM 调用」。
-- **报告制合成(5.4)在本阶段落地**——本阶段唯一的新建件(其余皆复用):周度 Minions cron 扫库 → 概念合成提案 → 统一审核面 → 批准后 SOP-002 写入。
+- **报告制合成(5.4)在本阶段落地**——这是旧方案候选，不是“其余皆复用”：遗漏检测、跨页面无链接关联和审核执行协议也需要自建或重构；任何批准后写入都必须等待新 SOP-002。
 
 **验收:** 每周自动产出健康报告 + 漂移 / 矛盾 / 高相似无链接清单 + 概念合成提案(≤10 条/次),全部进统一审核面。
 
@@ -562,7 +566,7 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 
 ### 与 qq-qa-bot-plan(M0-M5)的轨道对照
 
-两条产品轨道共享 GBrain 基础设施,合并视图如下:
+旧方案曾设想两条产品轨道共享 GBrain 基础设施；下表仅保留当时的对照关系，依赖和共享方式均已失效：
 
 | qq-qa-bot-plan | 本方案 | 关系 |
 |---|---|---|
@@ -572,12 +576,14 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 | M4 硬化(eval、成本帽、注入防御) | Phase 2 元认知的一部分 | 共享 eval 纪律与 spend controls |
 | M5 多库路由 / 报告制写回 | Phase 2 / 4 | **依赖 Phase 1 的统一审核面** |
 
-结论:两条轨道可并行。**Phase 0 是共同前置**;问答轨道(M1-M4)与策展轨道(Phase 1-3)互不阻塞,
+旧结论曾认为两条轨道可并行且 **Phase 0 是共同前置**；该依赖关系已被当前 MVP 顺序取代。历史方案中问答轨道(M1-M4)与策展轨道(Phase 1-3)互不阻塞,
 唯 M5 依赖 Phase 1 的统一审核面先行。
 
 ---
 
 ## 九、关键设计决策
+
+> **以下是历史候选决策，不是 2026-09-01 的获批设计。** 与设计权威登记冲突时一律以后者为准。
 
 | 决策 | 选择 | 理由 |
 |---|---|---|
@@ -609,34 +615,41 @@ GBrain 的 Dream Cycle 共 **23 个阶段**(`PHASE_SCOPE` 定义;其中 `skillop
 
 ## 十一、决策记录与待确认
 
-### 已决策(2026-08-24)
+> **本节保存旧讨论轨迹。表内“已决策”仅表示当时记录，不表示当前仍获批。** 当前决策必须在设计权威登记中出现。
+
+### 旧记录：当时标为已决策(2026-08-24)
 
 | 问题 | 决策 | 对方案的影响 |
 |---|---|---|
 | 成品形态 | 基于 DeepSeek harness 搭 agent;前端看板做系统展示与交互管理 | 已写入 4.1(两个模型位置的分工表) |
 | 多知识库语义 | 项目规范即「不同内容建立不同知识库」 | 已写入 4.2:每个 KB = 一个 source + per-source schema pack |
 | 部署形态 | 初期纯本地单机,长期远程多端 | Phase 0 用 PGLite;MCP 服务模式保证远程零重架构 |
-| GBrain 获取方式 | git clone 已完成(`E:\Workstation\code_space\gbrain\gbrain`,master HEAD) | 4.2 已更新;三份副本待整理(见 4.2 仓库整理待办) |
+| GBrain 获取方式 | 历史记录曾写为另一 clone 的 master HEAD | 当前只确认 `E:\Workstation\code_space\gbrain-master` v0.46.28.0 存在且无 `.git`；不能证明 HEAD，也未复核“三份副本”说法 |
 | 可视化技术栈 | 推荐 React + G6 / React Flow / ECharts | 已写入决策表;最终选型 Phase 3 前再确认 |
 | 审核面形态 | **专门的网页看板** | 与 Phase 3 可视化解耦:Phase 1 先交付最小审核页(策展地图逐条标记 + take 提案 accept/reject),Phase 3 再整合进完整看板 |
 | 规模定位 | **未来肯定多库**;单脑舒适线 < 1,000 页,超线无损迁 Postgres | 已写入 4.3 规模边界;跨库总量按单脑所有 source 之和计 |
 
-### 已决策(2026-08-25 追补)
+### 旧记录：当时标为已决策(2026-08-25 追补)
 
 | 问题 | 决策 | 对方案的影响 |
 |---|---|---|
 | 概念自动合成的去留 | **保留能力,降级为提案制**(报告制合成):静默路径随三层关闭消失,提案路径为标准形态 | 新增 5.4;Phase 2 增落地条目;5.2.1 代价段、5.3、第六节、7.2 同步改写 |
 | 问答入口 | **QQ + dsh**(qq-qa-bot-plan),只读检索;网页看板做审核与管理 | 已写入 4.4 双入口形态;qq 计划 M1 依赖本方案 Phase 0 |
 
-### 仍待确认
+### 历史开放问题（若继续采用，须重新提案）
 
 1. **可视化技术栈最终选型**:G6 / ECharts / React Flow 的组合是推荐方案,Phase 3 动手前按实际界面再定。
 2. **远程部署的具体形态**(长期):Supabase Pro($25/mo,托管)还是自建 Postgres + pgvector(Docker/服务器)——不影响 Phase 0-2,远程阶段再拍。
 3. **合成提案的载体与频率**(5.4):独立页面类型 `synthesis_proposal`,还是复用 `curation_map` + 来源标记;周度自动 + 按需手动是否够用——Phase 2 动工前定。
-4. **跨文档模型名冲突(需修正 qq-qa-bot-plan)**:其 D6 / 成本节使用的
-   `deepseek-chat`(V3.2)/ `deepseek-reasoner` 已于 2026-07-24 被 DeepSeek 官方退役(GBrain 源码注明 API 404),
-   应统一为 `deepseek-v4-flash` / `deepseek-v4-pro`(以官方最新文档为准,上线前实测);
-   另其 M1 的「SiliconFlow」不在 GBrain embedding 目录内(本地 BGE-M3 可,SiliconFlow 需 LiteLLM 代理)。
+4. **策展地图的检索污染策略**：新产物路径已由治理基线确定为 `proposals/curation-maps/`，不再写入
+   `raw/_curation-maps/`。但路径分层本身不等于 GBrain 查询隔离；Phase 1 仍必须在 sync 排除、独立
+   `federated=false` source 或查询层 type+status 过滤之间完成实证选型。
+5. **审核看板的写入通道**(Phase 1 一页纸必须回答):人审的本质动作是改 KB 仓库 markdown 的
+   frontmatter(`status: pending-review → approved`),网页看板写本地文件需要本地伴随服务或文件系统
+   桥接——架构图与 Phase 1 清单都没有这条通道。最小答案「Phase 1 用 CLI 改 status、看板只读展示」
+   也比空白强,它把 1-2 周估算切成可验证口径。
+6. **SOP-004/005/006 在 GBrain 下的映射**:结合点总览只覆盖 SOP-001/002/003 + MC-001;
+   尤其 SOP-006(对话提炼)应被轨道 B-捕获吸收,此映射关系需点破并写入三、结合点总览。
 
 ---
 
