@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *.pyo
+.venv/
+*.egg-info/
 
 # OS
 .DS_Store
@@ -20,3 +22,6 @@ desktop.ini
 # IDE
 .vscode/
 .idea/
+
+# 评估/实验临时产物（临时测试知识库等，禁止入库）
+.eval-tmp/
