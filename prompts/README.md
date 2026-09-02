@@ -1,5 +1,7 @@
 # Prompt 模板使用说明
 
+> **状态说明（2026-09-01）**：SOP-001 系列当前只作为策展地图提取/覆盖审计模板使用，产物应进入 `proposals/curation-maps/` 并停在人工审核处。`sop-002-curator.md` 已暂停执行，不能用于真实 KB 写入，等待新的精确版本绑定、精确 diff、事务和回滚协议。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+
 本文档说明 `prompts/` 目录下的 LLM-agnostic 提示词模板的使用方式、提取模式选择、覆盖报告机制、以及如何接入不同的 LLM 工具。
 
 ---
@@ -8,12 +10,12 @@
 
 KnowledgeFlow 提供四种提取模式，按成本和可靠性递进：
 
-| 模式 | LLM 调用（含策展） | 覆盖报告 | 适用场景 |
+| 模式 | 当前活跃的提取/审计调用 | 覆盖报告 | 适用场景 |
 |------|-------------------|---------|---------|
-| **Mode A（默认）** | 3 次 | 独立审计 | 默认路径。提取 + 独立覆盖审查分离——飞行员和塔台是不同的人 |
-| **Mode A-fast** | 2 次 | 自检 | < 3000 字短文 + 用户对质量有信心。覆盖报告与提取同一调用 |
-| **Mode B（2 Pass）** | 4 次 | 交叉校验 | > 10000 字长文，或人审发现 Mode A 遗漏。Pass 1 合并实体+论点，Pass 2 独立关系 |
-| **Mode C（3 Pass）** | 5 次 | 交叉校验 | 人审发现 Mode B 仍不够。实体/关系/论点三 Pass 各司其职——准确性最高 |
+| **Mode A（默认）** | 2 次 | 独立审计 | 默认路径。提取 + 独立覆盖审查分离——飞行员和塔台是不同的人 |
+| **Mode A-fast** | 1 次 | 自检 | < 3000 字短文 + 用户对质量有信心。覆盖报告与提取同一调用 |
+| **Mode B（2 Pass）** | 3 次 | 交叉校验 | > 10000 字长文，或人审发现 Mode A 遗漏。Pass 1 合并实体+论点，Pass 2 独立关系 |
+| **Mode C（3 Pass）** | 4 次 | 交叉校验 | 人审发现 Mode B 仍不够。实体/关系/论点三 Pass 各司其职——准确性最高 |
 
 ### 模式选择决策
 
@@ -51,7 +53,7 @@ else:
 
 | 文件 | 用途 |
 |------|------|
-| `sop-002-curator.md` | SOP-002 策展入库——基于审核过的策展地图创建/更新 wiki 页面 |
+| `sop-002-curator.md` | 旧 SOP-002 策展写入模板——**暂停执行，仅供重构参考** |
 | `sop-003-lint.md` | SOP-003 知识库健康扫描 |
 
 ### 规范文档
@@ -64,43 +66,43 @@ else:
 
 ## 三、各模式完整流程
 
-### Mode A（默认，3 次 LLM）
+### Mode A（默认，2 次活跃 LLM 调用）
 
 ```
 Call 1：sop-001-modeA.md          → 第 1-9 节策展地图
 Call 2：sop-001-modeA-auditor.md  → 第 10 节覆盖报告（独立审计——对照源文检查覆盖。可用便宜模型）
-Call 3：sop-002-curator.md        → wiki 页面（人审通过后）
+写入阶段：暂停；等待新 SOP-002 绑定精确版本、diff、事务和回滚
 
 人审：先看第 10 节覆盖报告（30 秒，不需要领域知识），再逐节审核第 1-9 节内容。
 ```
 
-### Mode A-fast（可选快速路径，2 次 LLM）
+### Mode A-fast（可选快速路径，1 次活跃 LLM 调用）
 
 ```
 Call 1：sop-001-modeA-fast.md     → 完整 10 节策展地图（含自检覆盖报告）
-Call 2：sop-002-curator.md        → wiki 页面（人审通过后）
+写入阶段：暂停；等待新 SOP-002 绑定精确版本、diff、事务和回滚
 
 覆盖报告标注「自检——非独立审计」。
 如有疑虑，升级到 Mode A（独立审计）或直接 Mode B。
 ```
 
-### Mode B（2 Pass，4 次 LLM）
+### Mode B（2 Pass，3 次活跃 LLM 调用）
 
 ```
 Call 1：sop-001-modeB-pass1-entities-claims.md  → 第 1/2/3/5 节
 Call 2：sop-001-modeBC-pass2-relationships.md   → 第 4 节
 Call 3：sop-001-modeBC-assembler.md (light)     → 第 6-10 节（轻量组装）
-Call 4：sop-002-curator.md                      → wiki 页面
+写入阶段：暂停；等待新 SOP-002
 ```
 
-### Mode C（3 Pass，5 次 LLM）
+### Mode C（3 Pass，4 次活跃 LLM 调用）
 
 ```
 Call 1：sop-001-modeC-pass1-entities.md         → 第 1/2/3 节
 Call 2：sop-001-modeBC-pass2-relationships.md   → 第 4 节
 Call 3：sop-001-modeC-pass3-claims.md           → 第 5 节
 Call 4：sop-001-modeBC-assembler.md (full)      → 第 6-10 节（完整组装）
-Call 5：sop-002-curator.md                      → wiki 页面
+写入阶段：暂停；等待新 SOP-002
 ```
 
 ---

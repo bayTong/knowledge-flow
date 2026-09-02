@@ -1,7 +1,10 @@
 # SOP-002 策展入库
 
+> **状态：SUSPENDED / 禁止执行（2026-09-01）**
+> 本文件只保留为旧版写入流程的重构参考。它尚未绑定 `capture_id + version + envelope_sha256` 和精确变更 diff，也没有满足当前治理要求的事务、权限与回滚协议。不得把本提示词交给 Agent 对真实知识库执行。当前权威见 `docs/design-authority-and-conflict-register-设计权威与冲突登记.md`。
+>
 > 基于审核过的策展地图，在 SCHEMA 约束下执行 wiki 页面创建/更新。
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-002」章
+> 旧版完整 SOP 参考：`docs/sop-v2-full.md`「SOP-002」章（非当前执行规范）
 > 前置：SOP-001 粗读器已产出策展地图 + 用户已审核通过（标记了哪些「确认入库」）
 
 ---

@@ -6,6 +6,8 @@
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
+> **Current status (2026-09-02):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. The MVP-0 technical design and coding plan are approved. C0 project scaffolding and C1 deterministic primitives are complete with 30 passing tests, but the four capture operations and production store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+
 | Looking for | Jump to |
 |------------|---------|
 | The core problem this project solves | [The Curation Paradox](#the-curation-paradox) |
@@ -15,7 +17,10 @@
 | How to get started | [Quick Start](#quick-start) |
 | Real-world usage data | [In Practice](#in-practice) |
 | Design philosophy | [Philosophy](#philosophy) |
-| Full SOP specification | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
+| Current design authority & conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| Capture & routing design | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
+| MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| Legacy SOP reference (partially superseded) | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | Build plan & roadmap | [`docs/build-plan.md`](docs/build-plan.md) |
 | Strategic vision | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
 | Audit findings & fix checklist | [`docs/improvement-action-plan.md`](docs/improvement-action-plan.md) |
@@ -40,7 +45,7 @@ KnowledgeFlow takes a different position — **redistribute responsibility rathe
 
 - **LLM handles exhaustive extraction** — no filtering, no importance judgment (hard constraint C5). Every extraction is anchored to a source location (C2), uncertainty is explicitly marked (C3), and agent suggestions are structurally isolated from facts (C4). The output is a structured curation map
 - **You handle semantic judgment** — mark each entry in the curation map as "ingest," "ignore," or "need more sources." You don't need to trust the LLM's judgment; you only need to verify that it extracted everything (verifiable through section-by-section coverage and source citations)
-- **LLM executes constrained writes** — the curation phase (SOP-002) only processes entries you've confirmed, operating under SCHEMA rules for deduplication, conflict resolution, and formatting
+- **A restricted writer performs the target-state write** — the replacement SOP-002 will process only precisely approved changes under SCHEMA, transaction, and rollback constraints. It has not been redesigned yet; the legacy write prompt must not be run
 
 The two-stage pipeline isn't primarily about efficiency — it's about **auditability**.
 
@@ -91,7 +96,8 @@ Raw Source
                    │
                    ▼
 ┌──────────────────────────────────┐
-│  Phase 2: Curation (策展入库)     │
+│  Phase 2: Trusted write           │
+│  (replacement SOP-002; not built) │
 │                                    │
 │  · Only processes human-confirmed │
 │    entries from the curation map  │
@@ -114,7 +120,7 @@ Raw Source
 
 ### 1. Hard Constraints, Not Guidelines
 
-The rough reader operates under 7 hard constraints (C1–C7), four of which are prohibitions marked ☒:
+The rough reader operates under 7 hard constraints (C1–C7), five of which are prohibitions marked ☒:
 
 | Constraint | Type | Why |
 |------|:---:|------|
@@ -138,7 +144,7 @@ This separation solves the "paradox of curation": you don't yet know the domain,
 
 | Layer | SOP | Scope | Trigger |
 |------|-----|------|------|
-| Increment check | SOP-002 self-verification | Format-level correctness of new pages | Every curation |
+| Target-state increment check | Replacement SOP-002 (pending redesign) | Format and transaction correctness of approved changes | Every trusted write |
 | Cumulative scan | SOP-003 full lint (9 items) | Structural health of entire KB | Weekly or manual |
 | Ripple-effect check | SOP-004 SCHEMA consistency | Impact of SCHEMA changes on all pages | After any SCHEMA modification |
 
@@ -154,13 +160,36 @@ knowledge-flow/
 ├── README-zh.md                      Chinese README（中文文档）
 ├── CHANGELOG.md                      Version history
 ├── LICENSE                           MIT
+├── pyproject.toml                    Capture-kernel package and pinned runtime dependency
+├── src/
+│   └── knowledgeflow_capture/
+│       ├── __init__.py               C0 package identity
+│       ├── errors.py                 C1 public errors, internal causes, commit states
+│       ├── models.py                 C1 hash and request value objects
+│       ├── ids.py                    C1 UUIDv7 and typed prefixes
+│       ├── hashing.py                C1 four-hash primitives
+│       └── codec.py                  C1 restricted YAML and Envelope v1 schema
+├── tests/
+│   └── capture/
+│       ├── fixtures/                 C1 JSON/YAML golden files
+│       └── unit/                     30 automated C0–C1 tests
 ├── docs/
-│   ├── sop-v2-full.md               Core deliverable (SOP-000 through SOP-006 + appendices)
+│   ├── sop-v2-full.md               Legacy SOP collection (partly superseded)
 │   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
 │   ├── second-brain-vision.md       Strategic vision（战略愿景）
 │   ├── curation-paradox.md          The curation paradox argument
+│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
+│   ├── requirements-and-governance-baseline-需求与治理基线.md      Approved requirements and governance
+│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
+│   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual routing design
+│   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
+│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Approved capture root and text-operation design
+│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Approved implementation choices and test matrix
+│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Approved coding batches and authorization gates
 │   ├── adaptive-extraction-plan.md  Adaptive extraction tiers design
-│   └── improvement-action-plan.md   Evaluation findings & fix checklist（评估整改清单）
+│   ├── improvement-action-plan.md   Evaluation findings & fix checklist（评估整改清单）
+│   ├── gbrain-integration-plan.md   GBrain engine integration plan（GBrain 集成方案）
+│   └── qq-qa-bot-plan.md            QQ Q&A bot plan（QQ 问答机器人方案）
 ├── prompts/                          LLM-agnostic prompt templates（提示词模板）
 │   ├── README.md                    Template usage guide
 │   ├── sop-001-modeA.md             Default: single-pass extraction (sections 1-9)
@@ -171,10 +200,11 @@ knowledge-flow/
 │   ├── sop-001-modeBC-assembler.md             Shared B/C: assembler + coverage report
 │   ├── sop-001-modeC-pass1-entities.md         Mode C Pass 1: entities only
 │   ├── sop-001-modeC-pass3-claims.md           Mode C Pass 3: claims only
-│   ├── sop-002-curator.md           SOP-002 curation & ingestion
+│   ├── sop-002-curator.md           Legacy SOP-002 write prompt (suspended)
 │   ├── sop-003-lint.md              SOP-003 health scan
 │   └── extraction-interface.md      Extraction interface + coverage report spec
 ├── scripts/                          Reference implementation (Python, zero deps)
+│   ├── README.md                    Usage, Windows notes, SOP-003 mapping
 │   ├── lint.py                      SOP-003 lint scanner
 │   ├── link-validator.py            Wikilink validator
 │   └── index-generator.py           index.md generator
@@ -193,16 +223,14 @@ knowledge-flow/
 
 ## Quick Start
 
-**Minimum path to a working knowledge base:**
+The complete capture MVP is not implemented yet. Only the tested deterministic foundation exists, so there is no honest “ready-to-run” save path for the governed architecture. The implementation order is:
 
-1. **Define your domain** — one or two intersecting knowledge areas.
-2. **Copy `templates/SCHEMA-template.md`** to `schema/SCHEMA.md` in your knowledge base directory and fill in the placeholders.
-3. **Feed your first source** to an LLM using the default template `prompts/sop-001-modeA.md` — this produces a 9-section curation map in a single LLM call. Then run `prompts/sop-001-modeA-auditor.md` for the independent coverage report (section 10). See `prompts/README.md` for all extraction modes.
-4. **Review the curation map** — mark entries as "ingest," "ignore," or "need more sources." Adjust SCHEMA if the rough reader suggested changes.
-5. **Tell the LLM to execute SOP-002** using `prompts/sop-002-curator.md` — it will create wiki pages from only the entries you confirmed.
-6. **Run SOP-003 lint** using `prompts/sop-003-lint.md` to verify structural integrity.
+1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved, and C0–C1 are complete. Explicitly authorize C2 before implementing configuration, paths, the manifest, and test-only temporary Store initialization.
+3. Complete the local text-capture path batch by batch through C8, then add manual routing, SOP-000A, and the unreviewed GBrain mirror.
+4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
-Full specification: [`docs/sop-v2-full.md`](docs/sop-v2-full.md). Prompt templates: [`prompts/`](prompts/).
+The existing `prompts/sop-001-*` files remain useful for studying curation-map extraction and coverage auditing, but outputs now belong under `proposals/curation-maps/` and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
 
 ---
 

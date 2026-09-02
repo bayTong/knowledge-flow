@@ -5,6 +5,8 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
+> **当前状态（2026-09-02）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。MVP-0 技术设计和编码方案已经批准；C0 工程骨架与 C1 确定性基础原语已完成并通过 30 项测试，但四个捕获操作和生产 Store 均不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+
 | 想看什么 | 跳转 |
 |---------|------|
 | 这个项目解决的根本问题 | [知识策展悖论](#知识策展悖论) |
@@ -15,7 +17,10 @@
 | 粗读器如何处理不确定性 | [不确定性处理](#不确定性处理) |
 | 真实使用数据 | [实践数据](#实践数据) |
 | 设计背后的思维方式 | [设计哲学](#设计哲学) |
-| 完整 SOP 规范原文 | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
+| 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| 捕获与路由设计 | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
+| MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| 旧版 SOP 参考（部分被取代） | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | 建设规划与路线图 | [`docs/build-plan.md`](docs/build-plan.md) |
 | 战略愿景 | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
 | 评估发现与整改清单 | [`docs/improvement-action-plan.md`](docs/improvement-action-plan.md) |
@@ -40,7 +45,7 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 
 - **LLM 负责穷举提取**——不筛选、不判断重要性（C5 硬约束）。每条提取锚定到原文位置（C2），不确定的地方显式标记（C3），建议严格隔离在事实之外（C4）。产出是一份结构化策展地图
 - **人类负责语义判断**——在策展地图上逐条标记「确认入库」「忽略」「待更多原料」。你不需要信任 LLM 的判断力，你只需要信任它确实提取了所有东西（可通过逐段覆盖率和原文引用验证）
-- **LLM 在约束下执行写入**——策展入库阶段（SOP-002）只处理你确认过的条目，在 SCHEMA 规则下做查重、防冲突和格式化写入
+- **目标态由受限写入器执行写入**——新的 SOP-002 只处理经过精确批准的变更，在 SCHEMA、事务和回滚约束下执行；该环节仍待重构，当前不得运行旧版写入提示词
 
 两阶段管线的核心不是效率——是**可审查性**。
 
@@ -93,7 +98,8 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
                    │
                    ▼
 ┌──────────────────────────────────┐
-│  第二阶段：策展入库（SOP-002）     │
+│  第二阶段：可信写入（新 SOP-002） │
+│  状态：待重构，当前未启用         │
 │                                    │
 │  · 仅处理你确认过的条目            │
 │  · 全文搜索查重——防止重复建页面   │
@@ -114,7 +120,7 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 
 ### 1. 用硬约束代替软指引
 
-粗读器定义了 7 条硬约束（C1–C7），其中 4 条是以 ☒ 标记的禁止项：
+粗读器定义了 7 条硬约束（C1–C7），其中 5 条是以 ☒ 标记的禁止项：
 
 | 编号 | 约束 | 类型 | 为什么 |
 |------|------|:---:|------|
@@ -138,7 +144,7 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 
 | 层次 | SOP | 检查范围 | 触发时机 |
 |------|-----|------|------|
-| 增量自检 | SOP-002 自检（8 项） | 本次新建/更新页面的格式正确性 | 每次策展入库 |
+| 目标态增量自检 | 新 SOP-002（待重构） | 本次获批变更的格式与事务正确性 | 每次可信写入 |
 | 全量扫描 | SOP-003 健康检查（9 项） | 整个知识库的结构健康 | 每周定时 / 手动 |
 | 连锁检查 | SOP-004 SCHEMA 一致性（5 项） | SCHEMA 修改对全库的连锁影响 | SCHEMA 变更后立即 |
 
@@ -154,13 +160,36 @@ knowledge-flow/
 ├── README-zh.md                      中文 README（本文档）
 ├── CHANGELOG.md                      变更记录
 ├── LICENSE                           MIT
+├── pyproject.toml                    捕获内核包与精确锁定的运行时依赖
+├── src/
+│   └── knowledgeflow_capture/
+│       ├── __init__.py               C0 包身份
+│       ├── errors.py                 C1 公共错误、内部原因与提交状态模型
+│       ├── models.py                 C1 哈希与请求值对象
+│       ├── ids.py                    C1 UUIDv7 与类型前缀
+│       ├── hashing.py                C1 四类哈希原语
+│       └── codec.py                  C1 受限 YAML 与 Envelope v1 schema
+├── tests/
+│   └── capture/
+│       ├── fixtures/                 C1 JSON/YAML golden 文件
+│       └── unit/                     C0–C1 的 30 项自动化测试
 ├── docs/
-│   ├── sop-v2-full.md               核心交付物（SOP-000 至 SOP-006 + 附录）
+│   ├── sop-v2-full.md               旧版 SOP 全集（部分已被新设计取代）
 │   ├── build-plan.md                建设规划与路线图（外置第二大脑建设规划）
 │   ├── second-brain-vision.md       战略愿景
 │   ├── curation-paradox.md          策展悖论论述
+│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
+│   ├── requirements-and-governance-baseline-需求与治理基线.md      已确认的需求与治理原则
+│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
+│   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
+│   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
+│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           捕获根目录与四个文本操作已批准设计
+│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  已批准的实现选择与测试矩阵
+│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       已批准的编码批次与授权门禁
 │   ├── adaptive-extraction-plan.md  自适应提取分层设计方案
-│   └── improvement-action-plan.md   评估发现与整改清单
+│   ├── improvement-action-plan.md   评估发现与整改清单
+│   ├── gbrain-integration-plan.md   GBrain 引擎集成方案
+│   └── qq-qa-bot-plan.md            QQ 问答机器人方案
 ├── prompts/                          LLM-agnostic 提示词模板
 │   ├── README.md                    模板使用说明
 │   ├── sop-001-modeA.md             默认：单次提取（第 1-9 节）
@@ -171,10 +200,11 @@ knowledge-flow/
 │   ├── sop-001-modeBC-assembler.md             B/C 共享：组装器 + 覆盖报告
 │   ├── sop-001-modeC-pass1-entities.md         模式 C Pass 1：实体
 │   ├── sop-001-modeC-pass3-claims.md           模式 C Pass 3：论点
-│   ├── sop-002-curator.md                   SOP-002 策展入库
+│   ├── sop-002-curator.md                   旧 SOP-002 写入模板（暂停执行）
 │   ├── sop-003-lint.md                      SOP-003 健康扫描
 │   └── extraction-interface.md      提取接口技术规范
 ├── scripts/                         参考实现脚本（纯 Python 标准库）
+│   ├── README.md                    用法、Windows 注意事项、SOP-003 映射
 │   ├── lint.py                      SOP-003 Lint 扫描器
 │   ├── link-validator.py            Wikilink 验证器
 │   └── index-generator.py           index.md 生成器
@@ -193,16 +223,14 @@ knowledge-flow/
 
 ## 快速开始
 
-**能让一个知识库转起来的最短路径**：
+完整的捕获 MVP 尚未实现，目前只有可测试的确定性基础原语，没有可宣称“开箱即用”的保存链路。正确的后续建设顺序是：
 
-1. **定义你的领域**——一个或两个交织的知识领域，写清楚「这个知识库覆盖什么」。
-2. **复制 `templates/SCHEMA-template.md`** 到你知识库的 `schema/SCHEMA.md`，填入实际信息。
-3. **把第一份原料交给 LLM**，使用默认模板 `prompts/sop-001-modeA.md` 一次性生成 9 节策展地图，再用 `prompts/sop-001-modeA-auditor.md` 生成独立覆盖报告（第 10 节）。参见 `prompts/README.md` 了解全部提取模式。
-4. **审核策展地图**——逐条标记「确认入库」「忽略」或「待更多原料」。如果粗读器提了 SCHEMA 调整建议，决定是否接受。
-5. **让 LLM 执行 SOP-002**（策展入库），使用 `prompts/sop-002-curator.md`——它只处理你确认过的条目，在 SCHEMA 约束下写入 wiki 页面。
-6. **跑一次 SOP-003 Lint**，使用 `prompts/sop-003-lint.md` 验证结构完整性。
+1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准，C0–C1 已完成；仍需明确授权 C2，才实现配置、路径、Manifest 与测试临时 Store 初始化。
+3. 按 C2–C8 逐批闭合纯本地文本捕获，再增加人工路由、SOP-000A 和 GBrain 未审核镜像。
+4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
-完整规范见 [`docs/sop-v2-full.md`](docs/sop-v2-full.md)。提示词模板见 [`prompts/`](prompts/)。
+现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
 
 ---
 

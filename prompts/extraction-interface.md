@@ -131,7 +131,7 @@
 - ☒ 不创建任何文件（除策展地图本身）
 - ☒ 不更新 index.md
 - ☒ 不修改已有页面
-- ☑ 地图保存为 `raw/_curation-maps/YYYY-MM-DD-主题.md`
+- ☑ 地图保存为 `proposals/curation-maps/YYYY-MM-DD-主题.md`；不得与不可变原料混放在 `raw/`
 
 ---
 

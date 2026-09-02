@@ -1,5 +1,9 @@
 # KnowledgeFlow — 完整 SOP 体系 v2.0
 
+> **状态：Partially Superseded（2026-09-01）**
+> 本文件仍可作为旧版策展地图格式、覆盖审计和知识库维护方法的参考，但不再是全主题权威。捕获、Global Intake、临时 KB、策展地图存放路径和可信写入权限分别以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、[捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)、[Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)及 [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)为准。
+> 旧 SOP-002 允许的自动领域扩展、标签注册和直接 wiki 写入暂停执行，等待绑定精确版本、精确 diff、事务和回滚的新 SOP-002。
+>
 > 版本：v2.0（引入粗读器后的全流程修订）
 > 修订时间：2026-07-06
 >
@@ -401,9 +405,10 @@ SOP-002 将产出：
 
    验收检查：5/6 通过（⑥ wiki 页面待 SOP-002 策展入库）
 
-   ═══ 待你操作 ═══
-   策展地图已生成：raw/_curation-maps/[路径]
-   请审核后告诉 Agent "审核完成，可以入库" 以继续 SOP-002。
+   ═══ 旧版示例，到此停止 ═══
+   旧版策展地图路径：raw/_curation-maps/[路径]
+   当前设计应把新策展地图放入 proposals/curation-maps/。人工审核只结束提取阶段，
+   不构成可信写入授权；旧 SOP-002 已暂停，不得继续执行。
 ```
 
 **模式 B（骨架初始化）：**
