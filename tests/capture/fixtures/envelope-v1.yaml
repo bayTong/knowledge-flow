@@ -1,0 +1,47 @@
+schema: "knowledgeflow.capture-envelope"
+schema_version: 1
+capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+event_id: "evt_01991a7e-7b21-72ae-9ef5-4f45249ad332"
+version: 1
+previous_version: null
+received_at: "2026-09-02T01:02:03.001Z"
+captured_at: "2026-09-02T01:02:03.004Z"
+actor:
+  type: "user"
+  actor_id: "local-user"
+channel:
+  type: "app"
+  instance_id: "local-desktop"
+  external_ref: "msg-42"
+  source_created_at: "2026-09-02T01:02:03.004Z"
+idempotency:
+  scope: "app:local-desktop:capture_text"
+  key_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  request_fingerprint_sha256: "sha256:90c872a3da189be3e748f0c517dc4cfe14434c4537c94a0b40e6d403100ca1db"
+payloads:
+  - payload_id: "sha256:d3f0fb6e5ca5021a950fc93f1deedcc6a5521fd7a69af8d26f7f7452a3008298"
+    ordinal: 0
+    role: "primary"
+    kind: "text"
+    path: "payloads/primary.txt"
+    original_name: null
+    media_type: "text/plain; charset=utf-8"
+    encoding: "utf-8"
+    fidelity: "channel-exact"
+    byte_size: 16
+    sha256: "sha256:d3f0fb6e5ca5021a950fc93f1deedcc6a5521fd7a69af8d26f7f7452a3008298"
+payload_set_sha256: "sha256:8f112ab0af3a0688c6809595938b35755df53b3129442438f2a513b30270f4fb"
+user_intent:
+  target_kb_id: null
+  processing_mode: null
+  requested_new_kb_name: null
+  evidence:
+    event_id: "evt_01991a7e-7b21-72ae-9ef5-4f45249ad332"
+    payload_id: "sha256:d3f0fb6e5ca5021a950fc93f1deedcc6a5521fd7a69af8d26f7f7452a3008298"
+delivery_requests: []
+envelope_serialization:
+  encoding: "utf-8"
+  line_endings: "lf"
+  bom: false
+  key_order: "schema-defined"
+envelope_sha256: "sha256:d060313160f00566464a47a23f37d530a8cd77a100a6efcda591a7224c17515a"
