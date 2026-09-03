@@ -335,7 +335,7 @@ knowledge-hub/                 # 可选：只保存 KB 注册表和全局 Intake
 
 主题级优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准。推荐顺序：
 
-1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C1 已完成。下一步仍需明确授权 C2，才继续纯本地链路实现。
+1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C2A 已完成并通过 48 项自动化测试。下一步仍需明确授权 C2B，才实现锁、durability 与测试临时 Store 初始化。
 2. 增加人工路由与 SOP-000A 执行边界。
 3. 实证 GBrain 未审核镜像和查询隔离。
 4. 定义 SOP-000B。

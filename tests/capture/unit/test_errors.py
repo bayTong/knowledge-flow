@@ -43,8 +43,33 @@ class ErrorModelTest(unittest.TestCase):
     def test_config_codes_are_distinct_and_deprecated_code_is_absent(self) -> None:
         self.assertEqual(PublicErrorCode.CONFIG_NOT_FOUND, "config_not_found")
         self.assertEqual(PublicErrorCode.CONFIG_INVALID, "config_invalid")
+        self.assertEqual(
+            PublicErrorCode.UNRECOGNIZED_EXISTING_DIRECTORY,
+            "unrecognized_existing_directory",
+        )
+        self.assertEqual(
+            PublicErrorCode.UNSUPPORTED_STORE_VERSION,
+            "unsupported_store_version",
+        )
+        self.assertEqual(
+            PublicErrorCode.CONFIG_STORE_CONFLICT,
+            "config_store_conflict",
+        )
         with self.assertRaises(ValueError):
             PublicErrorCode("capture_root_not_configured")
+
+    def test_c2_initialization_codes_have_stable_safe_messages(self) -> None:
+        for code in (
+            PublicErrorCode.UNRECOGNIZED_EXISTING_DIRECTORY,
+            PublicErrorCode.UNSUPPORTED_STORE_VERSION,
+            PublicErrorCode.CONFIG_STORE_CONFLICT,
+        ):
+            with self.subTest(code=code):
+                serialized = OperationError(code=code, retryable=False).to_dict()
+                self.assertEqual(serialized["code"], code.value)
+                self.assertIsInstance(serialized["message"], str)
+                self.assertNotIn("\\", serialized["message"])
+                self.assertNotIn("/", serialized["message"])
 
     def test_public_error_without_lower_cause_serializes_null(self) -> None:
         error = OperationError(

@@ -4,12 +4,12 @@
 
 ## Unreleased
 
-### 治理式捕获架构与 C1 确定性基础
+### 治理式捕获架构与 C2A 配置/身份基础
 
 - **建立主题级设计权威**：新增需求与治理基线、设计权威与冲突登记、SOP-000A、捕获与路由规范、Capture Envelope v1、MVP-0 四操作契约、实现拆解与编码执行方案。
 - **冻结语义写入边界**：捕获允许先保存后审核；模型只生成路由或策展提案；旧 SOP-002 及其写入提示词暂停执行，策展地图迁移到 `proposals/curation-maps/`。
-- **完成 C0–C1**：新增内部 `knowledgeflow-capture` Python 包，实现结构化错误与三态提交状态、UUIDv7、Payload/Payload Set/Request Fingerprint/Envelope 四类哈希，以及受限 YAML 语法门禁、schema 校验和确定性发射。
-- **建立可复现验证**：加入 30 项自动化测试和三份 JSON/YAML golden fixture；标准与显式测试发现方式均通过。golden 文件固定使用 LF，避免 Windows checkout 改变契约字节。
+- **完成 C0–C2A**：新增内部 `knowledgeflow-capture` Python 包，实现结构化错误与三态提交状态、UUIDv7、Payload/Payload Set/Request Fingerprint/Envelope 四类哈希、受限 YAML 语法门禁/schema 校验/确定性发射，以及本地配置、Windows 路径策略和 Store Manifest v1。
+- **建立可复现验证**：加入 48 项自动化测试和五份 JSON/YAML golden fixture；标准与显式测试发现方式均通过。golden 文件固定使用 LF，避免 Windows checkout 改变契约字节。
 - **清理仓库临时产物**：删除误提交的 `.eval-tmp` 合成数据，补充本地环境、构建产物和实验目录忽略规则。
 - **明确尚未交付范围**：Capture Store 初始化、四个文本操作、State Event、幂等索引、人工路由、GBrain、Harness、UI 和可信知识写入均未实现。
 

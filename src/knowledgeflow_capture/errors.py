@@ -19,6 +19,9 @@ class CommitState(StrEnum):
 class PublicErrorCode(StrEnum):
     CONFIG_NOT_FOUND = "config_not_found"
     CONFIG_INVALID = "config_invalid"
+    UNRECOGNIZED_EXISTING_DIRECTORY = "unrecognized_existing_directory"
+    UNSUPPORTED_STORE_VERSION = "unsupported_store_version"
+    CONFIG_STORE_CONFLICT = "config_store_conflict"
     CAPTURE_STORE_NOT_INITIALIZED = "capture_store_not_initialized"
     CAPTURE_STORE_UNAVAILABLE = "capture_store_unavailable"
     INVALID_INPUT = "invalid_input"
@@ -50,6 +53,15 @@ class WarningCode(StrEnum):
 _ERROR_MESSAGES: Mapping[PublicErrorCode, str] = {
     PublicErrorCode.CONFIG_NOT_FOUND: "capture configuration was not found",
     PublicErrorCode.CONFIG_INVALID: "capture configuration is invalid",
+    PublicErrorCode.UNRECOGNIZED_EXISTING_DIRECTORY: (
+        "existing directory is not a recognized capture store"
+    ),
+    PublicErrorCode.UNSUPPORTED_STORE_VERSION: (
+        "capture store schema or layout version is unsupported"
+    ),
+    PublicErrorCode.CONFIG_STORE_CONFLICT: (
+        "capture configuration conflicts with the requested store"
+    ),
     PublicErrorCode.CAPTURE_STORE_NOT_INITIALIZED: "capture store is not initialized",
     PublicErrorCode.CAPTURE_STORE_UNAVAILABLE: "capture store is unavailable",
     PublicErrorCode.INVALID_INPUT: "request input is invalid",

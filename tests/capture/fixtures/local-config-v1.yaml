@@ -1,0 +1,6 @@
+schema: "knowledgeflow.local-config"
+schema_version: 1
+capture:
+  root: "C:\\KnowledgeFlowTests\\owned\\capture-store"
+  inline_text_threshold_bytes: 4194304
+  max_text_version_bytes: 67108864

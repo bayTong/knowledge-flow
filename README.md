@@ -6,7 +6,7 @@
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-02):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. The MVP-0 technical design and coding plan are approved. C0 project scaffolding and C1 deterministic primitives are complete with 30 passing tests, but the four capture operations and production store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-03):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. The MVP-0 technical design and coding plan are approved. C0–C2A are complete with 48 passing tests; deterministic primitives, configuration, path policy, and the Manifest are implemented, but Capture Store initialization, the four capture operations, and the production Store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -168,11 +168,14 @@ knowledge-flow/
 │       ├── models.py                 C1 hash and request value objects
 │       ├── ids.py                    C1 UUIDv7 and typed prefixes
 │       ├── hashing.py                C1 four-hash primitives
-│       └── codec.py                  C1 restricted YAML and Envelope v1 schema
+│       ├── codec.py                  C1 restricted YAML and Envelope v1 schema
+│       ├── config.py                 C2A local-config contract and canonical emission
+│       ├── paths.py                  C2A Windows path-safety policy
+│       └── manifest.py               C2A Capture Store identity contract
 ├── tests/
 │   └── capture/
-│       ├── fixtures/                 C1 JSON/YAML golden files
-│       └── unit/                     30 automated C0–C1 tests
+│       ├── fixtures/                 Five C1–C2A JSON/YAML golden files
+│       └── unit/                     48 automated C0–C2A tests
 ├── docs/
 │   ├── sop-v2-full.md               Legacy SOP collection (partly superseded)
 │   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
@@ -223,11 +226,11 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Only the tested deterministic foundation exists, so there is no honest “ready-to-run” save path for the governed architecture. The implementation order is:
+The complete capture MVP is not implemented yet. Only the tested deterministic primitives, configuration, path policy, and Manifest exist, so there is no honest “ready-to-run” save path for the governed architecture. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved, and C0–C1 are complete. Explicitly authorize C2 before implementing configuration, paths, the manifest, and test-only temporary Store initialization.
-3. Complete the local text-capture path batch by batch through C8, then add manual routing, SOP-000A, and the unreviewed GBrain mirror.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved, and C0–C2A are complete. Explicitly authorize C2B before implementing locking, durability, and test-only temporary Store initialization.
+3. Complete the local text-capture path batch by batch from C2B through C8, then add manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful for studying curation-map extraction and coverage auditing, but outputs now belong under `proposals/curation-maps/` and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.

@@ -971,9 +971,9 @@ v1 推荐暂不引入新的业务数据库：
 
 本文虽已获批，仍不应立即开发完整捕获系统。当前推荐顺序：
 
-1. C0 工程骨架和 C1 确定性基础原语已经完成；Envelope 的 schema、受限 YAML codec、自哈希及 golden 已通过测试。
+1. C0–C2A 已完成并通过 48 项自动化测试；Envelope 的 schema、受限 YAML codec、自哈希，以及配置、路径和 Manifest 基础均已通过测试。
 2. 当前实现不包含 Store 布局、原子提交、State Event、幂等索引或四个操作，因此本文整体仍不是 `Effective`。
-3. 用户明确授权 C2 后，才可在测试持有的临时目录中实现配置、路径、Manifest 与 Store 初始化；不得创建生产 Store。
+3. 用户明确授权 C2B 后，才可在测试持有的临时目录中实现锁、durability 与 Store 初始化；不得创建生产 Store。
 4. 后续逐批验收纯本地文本链路，包括 4 MiB 阈值两侧、64 MiB 上限、迁移和崩溃恢复；此阶段不接 GBrain。
 5. 本地链路验收后，再把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. 最后分别设计 URL 和文件 Payload 的入口门禁。

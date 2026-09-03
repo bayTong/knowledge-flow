@@ -1,10 +1,10 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-> 状态：Approved Design；C0–C1 已完成，C2 契约已复核但尚未授权<br>
+> 状态：Approved Design；C0–C2A 已完成，C2B 尚未授权<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；不授权 C2、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；不授权 C2B、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
 ## 0. 结论先行
 
@@ -18,7 +18,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0 与 C1 已另行授权并完成；这不自动授权 C2、创建生产目录、提交 Git 或接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2A 已逐批授权并完成；这不自动授权 C2B、创建生产目录、提交 Git 或接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -29,14 +29,15 @@
 - 已批准的 Capture Envelope、捕获路由和四操作契约。
 - C0 建立的 `pyproject.toml`、`src/knowledgeflow_capture` 最小包和 `tests/capture/unit` 测试骨架。
 - C1 已实现错误模型、数据值对象、UUIDv7、四类哈希和受限 YAML codec，并建立三份 golden fixture。
-- 捕获包已精确锁定 `PyYAML==6.0.3`；自动发现共通过 30 项测试，其中 29 项覆盖 C1，另 1 项为包导入 smoke test。
+- C2A 已实现本地配置契约、Windows 路径策略和 Store Manifest v1，并建立两份 golden fixture。
+- 捕获包已精确锁定 `PyYAML==6.0.3`；自动发现共通过 48 项测试，其中 47 项覆盖 C1–C2A，另 1 项为包导入 smoke test。
 
 ### 1.2 尚不存在
 
 - 没有 `package.json`、Node/Bun 应用或桌面前端。
 - 没有 Capture Store 初始化器和任何四操作实现。
 - 没有 Capture Store 初始化、四操作、集成、并发、故障或迁移测试。
-- 没有统一 CLI；C1 纯函数与 codec 测试通过不代表捕获业务行为已经实现。
+- 没有统一 CLI；C1–C2A 纯函数、codec、配置、路径和 Manifest 测试通过不代表捕获业务行为已经实现。
 - 没有接入 DeepSeek Harness，也没有可调用的 GBrain 适配器。
 
 ### 1.3 当前机器只读盘点
@@ -48,7 +49,7 @@
 | Python YAML 依赖 | C0 已在 `pyproject.toml` 锁定 `PyYAML==6.0.3` | 只能经项目受限 codec 使用，不能依赖默认加载/发射行为 |
 | Node.js | 22.22.3 | 可用，但仓库没有 Node 工程 |
 | Bun | 未安装 | 不应成为本地捕获前置条件 |
-| 自动化测试 | C0–C1 自动发现并通过 30 项测试 | 已覆盖确定性基础原语；尚无 Store 与四操作回归保障 |
+| 自动化测试 | C0–C2A 自动发现并通过 48 项测试 | 已覆盖确定性基础原语、配置、路径与 Manifest；尚无 Store 与四操作回归保障 |
 | 生产 `capture-root` | 尚未创建 | 所有实现测试必须使用隔离临时目录 |
 
 这些是 2026-09-02 的本机事实，不是跨机器规范。
@@ -422,11 +423,11 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 |---|---|---|---|
 | M0-D1 | 技术选择基线 | 无 | 已于 2026-09-02 确认，后续实现不得静默偏离 |
 | M0-E1 | 建立隔离 Python 包和测试骨架 | M0-D1 | **已于 2026-09-02 通过：自动发现 1 项测试，包可从 `src/` 导入** |
-| M0-E2 | 配置解析和路径安全 | E1 | 受限读取、规范写出、绝对解析、禁止目录、Windows 特殊路径和越界测试通过 |
+| M0-E2 | 配置解析和路径安全 | E1 | **已于 2026-09-03 通过：受限读取、规范写出、绝对解析、禁止目录、Windows 特殊路径和越界测试通过** |
 | M0-E3 | 错误模型、YAML codec 与 golden fixture | E1 | 公共错误/内部原因/警告分层；固定规范发射；危险或不合 schema 的 YAML 被拒绝 |
 | M0-E4 | UUIDv7、时钟、四类哈希和字节计数 | E1 | 固定向量、同毫秒唯一性、时钟回拨、四类 golden 和 4/64 MiB 边界通过 |
 | M0-E5 | 锁与 durability 原语 | E1 | 配置目标锁先于 Store 创建；同盘 staging/rename、原子替换和崩溃钩子可测试 |
-| M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | 规范 Manifest、完整骨架、独立初始化回执、并发幂等、未知目录拒绝和配置连接通过 |
+| M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | **C2A 已于 2026-09-03 完成规范 Manifest；`init_capture_store`、完整骨架、并发幂等和配置连接仍属 C2B** |
 | M0-E7 | `capture_text` | E2–E6 | 版本 1、哈希、Envelope、事件、投影和回执闭环 |
 | M0-E8 | `get_capture` | E3、E7 | 最新/历史读取与完整性错误闭环 |
 | M0-E9 | `list_captures` | E3、E7 | 稳定排序、游标、预览和 Global Intake 视图闭环 |
@@ -522,6 +523,8 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | MAN-04 | 未知 schema/schema version/layout version | 返回 `unsupported_store_version`，不尝试猜测或迁移 |
 | MAN-05 | 语义安全但字节非规范的 Manifest | 拒绝作为 Store 身份，不自动重写 |
 | MAN-06 | Manifest 字段审计 | 不含绝对路径、主机/用户、KB、GBrain 或可重建计数 |
+
+实际结果（2026-09-03）：CFG-01–CFG-09 与 MAN-01–MAN-06 已由 18 项 C2A 单元/golden 测试覆盖并全部通过；加上 C0–C1 的 30 项，当前自动发现总计 48 项。实现没有写入配置或 Store，也没有创建锁、目录骨架、Capture 或外部请求；第 10.3 节初始化行为仍完全属于 C2B。
 
 ### 10.3 初始化
 
@@ -705,9 +708,9 @@ before_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **已于 2026-09-02 对 C0–C1 通过；后续批次仍逐批授权** | 未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C1 已于 2026-09-02 通过，C2A 已于 2026-09-03 通过；后续批次仍逐批授权** | 未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
-| G2A 配置与身份 | CFG/MAN 全绿，且用户明确授权 C2A | 创建任何 Store 或初始化锁 |
+| G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | INIT/FI 全绿，且用户明确授权 C2B | 使用真实生产 root |
 | G3 本地操作 | CT/GET/LIST/APP 全绿 | 接 UI/Harness |
 | G4 恢复能力 | REC、故障注入、迁移全绿 | 将规范标记 Effective |
@@ -728,4 +731,4 @@ before_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 复核后预算按 9–14 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0 测试骨架和 C1 确定性基础原语已经完成；C2 契约已经复核并拆为两个停点，但 C2A、C2B 编码均尚未授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2A 已完成并通过 48 项自动化测试；C2B 编码尚未授权，Store 初始化和四个操作均不存在。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。

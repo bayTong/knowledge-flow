@@ -1,21 +1,21 @@
 # MVP-0 捕获内核编码执行方案
 
-> 状态：Approved Design；C0–C1 已完成，C2 契约已复核，停在 C2A 授权门禁<br>
+> 状态：Approved Design；C0–C2A 已完成，停在 C2B 授权门禁<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2 的阻塞性行为冲突已于 2026-09-03 闭合，当前停在 C2A 编码前<br>
-> 当前授权：A0、A1 与 A2（仅 C1）已通过；尚未授权 C2A/C2B、真实 Capture Store、Git 操作或外部系统接入
+> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2A 已于 2026-09-03 完成并通过验收，当前停在 C2B 编码前<br>
+> 当前授权：A0、A1 与 A2（C1、C2A）已通过；尚未授权 C2B、真实 Capture Store 或外部系统接入
 
 ## 0. 结论先行
 
 编码不应一次性铺开。建议按 C0–C8 九个批次推进，每个批次都必须满足“改动范围固定、测试可独立运行、结果可审查、失败可停下”的条件。
 
-第一步 C0 已完成：已经建立隔离 Python 包和可自动发现的测试骨架。第二步 C1 也已完成：错误模型、UUIDv7、四类哈希和受限 YAML codec 均已有实现、golden fixture 与单元测试。
+第一步 C0 已完成：已经建立隔离 Python 包和可自动发现的测试骨架。第二步 C1 也已完成：错误模型、UUIDv7、四类哈希和受限 YAML codec 均已有实现、golden fixture 与单元测试。C2A 亦已完成：本地配置、Windows 路径策略和 Store Manifest v1 已实现并通过测试。
 
-C0–C1 均未实现 Capture Store 业务行为，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须先明确说出“继续 C2A”，才可实现配置、路径和 Manifest；C2A 验收后还要另行明确说出“继续 C2B”，才可在测试临时目录实现锁、durability、Store 初始化和恢复。
+C0–C2A 均未实现 Capture Store 业务行为，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须另行明确说出“继续 C2B”，才可在测试临时目录实现锁、durability、Store 初始化和恢复。
 
 ## 1. 本方案解决什么问题
 
@@ -255,6 +255,15 @@ C1 明确不实现 Store 初始化、路径锁、flush/rename、四个操作、S
 - `tests/capture/unit/test_errors.py`
 
 必须覆盖实现拆解文档的 CFG-01–CFG-09 和 MAN-01–MAN-06：默认配置查找、显式绝对配置路径、阈值关系、生产/测试路径策略、Windows 特殊路径、受限配置读取、规范写出、Manifest golden 字节、身份字段和未知版本拒绝。C2A 不创建 Store、不取得文件锁，也不写任何配置文件。
+
+实际验收结果（2026-09-03）：
+
+- 已新增 `config.py`、`paths.py`、`manifest.py`，并为三类 C2 冲突补充独立公共错误码。
+- 已新增两份 golden fixture，CFG-01–CFG-09 与 MAN-01–MAN-06 均可追溯到自动化测试。
+- 配置读取允许通过安全语法与 schema 校验的非规范排版，配置发射固定为规范字节；Manifest 读取和发射均要求规范字节。
+- 路径策略覆盖绝对路径、生产/测试禁止目录、UNC/设备路径、`..`、reparse/symlink 越界与无法可靠检查 KB 边界时的 fail-closed 行为。
+- 新增 18 项测试；连同 C0–C1，自动发现共 48 项并全部通过。`compileall`、依赖完整性和 `git diff --check` 同时通过。
+- 本批未创建配置、Store、锁或 Capture，也未访问网络、GBrain、模型服务或真实 KB。
 
 #### C2B：锁、durability、安全初始化与恢复
 
@@ -512,4 +521,4 @@ git status --short
 7. 当前 Git 脏工作树全部保留，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；复核后的规划估算为 9–14 个专注工程日，其中 C2 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准及 C2A/C2B 停点于 2026-09-03 补充确认。C0 与 C1 已完成；C2A、C2B 及以后编码仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准及 C2A/C2B 停点于 2026-09-03 补充确认。C0–C2A 已完成；C2B 及以后编码仍需逐批明确授权。
