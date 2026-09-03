@@ -1,7 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-> 状态：Approved Design；C0–C1 已完成，四操作尚未实现<br>
+> 状态：Approved Design；C0–C1 已完成，C2 契约已复核但尚未授权<br>
 > 确认日期：2026-09-02<br>
+> 补充确认日期：2026-09-03<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
 > 边界：本文定义实现与测试要求；不授权 C2、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
@@ -205,6 +206,14 @@ capture:
 - 配置文件更新使用“同目录临时文件—flush—原子替换”。
 - 机器本地配置不提交进 KnowledgeFlow 仓库。
 
+配置读取和写出采用不同严格度：
+
+- 读取允许通过受限 YAML 语法门禁和本配置 schema 校验、但缩进或引号等排版不是规范形式的安全输入。
+- 每次由程序新建或替换配置时，都使用 `codec.py` 的确定性规则发射规范字节；配置 schema 定义在 `config.py`，不加入 Envelope schema registry。
+- 重复键、未知字段、错误 schema/version、错误类型和非法阈值一律拒绝。
+- 初始化遇到已有配置时，只有规范化后的 root、两个阈值以及所有固定字段都与本次请求一致，才视为幂等连接；root 或阈值任一不一致都返回 `config_store_conflict`，并且必须发生在创建目标 Store 之前。
+- 已有安全但非规范排版的配置若语义完整且与请求一致，可以直接读取且不为“整理格式”而改写；一旦确实需要写入，就必须整体规范发射。
+
 ### 4.3 配置与 Store 的关系
 
 配置回答“当前程序连接哪个 Store”；Store 自身的身份由根目录内的 Manifest 回答。二者不能合并：
@@ -223,10 +232,12 @@ capture:
 - “允许临时根”不能由 YAML 配置、命令行参数或环境变量开启，只能在测试代码中注入。
 - 路径安全单元测试覆盖测试策略；另外保留生产策略测试，证明真实配置仍拒绝临时目录。
 - 对没有 `kb.yaml` 等身份标记的任意私人目录，程序无法凭空识别其业务用途；初始化仍依赖用户明确选择和“目标不存在/合法 Manifest”规则共同防误写。
+- Windows MVP 只接受本机盘符上的绝对路径，拒绝 UNC、`\\?\`/`\\.\` 设备命名空间和普通相对路径；先规范化再做包含关系判断，不能用字符串前缀代替路径边界。
+- 对所有已存在的祖先路径检查 reparse point/symlink，解析结果不得逃离被策略允许的根；生产保护路径来自受信任构造参数，不能由配置、CLI 或环境变量自行解除。
 
 ## 5. Capture Store Manifest
 
-### 5.1 推荐文件
+### 5.1 v1 固定文件
 
 在 `<capture-root>` 增加机器契约文件：
 
@@ -234,7 +245,7 @@ capture:
 capture-store.yaml
 ```
 
-建议最小内容：
+v1 固定最小内容：
 
 ```yaml
 schema: "knowledgeflow.capture-store"
@@ -258,6 +269,15 @@ created_at: "2026-09-02T00:00:00.000Z"
 - 声明布局版本，为未来显式迁移提供依据。
 - 让初始化重试能够判断“已经成功”还是“只留下未知残片”。
 
+### 5.4 Manifest 校验与规范字节
+
+- Manifest schema 定义在 `manifest.py`，复用通用受限 YAML codec，不修改 Envelope schema registry。
+- Manifest 只能由程序生成，保存和重新打开时都要求与规范发射结果逐字节一致；安全但非规范排版的 Manifest 也不能作为 Store 身份。
+- `store_id` 必须是 `store_` 前缀的合法 UUIDv7；`created_at` 必须是规范 UTC `Z` 时间；schema、schema version 和 layout version 必须精确受支持。
+- 重复键、未知字段、缺失字段、错误类型和未知版本均拒绝；未知 schema/layout 返回 `unsupported_store_version`。
+- Manifest 不能增加绝对路径、主机/用户身份、KB/GBrain 字段或可重建计数。
+- 合法已有 Store 还必须具备第 6.2 节全部固定目录，且每个路径类型正确、未被 reparse/symlink 替代；缺项只报错，不自动补齐或修复。
+
 ## 6. 一次性初始化
 
 初始化是部署动作，建议内部名称为 `init_capture_store`，但它不计入四个日常捕获操作。
@@ -276,9 +296,9 @@ max_text_version_bytes: 67108864
 ### 6.2 初始化顺序
 
 ```text
-I0 解析配置位置和目标根路径
+I0 解析配置位置和目标根路径，并以规范化后的 config_path 为竞争域取得初始化锁
  -> I1 验证路径边界、父目录和文件系统
- -> I2 检查目标不存在，或已经是同一合法 Store
+ -> I2 在锁内重读配置，并检查配置冲突及目标不存在/同一合法 Store
  -> I3 在目标父目录创建本次专属初始化临时目录
  -> I4 写入目录骨架和 capture-store.yaml
  -> I5 flush、回读并验证 Manifest 与同盘 rename 能力
@@ -311,11 +331,12 @@ MVP-0 不启用 GBrain，因此 outbox 初始为空；保留目录只是为了�
 | 目标状态 | 行为 |
 |---|---|
 | 不存在 | 按 I0–I8 初始化 |
-| 存在且 Manifest 合法、`store_id` 可读取 | 视为幂等重试，只补做配置连接和验收，不重建 Store |
+| 存在且 Manifest 规范、身份合法、固定骨架完整 | 配置缺失时可连接；配置完整匹配时视为幂等重试，只重开验收，不重建 Store |
 | 存在但为空 | 返回 `unrecognized_existing_directory`；MVP-0 不自动接管 |
-| 存在且非空、无合法 Manifest | 拒绝，不能写入或清理 |
+| 存在且非空、无合法规范 Manifest | 返回 `unrecognized_existing_directory`；零写入、零清理 |
 | Manifest schema/layout 版本未知 | 返回 `unsupported_store_version`，等待显式迁移方案 |
-| 配置已指向另一个 Store | 返回 `config_store_conflict`，不得静默切换 |
+| Manifest 可识别但固定骨架缺失或类型错误 | 返回 `capture_store_not_initialized`；不得自动补目录或修复 |
+| 配置 root 或阈值与请求不一致 | 返回 `config_store_conflict`，不得静默切换或覆盖；冲突检查先于目标创建 |
 
 ### 6.4 失败与恢复
 
@@ -324,8 +345,12 @@ MVP-0 不启用 GBrain，因此 outbox 初始为空；保留目录只是为了�
 - I7 后、I8 前失败：配置和 Store 可能都已提交；重试必须返回原 Store，而不是覆盖。
 - 未知非空目录和旧生产 Store永不由初始化器自动删除。
 - 初始化成功回执必须同时区分 `store_initialized` 与 `config_connected`。
+- 锁必须在任何 Store 目标或 staging 创建前获得并覆盖到 I8；锁内所有判断都重新从磁盘读取，不能依赖锁前快照。
+- 相同请求并发时只允许一个调用创建 Store；另一个等待后返回同一 `store_id` 且 `created=false`。
+- 不同 root 对同一配置并发时，胜者完成后，失败方在创建自身目标前返回 `config_store_conflict`，不能留下孤儿 Store。
+- 自动化测试证明的是受控进程故障后的磁盘恢复，不把 `flush` 和原子 rename 夸大为突然断电绝对不丢。
 
-### 6.5 建议回执
+### 6.5 固定成功回执
 
 ```yaml
 ok: true
@@ -340,6 +365,8 @@ warnings: []
 ```
 
 幂等重试时 `created: false`，其他身份保持不变。
+
+该回执使用独立的 `InitStoreResult`，不复用 Capture 写入专用的 `CommittedWriteResult`，因此不得出现 `saved`、`commit_state`、Capture ID、版本号或 State Event。初始化失败继续使用统一 `OperationError`/`FailureResult`，且错误详情不得泄露受保护路径。
 
 ## 7. 建议工程结构
 
@@ -380,10 +407,10 @@ knowledge-flow/
 | `codec.py` | 受限 YAML 读写和规范发射 | 通用 YAML 编辑器 |
 | `ids.py` | UUIDv7 与类型前缀 | 从正文生成 ID |
 | `hashing.py` | 流式 SHA256、字节计数 | 去重决策 |
-| `locking.py` | 初始化、幂等和 Item 版本锁 | 长时间业务锁 |
+| `locking.py` | C2 先实现配置目标初始化锁；后续批次再增加幂等和 Item 版本锁 | 长时间业务锁 |
 | `durability.py` | staging、flush、原子替换/rename | 远程备份 |
 | `manifest.py` | Store 身份和布局版本 | 保存主机路径 |
-| `store.py` | 文件布局、扫描、投影重建原语 | UI、GBrain |
+| `store.py` | C2 只负责初始化、重开和布局校验；后续批次再增加扫描、投影重建原语 | UI、GBrain |
 | `operations.py` | 四个操作的事务编排 | 任意文件系统访问接口 |
 | `cli.py` | JSON/流适配和退出码 | 把正文放进命令行参数 |
 
@@ -395,11 +422,11 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 |---|---|---|---|
 | M0-D1 | 技术选择基线 | 无 | 已于 2026-09-02 确认，后续实现不得静默偏离 |
 | M0-E1 | 建立隔离 Python 包和测试骨架 | M0-D1 | **已于 2026-09-02 通过：自动发现 1 项测试，包可从 `src/` 导入** |
-| M0-E2 | 配置解析和路径安全 | E1 | 严格配置、绝对解析、禁止目录和越界测试通过 |
+| M0-E2 | 配置解析和路径安全 | E1 | 受限读取、规范写出、绝对解析、禁止目录、Windows 特殊路径和越界测试通过 |
 | M0-E3 | 错误模型、YAML codec 与 golden fixture | E1 | 公共错误/内部原因/警告分层；固定规范发射；危险或不合 schema 的 YAML 被拒绝 |
 | M0-E4 | UUIDv7、时钟、四类哈希和字节计数 | E1 | 固定向量、同毫秒唯一性、时钟回拨、四类 golden 和 4/64 MiB 边界通过 |
-| M0-E5 | 锁与 durability 原语 | E1 | 同盘 staging/rename、原子替换和崩溃钩子可测试 |
-| M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | 初始化、幂等重试、未知目录拒绝、配置连接通过 |
+| M0-E5 | 锁与 durability 原语 | E1 | 配置目标锁先于 Store 创建；同盘 staging/rename、原子替换和崩溃钩子可测试 |
+| M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | 规范 Manifest、完整骨架、独立初始化回执、并发幂等、未知目录拒绝和配置连接通过 |
 | M0-E7 | `capture_text` | E2–E6 | 版本 1、哈希、Envelope、事件、投影和回执闭环 |
 | M0-E8 | `get_capture` | E3、E7 | 最新/历史读取与完整性错误闭环 |
 | M0-E9 | `list_captures` | E3、E7 | 稳定排序、游标、预览和 Global Intake 视图闭环 |
@@ -480,12 +507,23 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | CFG-03 | 普通相对配置路径 | 拒绝，不按 CWD 猜测 |
 | CFG-04 | `capture.root` 位于源码仓库内 | 拒绝 |
 | CFG-05 | root 位于 KB、GBrain 或系统临时目录 | 拒绝 |
-| CFG-06 | `..`、设备路径、symlink/reparse 越界 | 拒绝 |
-| CFG-07 | 未知配置字段或重复 YAML key | 拒绝 |
+| CFG-06 | `..`、UNC、设备路径、symlink/reparse 越界 | 规范化后拒绝，不能用字符串前缀误判 |
+| CFG-07 | 未知配置字段、重复 YAML key 或错误 schema/version | 拒绝 |
 | CFG-08 | 阈值为 0、负数或 inline > max | 拒绝 |
-| CFG-09 | 配置中出现绝对当前 root | 解析成功，但该路径不写入 Envelope |
+| CFG-09 | 安全且合 schema、但排版非规范的配置 | 允许读取；程序写出时与 `local-config-v1.yaml` golden 字节一致 |
 
-### 10.2 初始化
+### 10.2 Manifest
+
+| ID | 场景 | 预期 |
+|---|---|---|
+| MAN-01 | 固定 Store 身份对象规范发射 | 与 `capture-store-v1.yaml` golden 的 UTF-8 字节完全一致 |
+| MAN-02 | `store_id` 与 `created_at` | 只接受 `store_` + 合法 UUIDv7，以及规范 UTC `Z` 时间 |
+| MAN-03 | 重复键、未知/缺失字段、错误类型 | 分别在语法门禁或 Manifest schema 校验拒绝 |
+| MAN-04 | 未知 schema/schema version/layout version | 返回 `unsupported_store_version`，不尝试猜测或迁移 |
+| MAN-05 | 语义安全但字节非规范的 Manifest | 拒绝作为 Store 身份，不自动重写 |
+| MAN-06 | Manifest 字段审计 | 不含绝对路径、主机/用户、KB、GBrain 或可重建计数 |
+
+### 10.3 初始化
 
 | ID | 场景 | 预期 |
 |---|---|---|
@@ -498,8 +536,12 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | INIT-07 | I6 后崩溃、配置未写 | 重试连接原 Store，不生成新 ID |
 | INIT-08 | Manifest 不含主机绝对路径 | 通过可移植性检查 |
 | INIT-09 | 初始化成功 | 不产生示例 Capture、GBrain job 或网络请求 |
+| INIT-10 | Manifest 可识别但固定骨架缺项/类型错误 | `capture_store_not_initialized`，零自动修复 |
+| INIT-11 | 两个相同初始化请求并发 | 一个 `created=true`、另一个 `created=false`，两者返回同一 `store_id` |
+| INIT-12 | 不同 root 并发竞争同一配置 | 胜者连接；失败方返回 `config_store_conflict`，其目标和 staging 均不存在 |
+| INIT-13 | 已有配置的 root 相同但任一阈值不同 | `config_store_conflict`；配置与 Store 均零修改 |
 
-### 10.3 `capture_text`
+### 10.4 `capture_text`
 
 | ID | 场景 | 预期 |
 |---|---|---|
@@ -517,7 +559,7 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | CT-12 | 同 key 不同请求 | `idempotency_conflict` |
 | CT-13 | GBrain、网络完全不可用 | 本地保存不受影响 |
 
-### 10.4 `get_capture`
+### 10.5 `get_capture`
 
 | ID | 场景 | 预期 |
 |---|---|---|
@@ -529,7 +571,7 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | GET-06 | Envelope 被篡改 | `integrity_check_failed` |
 | GET-07 | `capture.yaml` 缺失 | 从不可变记录读取并警告，不静默写回 |
 
-### 10.5 `list_captures`
+### 10.6 `list_captures`
 
 | ID | 场景 | 预期 |
 |---|---|---|
@@ -544,7 +586,7 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 
 `LIST-07` 已选定“拒绝”而不是“钳制”：返回 `invalid_input`，让调用错误可见。
 
-### 10.6 `append_capture_version`
+### 10.7 `append_capture_version`
 
 | ID | 场景 | 预期 |
 |---|---|---|
@@ -557,7 +599,7 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | APP-07 | 旧版本已有批准 | 新版本不继承批准 |
 | APP-08 | 版本 1 回读 | 追加后字节和哈希完全不变 |
 
-### 10.7 恢复和迁移
+### 10.8 恢复和迁移
 
 | ID | 场景 | 预期 |
 |---|---|---|
@@ -590,6 +632,19 @@ before_config_replaced
 after_config_replaced
 ```
 
+C2B 必须逐点注入并在新进程中验证：
+
+| ID | 故障点 | 重试后的磁盘事实 |
+|---|---|---|
+| FI-01 | `after_init_temp_created` | 最终 root 不存在；只识别并清理由本次事务标记的 staging，再安全重试 |
+| FI-02 | `after_manifest_written` | 不信任未 flush 的临时内容；最终 root 不存在，未知残片不删除 |
+| FI-03 | `after_manifest_flushed` | 最终 root 不存在；可以清理已验证归属的 staging 后重新初始化 |
+| FI-04 | `after_root_renamed` | 重用最终 Store 的原 `store_id` 并补做配置连接，不生成第二个最终身份 |
+| FI-05 | `before_config_replaced` | 重用原 Store；只处理可验证归属的配置临时文件，随后完成原子连接 |
+| FI-06 | `after_config_replaced` | 配置和 Store 已提交；重试返回同一 `store_id`、`created=false`，不重写正文或创建业务记录 |
+
+每个初始化故障测试还必须证明：真实默认配置和生产 root 的测试前后快照一致、没有 Capture/事件/outbox job、没有冲突请求遗留的孤儿 root，并且初始化结果从不使用 `saved`/`commit_state`。
+
 ### 11.3 捕获/追加故障点
 
 ```text
@@ -604,7 +659,7 @@ after_projection_replaced
 before_receipt_returned
 ```
 
-每个点至少验证：
+每个捕获/追加故障点至少验证：
 
 - 是否存在最终版本。
 - 是否允许同 key 安全重试。
@@ -628,13 +683,13 @@ before_receipt_returned
 | 范围 | 预计专注工程时间 |
 |---|---:|
 | 工程骨架、配置、YAML codec、ID/哈希 | 1.5–2.5 天 |
-| 初始化、路径、锁和 durability 原语 | 1.5–2.5 天 |
+| 初始化、路径、锁和 durability 原语 | 2–3 天 |
 | 四个操作 | 2–3 天 |
 | 并发、故障注入、恢复和迁移测试 | 2.5–4 天 |
 | CLI 适配、说明和最终审查 | 1–1.5 天 |
-| **合计** | **8.5–13.5 天** |
+| **合计** | **9–14 天** |
 
-这是“满足已承诺可靠性”的估计，不是只做一次成功演示的估计。若只实现 happy path，可能 2–4 天，但不能安全地称为 KnowledgeFlow MVP-0。
+这是“满足已承诺可靠性”的估计，不是只做一次成功演示的估计。2026-09-03 的 C2 复核因加入配置目标锁、并发竞争和六个初始化恢复点，将原 8.5–13.5 天校准为 9–14 天；这不增加产品范围。若只实现 happy path，可能 2–4 天，但不能安全地称为 KnowledgeFlow MVP-0。
 
 ### 12.2 当前阶段主动省下的成本
 
@@ -652,7 +707,8 @@ before_receipt_returned
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
 | G0.5 编码方案 | **已于 2026-09-02 对 C0–C1 通过；后续批次仍逐批授权** | 未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
-| G2 初始化 | INIT/CFG 全绿 | 使用真实生产 root |
+| G2A 配置与身份 | CFG/MAN 全绿，且用户明确授权 C2A | 创建任何 Store 或初始化锁 |
+| G2B 初始化 | INIT/FI 全绿，且用户明确授权 C2B | 使用真实生产 root |
 | G3 本地操作 | CT/GET/LIST/APP 全绿 | 接 UI/Harness |
 | G4 恢复能力 | REC、故障注入、迁移全绿 | 将规范标记 Effective |
 | G5 人工耐久 | Windows 强制终止/断电边界有实证记录 | 宣称抗断电 |
@@ -670,6 +726,6 @@ before_receipt_returned
 | I-006 | 适配层用 JSON 元数据 + stdin/文件流传正文 | 把正文放命令行参数会带来转义、长度和泄露风险 |
 | I-007 | `list limit > 100` 返回 `invalid_input` | 自动钳制会隐藏调用方错误 |
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
-| I-009 | 采用完整可靠性范围，预算按 8.5–13.5 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
+| I-009 | 采用完整可靠性范围；2026-09-03 复核后预算按 9–14 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0 测试骨架和 C1 确定性基础原语已经完成；下一批 C2 尚未授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0 测试骨架和 C1 确定性基础原语已经完成；C2 契约已经复核并拆为两个停点，但 C2A、C2B 编码均尚未授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。

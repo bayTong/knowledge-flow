@@ -1,12 +1,13 @@
 # MVP-0 捕获内核编码执行方案
 
-> 状态：Approved Design；C0–C1 已完成，停在 C2 授权门禁<br>
+> 状态：Approved Design；C0–C1 已完成，C2 契约已复核，停在 C2A 授权门禁<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
+> 补充确认日期：2026-09-03<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0 与 C1 已于 2026-09-02 完成；当前停在 C1/C2 批次边界<br>
-> 当前授权：A0、A1 与 A2（仅 C1）已通过；尚未授权 C2、真实 Capture Store、Git 操作或外部系统接入
+> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2 的阻塞性行为冲突已于 2026-09-03 闭合，当前停在 C2A 编码前<br>
+> 当前授权：A0、A1 与 A2（仅 C1）已通过；尚未授权 C2A/C2B、真实 Capture Store、Git 操作或外部系统接入
 
 ## 0. 结论先行
 
@@ -14,7 +15,7 @@
 
 第一步 C0 已完成：已经建立隔离 Python 包和可自动发现的测试骨架。第二步 C1 也已完成：错误模型、UUIDv7、四类哈希和受限 YAML codec 均已有实现、golden fixture 与单元测试。
 
-C0–C1 均未实现 Capture Store 业务行为，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须明确说出“继续 C2”或包含 C2 的批次范围，才可进入配置、路径、Manifest 与测试临时 Store 初始化。
+C0–C1 均未实现 Capture Store 业务行为，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须先明确说出“继续 C2A”，才可实现配置、路径和 Manifest；C2A 验收后还要另行明确说出“继续 C2B”，才可在测试临时目录实现锁、durability、Store 初始化和恢复。
 
 ## 1. 本方案解决什么问题
 
@@ -223,30 +224,64 @@ C1 明确不实现 Store 初始化、路径锁、flush/rename、四个操作、S
 
 ### C2：配置、路径、Manifest 与安全初始化
 
-目标：能在测试拥有的临时父目录中初始化和重新打开一个合法 Store。
+目标：闭合“从机器配置定位并识别一个合法 Store”的最小链路，并且只在测试拥有的临时父目录中证明初始化、重新打开、并发和进程崩溃恢复。C2 是一个逻辑批次，但分为 C2A、C2B 两个独立授权和验收停点，不能一次授权自动跨过中间复核。
 
-主要文件：
+本轮复核冻结以下行为：
 
-- `config.py`
-- `paths.py`
-- `locking.py`
-- `durability.py`
-- `manifest.py`
-- `store.py`
+- `PublicErrorCode` 正式增加 `unrecognized_existing_directory`、`unsupported_store_version` 和 `config_store_conflict`；不能把三类情况折叠成 `config_invalid`。
+- 初始化成功使用独立的 `InitStoreResult`，包含 Store 初始化和配置连接事实；不复用 `CommittedWriteResult`，也不出现 `saved` 或 Capture 提交语义。
+- 本地配置允许读取通过受限语法与 schema 校验但不是规范排版的 YAML；任何配置写入都必须规范发射。Manifest 由程序生成，读取时也必须是规范字节。
+- 配置和 Manifest 都拒绝重复键、未知字段、错误版本和错误类型；`store_id` 必须是 `store_` 前缀的合法 UUIDv7，`created_at` 必须是 UTC `Z` 时间，Manifest 不得带主机绝对路径。
+- “已有合法 Store”必须同时具备规范 Manifest、合法身份和完整的固定目录骨架；不完整 Store 返回错误，不自动修复。只有规范化后的完整配置与本次请求完全一致时才是幂等重试，root 或阈值任一不一致都返回 `config_store_conflict`，不得静默覆盖。
+- 初始化锁以配置目标为竞争域，并且必须在创建 Store 之前取得。同一请求并发只能产生一个 `store_id`；不同 root 竞争同一配置时，失败方不能留下孤儿 Store。
+- Windows MVP 拒绝 UNC、设备命名空间以及 reparse/symlink 越界；只承诺经过自动化验证的进程崩溃恢复，不宣称突然断电绝对安全。
+
+#### C2A：配置、路径与 Manifest
+
+只允许新增：
+
+- `src/knowledgeflow_capture/config.py`
+- `src/knowledgeflow_capture/paths.py`
+- `src/knowledgeflow_capture/manifest.py`
 - `tests/capture/unit/test_config.py`
 - `tests/capture/unit/test_paths.py`
+- `tests/capture/unit/test_manifest.py`
+- `tests/capture/fixtures/local-config-v1.yaml`
+- `tests/capture/fixtures/capture-store-v1.yaml`
+
+只允许修改：
+
+- `src/knowledgeflow_capture/errors.py`
+- `tests/capture/unit/test_errors.py`
+
+必须覆盖实现拆解文档的 CFG-01–CFG-09 和 MAN-01–MAN-06：默认配置查找、显式绝对配置路径、阈值关系、生产/测试路径策略、Windows 特殊路径、受限配置读取、规范写出、Manifest golden 字节、身份字段和未知版本拒绝。C2A 不创建 Store、不取得文件锁，也不写任何配置文件。
+
+#### C2B：锁、durability、安全初始化与恢复
+
+只允许新增：
+
+- `src/knowledgeflow_capture/locking.py`
+- `src/knowledgeflow_capture/durability.py`
+- `src/knowledgeflow_capture/store.py`
+- `tests/capture/_support.py`
+- `tests/capture/unit/test_locking.py`
+- `tests/capture/unit/test_durability.py`
+- `tests/capture/integration/__init__.py`
 - `tests/capture/integration/test_init_store.py`
+- `tests/capture/fault/__init__.py`
+- `tests/capture/fault/test_init_recovery.py`
 
-必须覆盖实现拆解文档中的 CFG-01–CFG-09 和 INIT-01–INIT-09，包括：
+C2B 可以按已冻结接口增量修改 C2A 文件和对应测试，但若需要改变 `codec.py`、Capture Envelope、四操作、ID/哈希或版本语义，必须停止并报告，不能自行扩张范围。`InitStoreResult` 定义在 `store.py`；配置和 Manifest 的 schema 分别留在 `config.py` 与 `manifest.py`，复用通用 codec，不修改其 Envelope registry。
 
-- 默认配置查找与显式绝对配置路径。
-- root 绝对解析、禁止目录、reparse/symlink 越界和阈值关系。
-- `capture-store.yaml` 身份校验与未知布局拒绝。
-- 初始化临时目录、flush、回读、同盘 rename、配置原子替换。
-- 初始化崩溃后的幂等续接，不生成第二个 `store_id`。
-- 空目录和未知非空目录都不自动接管。
+必须覆盖 INIT-01–INIT-13 和全部六个初始化故障点，包括完整骨架、已有 Store 幂等重开、配置完整匹配、初始化锁、同请求并发、不同 root 竞争、同盘 staging/rename、flush/回读、配置原子替换，以及每个故障点后的新进程重开。不得顺带实现 Item 扫描、投影重建、四个捕获操作、CLI、UI、Harness、GBrain 或 SOP。
 
-验收：所有路径写入均位于测试框架刚创建的临时根；默认用户配置位置只测试“如何解析”，不实际写入。
+共同验收：
+
+- 现有 30 项测试继续通过，并且每个 CFG、MAN、INIT 编号都能追溯到具体测试或 `subTest`；不以固定的新增测试数量代替场景覆盖。
+- 所有写入都位于测试框架创建并持有的临时根；默认用户配置位置只验证解析，真实配置和真实 Capture Store 在测试前后快照一致。
+- 故障注入后用新进程依据磁盘事实复核；同请求并发只保留一个 Store 身份，冲突请求不留下孤儿目标。
+- 测试期间不产生 Capture、State Event、outbox job、网络请求或 GBrain 调用。
+- 全量 `unittest`、`compileall`、依赖完整性、`git diff --check` 和精确工作树清单均通过。
 
 ### C3：`capture_text`
 
@@ -316,7 +351,6 @@ C1 明确不实现 Store 初始化、路径锁、flush/rename、四个操作、S
 
 主要文件：
 
-- `tests/capture/fault/test_init_faults.py`
 - `tests/capture/fault/test_capture_faults.py`
 - `tests/capture/fault/test_append_faults.py`
 - `tests/capture/integration/test_recovery.py`
@@ -325,7 +359,7 @@ C1 明确不实现 Store 初始化、路径锁、flush/rename、四个操作、S
 
 必须覆盖：
 
-- 实现拆解文档第 11 节列出的全部初始化、捕获和追加故障点。
+- 重新运行 C2B 已交付的全部初始化故障测试，并覆盖实现拆解文档第 11 节列出的全部捕获和追加故障点。
 - 故障后以新进程重新打开磁盘状态，不使用原进程缓存作结论。
 - REC-01–REC-03 的投影和幂等索引重建。
 - MIG-01–MIG-05 的复制、校验、切换和源目录保留。
@@ -433,16 +467,16 @@ git status --short
 
 ## 11. 成本控制
 
-总预算继续采用已批准的 **8.5–13.5 个专注工程日**，不因拆成九批而增加新的产品范围：
+复核 C2 的锁、并发和六个恢复边界后，MVP-0 的规划估算校准为 **9–14 个专注工程日**。增加的 0.5 天上下界来自可靠性验证，不增加产品功能范围，也不构成某一批次的编码授权：
 
 | 范围 | 预算 | 主要成本来源 |
 |---|---:|---|
 | C0–C1：骨架和基础原语 | 1.5–2.5 天 | 工程隔离、严格 YAML、UUIDv7 和流式哈希 |
-| C2：安全初始化 | 1.5–2.5 天 | Windows 路径、锁、flush、rename 和幂等恢复 |
+| C2：安全初始化 | 2–3 天 | Windows 路径、配置目标锁、flush、rename、并发竞争和六点恢复 |
 | C3–C5：四操作与并发 | 3–4.5 天 | 大文本、完整性、游标、幂等和乐观并发 |
 | C6：恢复、故障和迁移 | 1.5–2.5 天 | 新进程验证、故障点和移动 Store |
 | C7–C8：CLI 与验收 | 1–1.5 天 | 流协议、泄露检查、文档和人工记录 |
-| **合计** | **8.5–13.5 天** | 不包含 UI、GBrain、Harness、路由和 SOP 重构 |
+| **合计** | **9–14 天** | 不包含 UI、GBrain、Harness、路由和 SOP 重构 |
 
 当前成本约束：
 
@@ -458,7 +492,7 @@ git status --short
 |---|---|---|---|
 | A0 方案批准 | “同意编码方案” | 把本文升级为 Approved Design | 修改代码、建环境、装依赖 |
 | A1 C0 编码 | “开始编码”或“开始 C0” | 只执行 C0；创建代码骨架、`.venv` 并运行测试 | C1 以后业务实现、真实 Store |
-| A2 后续批次 | 明确“继续 C1/C2……”或一次写明批次范围 | 执行所列批次并在每批边界报告 | 未授权批次和范围扩张 |
+| A2 后续批次 | 明确“继续 C1/C2A/C2B……”或一次写明批次范围 | 执行所列批次并在每批边界报告；C2A/C2B 各自停点 | 未授权批次和范围扩张 |
 | A3 外部下载 | 工具在安装依赖时请求的联网/权限批准 | 下载并安装已核验且精确锁定的依赖 | 其他软件或全局安装 |
 | A4 生产初始化 | “初始化生产 Capture Store”并确认目标 | 创建真实配置和 `capture-root` | 接入 GBrain 或 KB |
 | A5 Git 操作 | 明确要求 commit/push/建分支 | 仅执行指定 Git 操作 | 自动提交或发布 |
@@ -476,6 +510,6 @@ git status --short
 5. CLI 使用“单行 JSON 头 + 精确长度原始字节”的 stdin/stdout 帧，不传正文命令行参数。
 6. 所有开发测试只写测试持有的临时目录，不创建真实用户配置或生产 Capture Store。
 7. 当前 Git 脏工作树全部保留，不自动清理、提交或恢复。
-8. 预算仍为 8.5–13.5 个专注工程日，MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现。
+8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；复核后的规划估算为 9–14 个专注工程日，其中 C2 为 2–3 天。
 
-以上 8 项已于 2026-09-02 获批。C0 与 C1 已完成并停在批次边界；C2 及以后编码仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准及 C2A/C2B 停点于 2026-09-03 补充确认。C0 与 C1 已完成；C2A、C2B 及以后编码仍需逐批明确授权。
