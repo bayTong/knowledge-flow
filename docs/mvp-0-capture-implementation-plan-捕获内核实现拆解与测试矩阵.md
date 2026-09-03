@@ -1,10 +1,12 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-> 状态：Approved Design；C0–C2A 已完成，C2B 尚未授权<br>
+> 状态：Approved Design；C0–C2B-1 已完成，C2B-2 尚未授权<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
+> C2B 复核日期：2026-09-03<br>
+> C2B-1 完成日期：2026-09-03<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；不授权 C2B、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；不授权 C2B-2、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
 ## 0. 结论先行
 
@@ -18,7 +20,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2A 已逐批授权并完成；这不自动授权 C2B、创建生产目录、提交 Git 或接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2B-1 已逐批授权并完成；这不自动授权 C2B-2、创建生产目录、提交 Git 或接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -30,14 +32,15 @@
 - C0 建立的 `pyproject.toml`、`src/knowledgeflow_capture` 最小包和 `tests/capture/unit` 测试骨架。
 - C1 已实现错误模型、数据值对象、UUIDv7、四类哈希和受限 YAML codec，并建立三份 golden fixture。
 - C2A 已实现本地配置契约、Windows 路径策略和 Store Manifest v1，并建立两份 golden fixture。
-- 捕获包已精确锁定 `PyYAML==6.0.3`；自动发现共通过 48 项测试，其中 47 项覆盖 C1–C2A，另 1 项为包导入 smoke test。
+- C2B-1 已实现 Windows 初始化内核锁、通用 durability 原语和多进程测试支持；尚未实现 Store 初始化编排。
+- 捕获包已精确锁定 `PyYAML==6.0.3`；自动发现共通过 57 项测试，其中 56 项覆盖 C1–C2B-1，另 1 项为包导入 smoke test。
 
 ### 1.2 尚不存在
 
 - 没有 `package.json`、Node/Bun 应用或桌面前端。
 - 没有 Capture Store 初始化器和任何四操作实现。
-- 没有 Capture Store 初始化、四操作、集成、并发、故障或迁移测试。
-- 没有统一 CLI；C1–C2A 纯函数、codec、配置、路径和 Manifest 测试通过不代表捕获业务行为已经实现。
+- 没有 Capture Store 初始化集成、四操作、故障或迁移测试；当前并发测试只证明初始化锁原语。
+- 没有统一 CLI；C1–C2B-1 基础原语测试通过不代表捕获业务行为已经实现。
 - 没有接入 DeepSeek Harness，也没有可调用的 GBrain 适配器。
 
 ### 1.3 当前机器只读盘点
@@ -49,7 +52,7 @@
 | Python YAML 依赖 | C0 已在 `pyproject.toml` 锁定 `PyYAML==6.0.3` | 只能经项目受限 codec 使用，不能依赖默认加载/发射行为 |
 | Node.js | 22.22.3 | 可用，但仓库没有 Node 工程 |
 | Bun | 未安装 | 不应成为本地捕获前置条件 |
-| 自动化测试 | C0–C2A 自动发现并通过 48 项测试 | 已覆盖确定性基础原语、配置、路径与 Manifest；尚无 Store 与四操作回归保障 |
+| 自动化测试 | C0–C2B-1 自动发现并通过 57 项测试 | 已覆盖确定性基础原语、配置、路径、Manifest、初始化锁和 durability；尚无 Store 与四操作回归保障 |
 | 生产 `capture-root` | 尚未创建 | 所有实现测试必须使用隔离临时目录 |
 
 这些是 2026-09-02 的本机事实，不是跨机器规范。
@@ -294,17 +297,26 @@ max_text_version_bytes: 67108864
 
 禁止提供 `force`、`overwrite` 或“自动采用任意非空目录”的捷径。
 
+路径关系在进入锁与写入前固定为：
+
+- `config_path` 与 `capture_root` 都必须先成为规范化并解析 reparse/symlink 后的本机绝对路径。
+- `config_path` 不得等于或位于 `capture_root` 内；已存在的配置文件、锁文件和配置临时文件都必须是普通文件，不能是 symlink、junction 或其他 reparse point。
+- `capture_root` 的直接父目录必须预先存在、类型正确并通过路径策略；初始化器不递归创建任意数据父目录。用户以后选择生产位置时，应先由文件选择器或安装流程确认/创建该父目录。
+- `config_path` 的直接父目录可以由初始化器创建，但只允许创建这一层；它的父目录必须已经存在、类型正确并通过边界检查，不能使用无界的递归 `parents=True`。
+- 测试 `PathPolicy` 要求配置、锁、配置临时文件、初始化事务目录和 Store 全部位于同一个测试持有根内。生产策略仍使用受信任的默认配置位置或显式绝对配置位置，不能由 YAML 打开测试豁免。
+
 ### 6.2 初始化顺序
 
 ```text
-I0 解析配置位置和目标根路径，并以规范化后的 config_path 为竞争域取得初始化锁
+I0 解析配置位置和目标根路径，验证/有限创建配置目录，并以解析后的 config_path 为竞争域取得初始化锁
  -> I1 验证路径边界、父目录和文件系统
  -> I2 在锁内重读配置，并检查配置冲突及目标不存在/同一合法 Store
- -> I3 在目标父目录创建本次专属初始化临时目录
+ -> I3 在目标父目录创建带可验证事务标记的本次专属初始化目录
  -> I4 写入目录骨架和 capture-store.yaml
  -> I5 flush、回读并验证 Manifest 与同盘 rename 能力
  -> I6 原子 rename 为最终 capture-root
- -> I7 原子写入机器本地 config.yaml
+ -> I6.5 从最终路径重验 Store，并清理已验证归属的初始化事务目录
+ -> I7 以“不覆盖已出现目标”的原子提交连接机器本地 config.yaml
  -> I8 重新从配置打开 Store 并返回初始化回执
 ```
 
@@ -327,6 +339,51 @@ I0 解析配置位置和目标根路径，并以规范化后的 config_path 为�
 
 MVP-0 不启用 GBrain，因此 outbox 初始为空；保留目录只是为了与已批准布局一致。
 
+#### 6.2.1 初始化锁
+
+- Windows 参考实现使用标准库可用的操作系统文件锁；锁文件建议为 `<config_path>.init.lock`，锁的真相是当前进程持有的内核锁，不是该文件是否存在。
+- 锁文件可以长期留在配置目录。正常退出、异常退出或进程被终止后，操作系统释放锁；重试不得因为看见旧锁文件就删除它或永久拒绝启动。
+- 默认等待上限为 10 秒；单元测试通过内部时钟/等待注入缩短时间，YAML、CLI 和环境变量均不能打开测试钩子或改变锁语义。
+- 超时或已知的临时共享冲突返回 `capture_store_unavailable` 且 `retryable=true`。锁从 I0 一直持有到 I8 完成或失败清理结束。
+- 相同解析配置路径必须互斥；不同配置路径互不阻塞。锁文件若被替换为目录、symlink、junction 或其他 reparse point，必须拒绝使用。
+
+#### 6.2.2 初始化事务目录
+
+初始化临时区与最终 Store 内部的 `<capture-root>/.staging/` 是两个不同概念。前者位于目标父目录，只服务一次 Store 初始化；后者是最终骨架的一部分，留给后续 Capture 事务。
+
+```text
+<capture-root-parent>/.knowledgeflow-init-<transaction-uuid>/
+├── transaction.yaml
+└── store/
+```
+
+`transaction.yaml` 的字段固定为：
+
+```yaml
+schema: "knowledgeflow.init-transaction"
+schema_version: 1
+transaction_id: "01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+request_sha256: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+```
+
+- `transaction_id` 是无类型前缀的规范 UUIDv7，并与目录名中的 UUID 完全相同。该内部 schema 定义在 `store.py`，复用通用受限 codec，但不加入 Envelope registry，也不要求新增公开 golden fixture。
+- 标记不记录绝对路径、正文或凭据；未知字段、错误类型、非规范字节或身份不匹配都使其成为不可自动清理的未知残片。
+- `request_sha256` 只对“解析后的配置路径、解析后的 Store 路径和两个阈值”的内部规范表示计算，用于崩溃清理匹配；它不是第五类 Capture 内容哈希，不进入 Manifest、Envelope 或公共 API。
+- `store/` 子目录内构建固定骨架；I6 只把这个子目录无覆盖地 rename 为最终 root，因此事务标记不会进入 Store。
+- `after_init_temp_created` 的固定含义是事务目录、规范标记和 `store/` 子目录已经完成 flush/回读。操作系统若在更早的任意指令间崩溃，未知残片可以保留，但绝不能猜测删除。
+- 新进程只扫描目标父目录下一层、名称符合固定前缀的候选；只有目录名、规范事务标记、UUID 和当前请求哈希全部匹配时才能清理。任何缺失、损坏或不匹配对象均保持原样。
+- I6 后先从最终 root 重验 Manifest 和骨架，再删除已经匹配的外层事务目录；清理失败时不连接配置，返回 `capture_store_unavailable`，由同请求重试继续。
+- 配置临时文件使用保留前缀和事务 UUID 命名。重试只能删除“普通文件、名称合法且字节与当前应写规范配置完全一致”的候选；未知配置临时文件同样保持原样。
+
+#### 6.2.3 C2B durability 边界
+
+- 每个需要承诺的文件都必须完成应用缓冲区 flush、文件句柄 `fsync`、关闭后按最终字节回读；Manifest 和配置还要重新通过各自严格校验。
+- Store 提交使用同一卷内的无覆盖目录 rename。最终 root 已存在时绝不能使用 `os.replace` 覆盖，而是重新进入已有目标分类。
+- 初次配置连接只在 I2 确认配置缺失时发生：先在同目录写入并验证本次专属临时文件，提交前再次检查目标；目标若已经出现则不覆盖，改为重读并判断“完全匹配”或 `config_store_conflict`。
+- root rename 后再次从最终路径验证 Manifest 和完整骨架；配置提交后再次从配置打开同一 Store，二者都成功才返回 `InitStoreResult`。
+- 目录元数据 flush 在 Windows/文件系统明确支持时执行。平台明确不支持时不把它伪装成已完成，也不因此夸大承诺；已知不支持记录在测试结果中，其他 I/O 失败按 `capture_store_unavailable` 处理。
+- C2B 的 `durable` 只证明应用进程崩溃后可恢复。突然断电、控制器缓存和文件系统损坏仍留给人工耐久验收。
+
 ### 6.3 已存在目标的处理
 
 | 目标状态 | 行为 |
@@ -339,9 +396,11 @@ MVP-0 不启用 GBrain，因此 outbox 初始为空；保留目录只是为了�
 | Manifest 可识别但固定骨架缺失或类型错误 | 返回 `capture_store_not_initialized`；不得自动补目录或修复 |
 | 配置 root 或阈值与请求不一致 | 返回 `config_store_conflict`，不得静默切换或覆盖；冲突检查先于目标创建 |
 
+“固定骨架完整”只要求全部保留名称存在、类型正确并且不是 symlink、junction 或其他 reparse point，不要求目录为空。合法 Store 中额外的普通条目（例如以后独立批准的 `.git/`）不使 v1 身份失效，但 C2B 不读取、修改或删除这些额外条目。任何额外条目都不能替代缺失的固定目录。
+
 ### 6.4 失败与恢复
 
-- I6 前失败：最终根目录不存在；只允许清理由本次初始化 ID 明确标识的临时目录。
+- I6 前失败：最终根目录不存在；只允许清理由规范事务标记和当前请求哈希共同确认归属的初始化目录。
 - I6 后、I7 前失败：Store 已存在但尚未连接配置；重试读取合法 Manifest 后继续，不创建第二个 `store_id`。
 - I7 后、I8 前失败：配置和 Store 可能都已提交；重试必须返回原 Store，而不是覆盖。
 - 未知非空目录和旧生产 Store永不由初始化器自动删除。
@@ -368,6 +427,24 @@ warnings: []
 幂等重试时 `created: false`，其他身份保持不变。
 
 该回执使用独立的 `InitStoreResult`，不复用 Capture 写入专用的 `CommittedWriteResult`，因此不得出现 `saved`、`commit_state`、Capture ID、版本号或 State Event。初始化失败继续使用统一 `OperationError`/`FailureResult`，且错误详情不得泄露受保护路径。
+
+### 6.6 C2B 失败分类
+
+配置文件不存在对普通“打开 Store”仍是 `config_not_found`，但对显式 `init_capture_store` 是允许的未连接状态，不作为失败。C2B 的固定分类如下：
+
+| 条件 | 公共错误码 | `retryable` |
+|---|---|---:|
+| 已有配置的 YAML/schema/字段/阈值非法，或配置/Store 路径关系违反本节硬约束 | `config_invalid` | `false` |
+| 已存在目标为空、无规范 Manifest，或不是可识别 Store | `unrecognized_existing_directory` | `false` |
+| Manifest schema/layout 版本不受支持 | `unsupported_store_version` | `false` |
+| Manifest 合法但固定骨架缺失、类型错误或被 reparse 对象替代 | `capture_store_not_initialized` | `false` |
+| 已有配置与请求的 root 或任一阈值不同 | `config_store_conflict` | `false` |
+| 初始化锁等待超时或已知临时共享冲突 | `capture_store_unavailable` | `true` |
+| 权限拒绝、父目录/卷不可用、空间不足、flush/rename/回读失败或无法安全判断磁盘事实 | `capture_store_unavailable` | 默认 `false`；仅明确识别为临时共享冲突时为 `true` |
+
+- C2B 不使用 `atomic_commit_failed`；该码保留给 C3 以后 Capture 版本提交。
+- 初始化失败的 `FailureResult` 不携带 `saved` 或 `commit_state`。即使 I6 后已存在合法 Store，也通过同请求重试恢复和确认，不把 Capture 写入三态套到部署动作上。
+- 错误 `details` 最多包含安全阶段名等枚举信息，不包含配置路径、Store 路径、事务目录名或底层异常文本。
 
 ## 7. 建议工程结构
 
@@ -526,6 +603,21 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 
 实际结果（2026-09-03）：CFG-01–CFG-09 与 MAN-01–MAN-06 已由 18 项 C2A 单元/golden 测试覆盖并全部通过；加上 C0–C1 的 30 项，当前自动发现总计 48 项。实现没有写入配置或 Store，也没有创建锁、目录骨架、Capture 或外部请求；第 10.3 节初始化行为仍完全属于 C2B。
 
+### 10.2A C2B 锁与 durability 原语
+
+| ID | 场景 | 预期 |
+|---|---|---|
+| LOCK-01 | 两个进程竞争同一解析配置路径 | 任一时刻只有一个持锁；等待者只在前者释放后进入 |
+| LOCK-02 | 两个不同配置路径 | 互不阻塞，证明竞争域不是全局锁 |
+| LOCK-03 | 持锁子进程被强制结束，锁文件仍存在 | 内核锁自动释放；新进程可取得同一锁，不按文件存在判断陈旧锁 |
+| LOCK-04 | 持锁超过等待上限 | 生产默认上限 10 秒；测试用内部注入快速验证 `capture_store_unavailable`、`retryable=true` |
+| DUR-01 | 写 Manifest/配置临时文件 | 精确字节写入、flush、`fsync`、关闭回读和严格解析均发生，任一步失败不得继续提交 |
+| DUR-02 | 同卷目录无覆盖 rename | 目标缺失时提交成功；目标已存在时零覆盖并转入已有目标分类 |
+| DUR-03 | 初次配置连接期间目标意外出现 | 不覆盖；完全匹配则接受，否则 `config_store_conflict` |
+| DUR-04 | 目录元数据 flush 支持/明确不支持 | 支持时执行并验证调用；不支持时记录平台限制，不宣称抗突然断电 |
+
+实际结果（2026-09-03）：LOCK-01–04 与 DUR-01–04 已由 9 项 C2B-1 单元/多进程测试覆盖并全部通过；加上 C0–C2A 的 48 项，当前自动发现总计 57 项。Windows 强制终止、目标在无覆盖 rename 前后竞态、严格回读失败和目录 flush 三态均已实际验证；Windows 默认目录元数据 flush 明确记录为 `unsupported`，因此仍只承诺进程崩溃恢复。测试只写测试框架持有的系统临时目录，没有创建 `store.py`、结构上可识别的 Store、真实配置、Capture 或外部请求。
+
 ### 10.3 初始化
 
 | ID | 场景 | 预期 |
@@ -543,6 +635,9 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | INIT-11 | 两个相同初始化请求并发 | 一个 `created=true`、另一个 `created=false`，两者返回同一 `store_id` |
 | INIT-12 | 不同 root 并发竞争同一配置 | 胜者连接；失败方返回 `config_store_conflict`，其目标和 staging 均不存在 |
 | INIT-13 | 已有配置的 root 相同但任一阈值不同 | `config_store_conflict`；配置与 Store 均零修改 |
+| INIT-14 | 配置位于 Store 内、Store 父目录缺失，或配置需递归创建多层父目录 | `config_invalid`；不得为了取得锁而提前创建 Store 或任意祖先链 |
+| INIT-15 | 合法 Store 含额外普通条目 | 可重开且 `created=false`；额外条目逐字节不变，不能代替固定骨架 |
+| INIT-16 | 已知与未知初始化事务目录、配置临时文件并存 | 只处理规范标记/请求哈希匹配的目录及字节完全匹配的配置临时文件，其他对象逐字节不变 |
 
 ### 10.4 `capture_text`
 
@@ -635,11 +730,13 @@ before_config_replaced
 after_config_replaced
 ```
 
+这里的 `after_init_temp_created` 指第 6.2.2 节事务目录、规范 `transaction.yaml` 和 `store/` 子目录均已完成 flush/回读之后；测试钩子仍保持内部注入，不进入配置、CLI 或公开 API。`before_config_replaced` 保留为故障点名称，但 C2B 的初次连接实际采用无覆盖原子提交，不授权覆盖既有配置。
+
 C2B 必须逐点注入并在新进程中验证：
 
 | ID | 故障点 | 重试后的磁盘事实 |
 |---|---|---|
-| FI-01 | `after_init_temp_created` | 最终 root 不存在；只识别并清理由本次事务标记的 staging，再安全重试 |
+| FI-01 | `after_init_temp_created` | 最终 root 不存在；只识别并清理由规范标记和当前请求哈希共同确认的初始化目录，再安全重试 |
 | FI-02 | `after_manifest_written` | 不信任未 flush 的临时内容；最终 root 不存在，未知残片不删除 |
 | FI-03 | `after_manifest_flushed` | 最终 root 不存在；可以清理已验证归属的 staging 后重新初始化 |
 | FI-04 | `after_root_renamed` | 重用最终 Store 的原 `store_id` 并补做配置连接，不生成第二个最终身份 |
@@ -685,14 +782,14 @@ before_receipt_returned
 
 | 范围 | 预计专注工程时间 |
 |---|---:|
-| 工程骨架、配置、YAML codec、ID/哈希 | 1.5–2.5 天 |
-| 初始化、路径、锁和 durability 原语 | 2–3 天 |
+| C0–C2A：工程骨架、配置、路径、YAML codec、ID/哈希 | 2–3 天 |
+| C2B：初始化锁、durability、Store 初始化与六点恢复 | 2–3 天 |
 | 四个操作 | 2–3 天 |
 | 并发、故障注入、恢复和迁移测试 | 2.5–4 天 |
 | CLI 适配、说明和最终审查 | 1–1.5 天 |
-| **合计** | **9–14 天** |
+| **合计** | **约 10–15 天** |
 
-这是“满足已承诺可靠性”的估计，不是只做一次成功演示的估计。2026-09-03 的 C2 复核因加入配置目标锁、并发竞争和六个初始化恢复点，将原 8.5–13.5 天校准为 9–14 天；这不增加产品范围。若只实现 happy path，可能 2–4 天，但不能安全地称为 KnowledgeFlow MVP-0。
+这是“满足已承诺可靠性”的估计，不是只做一次成功演示的估计。2026-09-03 的 C2B 编码前复核把操作系统锁、可验证事务残片、无覆盖配置连接和 LOCK/DUR 验收纳入原承诺，因此将整体规划从 9–14 天校准为约 10–15 天；这不增加产品功能范围。若只实现 happy path，可能 2–4 天，但不能安全地称为 KnowledgeFlow MVP-0。
 
 ### 12.2 当前阶段主动省下的成本
 
@@ -708,10 +805,10 @@ before_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C1 已于 2026-09-02 通过，C2A 已于 2026-09-03 通过；后续批次仍逐批授权** | 未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C1 已于 2026-09-02 通过；C2A、C2B-1 已于 2026-09-03 通过；当前停在 C2B-2 门禁** | 未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
-| G2B 初始化 | INIT/FI 全绿，且用户明确授权 C2B | 使用真实生产 root |
+| G2B 初始化 | **C2B-1 的 LOCK/DUR 已全绿；仍待 C2B-2 的 INIT 与 C2B-3 的 FI** | 使用真实生产 root |
 | G3 本地操作 | CT/GET/LIST/APP 全绿 | 接 UI/Harness |
 | G4 恢复能力 | REC、故障注入、迁移全绿 | 将规范标记 Effective |
 | G5 人工耐久 | Windows 强制终止/断电边界有实证记录 | 宣称抗断电 |
@@ -729,6 +826,6 @@ before_receipt_returned
 | I-006 | 适配层用 JSON 元数据 + stdin/文件流传正文 | 把正文放命令行参数会带来转义、长度和泄露风险 |
 | I-007 | `list limit > 100` 返回 `invalid_input` | 自动钳制会隐藏调用方错误 |
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
-| I-009 | 采用完整可靠性范围；2026-09-03 复核后预算按 9–14 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
+| I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2A 已完成并通过 48 项自动化测试；C2B 编码尚未授权，Store 初始化和四个操作均不存在。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2B-1 已完成并通过 57 项自动化测试；Store 初始化和四个操作仍不存在，C2B-2 编码尚未授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。

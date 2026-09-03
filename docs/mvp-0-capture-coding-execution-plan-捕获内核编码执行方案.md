@@ -1,13 +1,15 @@
 # MVP-0 捕获内核编码执行方案
 
-> 状态：Approved Design；C0–C2A 已完成，停在 C2B 授权门禁<br>
+> 状态：Approved Design；C0–C2B-1 已完成，停在 C2B-2 授权门禁<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
+> C2B 复核日期：2026-09-03<br>
+> C2B-1 完成日期：2026-09-03<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2A 已于 2026-09-03 完成并通过验收，当前停在 C2B 编码前<br>
-> 当前授权：A0、A1 与 A2（C1、C2A）已通过；尚未授权 C2B、真实 Capture Store 或外部系统接入
+> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2A、C2B-1 已于 2026-09-03 完成并通过验收，当前停在 C2B-2 编码前<br>
+> 当前授权：A0、A1 与 A2（C1、C2A、C2B-1）已通过；尚未授权 C2B-2、真实 Capture Store 或外部系统接入
 
 ## 0. 结论先行
 
@@ -15,7 +17,7 @@
 
 第一步 C0 已完成：已经建立隔离 Python 包和可自动发现的测试骨架。第二步 C1 也已完成：错误模型、UUIDv7、四类哈希和受限 YAML codec 均已有实现、golden fixture 与单元测试。C2A 亦已完成：本地配置、Windows 路径策略和 Store Manifest v1 已实现并通过测试。
 
-C0–C2A 均未实现 Capture Store 业务行为，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须另行明确说出“继续 C2B”，才可在测试临时目录实现锁、durability、Store 初始化和恢复。
+C2B-1 已实现初始化锁和 durability 原语，但仍未实现 Capture Store 初始化或四个捕获操作，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须另行明确说出“继续 C2B-2”或等价的明确编码指令，才可在测试临时目录实现安全初始化与并发。
 
 ## 1. 本方案解决什么问题
 
@@ -282,12 +284,37 @@ C1 明确不实现 Store 初始化、路径锁、flush/rename、四个操作、S
 
 C2B 可以按已冻结接口增量修改 C2A 文件和对应测试，但若需要改变 `codec.py`、Capture Envelope、四操作、ID/哈希或版本语义，必须停止并报告，不能自行扩张范围。`InitStoreResult` 定义在 `store.py`；配置和 Manifest 的 schema 分别留在 `config.py` 与 `manifest.py`，复用通用 codec，不修改其 Envelope registry。
 
-必须覆盖 INIT-01–INIT-13 和全部六个初始化故障点，包括完整骨架、已有 Store 幂等重开、配置完整匹配、初始化锁、同请求并发、不同 root 竞争、同盘 staging/rename、flush/回读、配置原子替换，以及每个故障点后的新进程重开。不得顺带实现 Item 扫描、投影重建、四个捕获操作、CLI、UI、Harness、GBrain 或 SOP。
+编码前冻结以下实现边界：
+
+- 锁域是解析后的 `config_path`。Windows 使用操作系统文件锁；`<config_path>.init.lock` 可以长期存在，不能用“删除看起来陈旧的锁文件”恢复。默认等待上限 10 秒，超时返回可重试的 `capture_store_unavailable`。
+- `config_path` 不得位于 `capture_root` 内；Store 的直接父目录必须预先存在。配置直接父目录最多允许有限创建一层，禁止无界递归创建。测试中的配置、锁、事务目录和 Store 必须全部位于同一个测试持有根。
+- 初始化事务目录位于 Store 父目录，使用 `.knowledgeflow-init-<transaction-uuid>/transaction.yaml + store/`。标记只保存 schema/version、UUIDv7 和当前初始化请求哈希，不保存绝对路径；该哈希只是内部恢复键，不改变已确认的四类 Capture 哈希。
+- 每个承诺文件都必须 flush、`fsync`、关闭回读并重新校验；Store 使用同卷无覆盖目录 rename，初次配置连接也不得覆盖意外出现的目标。目录元数据 flush 只在平台明确支持时作为额外保证。
+- C2B 的 I/O、权限、flush、rename 和无法安全判断磁盘事实统一使用 `capture_store_unavailable`；仅明确的临时锁/共享冲突标记 `retryable=true`。不得使用 Capture 专用的 `atomic_commit_failed`，失败结果也不得出现 `saved` 或 `commit_state`。
+- 已有合法 Store 只要求固定骨架条目存在且类型安全，不要求目录为空；额外普通条目保持不动，也不能代替缺失骨架。
+
+C2B 按三个内部停点执行，不增加新的产品阶段：
+
+1. **C2B-1：锁与 durability 原语。** 只实现 `locking.py`、`durability.py`、测试支持和对应单元测试，覆盖 LOCK-01–04、DUR-01–04；不实现 `store.py`，不创建任何结构上可识别的 Store。
+2. **C2B-2：安全初始化与并发。** 实现 `store.py` 和初始化集成测试，覆盖 INIT-01–16，包括事务残片归属；所有 Store 都位于测试持有根，不运行故障子进程。
+3. **C2B-3：崩溃恢复。** 实现六个内部故障点和新进程恢复测试，覆盖 FI-01–06，再运行 C2 全量验收。
+
+C2B-1 实际验收结果（2026-09-03）：
+
+- 已新增 `locking.py` 和 `durability.py`，以及一个仅供测试子进程使用的支持模块和两份单元测试；没有创建 `store.py`。
+- LOCK-01–04 已在真实 Windows 多进程条件下验证同配置互斥、不同配置互不阻塞、强制终止后内核锁释放，以及默认 10 秒/内部快速时钟的可重试超时语义；持久锁文件不作为持锁真相，也不会由实现删除。
+- DUR-01–04 已验证独占写入、flush、文件 `fsync`、关闭后精确回读、严格 Manifest/配置校验、同卷无覆盖 rename、目标竞态的完全匹配/冲突分支，以及目录元数据 flush 的支持/明确不支持/异常三种结果。
+- Windows 标准库路径当前明确报告目录元数据 flush `unsupported`，不影响进程崩溃恢复目标，但不宣称抗突然断电；意外 I/O 仍失败关闭。
+- 新增 9 项测试，自动发现累计 57 项全部通过；`ResourceWarning` 严格模式、`compileall`、依赖完整性和 `git diff --check` 同时通过。全部磁盘行为只发生在测试持有的系统临时目录，没有生成结构上可识别的 Store、真实配置、Capture 或外部请求。
+
+C2B-1 已在此停点完成。只有用户明确说“继续 C2B-2”才进入安全初始化与并发；C2B-3 仍需之后单独授权。
+
+必须覆盖 LOCK-01–04、DUR-01–04、INIT-01–16 和全部六个初始化故障点，包括完整骨架、已有 Store 幂等重开、配置完整匹配、初始化锁、同请求并发、不同 root 竞争、同盘 staging/rename、flush/回读、无覆盖配置连接、事务残片归属，以及每个故障点后的新进程重开。不得顺带实现 Item 扫描、投影重建、四个捕获操作、CLI、UI、Harness、GBrain 或 SOP。
 
 共同验收：
 
-- 现有 30 项测试继续通过，并且每个 CFG、MAN、INIT 编号都能追溯到具体测试或 `subTest`；不以固定的新增测试数量代替场景覆盖。
-- 所有写入都位于测试框架创建并持有的临时根；默认用户配置位置只验证解析，真实配置和真实 Capture Store 在测试前后快照一致。
+- 现有 57 项测试继续通过，并且每个后续 INIT、FI 编号都能追溯到具体测试或 `subTest`；不以固定的新增测试数量代替场景覆盖。
+- 所有写入都位于测试框架创建并持有的同一临时根；默认用户配置位置只验证解析，真实配置和真实 Capture Store 在测试前后快照一致。
 - 故障注入后用新进程依据磁盘事实复核；同请求并发只保留一个 Store 身份，冲突请求不留下孤儿目标。
 - 测试期间不产生 Capture、State Event、outbox job、网络请求或 GBrain 调用。
 - 全量 `unittest`、`compileall`、依赖完整性、`git diff --check` 和精确工作树清单均通过。
@@ -476,16 +503,16 @@ git status --short
 
 ## 11. 成本控制
 
-复核 C2 的锁、并发和六个恢复边界后，MVP-0 的规划估算校准为 **9–14 个专注工程日**。增加的 0.5 天上下界来自可靠性验证，不增加产品功能范围，也不构成某一批次的编码授权：
+复核 C2B 的操作系统锁、事务残片归属、无覆盖连接和六个恢复边界后，MVP-0 的规划估算校准为 **约 10–15 个专注工程日**。增加的预算来自可靠性验证，不增加产品功能范围，也不构成某一批次的编码授权：
 
 | 范围 | 预算 | 主要成本来源 |
 |---|---:|---|
-| C0–C1：骨架和基础原语 | 1.5–2.5 天 | 工程隔离、严格 YAML、UUIDv7 和流式哈希 |
-| C2：安全初始化 | 2–3 天 | Windows 路径、配置目标锁、flush、rename、并发竞争和六点恢复 |
+| C0–C2A：骨架、基础原语、配置、路径和 Manifest | 2–3 天 | 工程隔离、严格 YAML、UUIDv7、流式哈希和路径身份 |
+| C2B：安全初始化 | 2–3 天 | Windows 内核锁、事务标记、flush、无覆盖 rename、并发竞争和六点恢复 |
 | C3–C5：四操作与并发 | 3–4.5 天 | 大文本、完整性、游标、幂等和乐观并发 |
 | C6：恢复、故障和迁移 | 1.5–2.5 天 | 新进程验证、故障点和移动 Store |
 | C7–C8：CLI 与验收 | 1–1.5 天 | 流协议、泄露检查、文档和人工记录 |
-| **合计** | **9–14 天** | 不包含 UI、GBrain、Harness、路由和 SOP 重构 |
+| **合计** | **约 10–15 天** | 不包含 UI、GBrain、Harness、路由和 SOP 重构 |
 
 当前成本约束：
 
@@ -501,7 +528,7 @@ git status --short
 |---|---|---|---|
 | A0 方案批准 | “同意编码方案” | 把本文升级为 Approved Design | 修改代码、建环境、装依赖 |
 | A1 C0 编码 | “开始编码”或“开始 C0” | 只执行 C0；创建代码骨架、`.venv` 并运行测试 | C1 以后业务实现、真实 Store |
-| A2 后续批次 | 明确“继续 C1/C2A/C2B……”或一次写明批次范围 | 执行所列批次并在每批边界报告；C2A/C2B 各自停点 | 未授权批次和范围扩张 |
+| A2 后续批次 | 明确“继续 C1/C2A/C2B-1……”或一次写明批次范围 | 执行所列批次并在每批边界报告；C2B-1/2/3 分别停点 | 未授权批次和范围扩张 |
 | A3 外部下载 | 工具在安装依赖时请求的联网/权限批准 | 下载并安装已核验且精确锁定的依赖 | 其他软件或全局安装 |
 | A4 生产初始化 | “初始化生产 Capture Store”并确认目标 | 创建真实配置和 `capture-root` | 接入 GBrain 或 KB |
 | A5 Git 操作 | 明确要求 commit/push/建分支 | 仅执行指定 Git 操作 | 自动提交或发布 |
@@ -519,6 +546,6 @@ git status --short
 5. CLI 使用“单行 JSON 头 + 精确长度原始字节”的 stdin/stdout 帧，不传正文命令行参数。
 6. 所有开发测试只写测试持有的临时目录，不创建真实用户配置或生产 Capture Store。
 7. 当前 Git 脏工作树全部保留，不自动清理、提交或恢复。
-8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；复核后的规划估算为 9–14 个专注工程日，其中 C2 为 2–3 天。
+8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准及 C2A/C2B 停点于 2026-09-03 补充确认。C0–C2A 已完成；C2B 及以后编码仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2B-1 已完成；C2B-2 及以后编码仍需逐批明确授权。
