@@ -62,6 +62,16 @@ def _default_marker_probe(path: Path) -> bool:
     return stat.S_ISREG(result.st_mode)
 
 
+def _normalize_resolver_output(value: str | os.PathLike[str]) -> Path:
+    """Normalize a trusted resolver result, including Windows' local ``\\?\\`` form."""
+
+    raw = os.fspath(value)
+    if type(raw) is str:
+        if raw.startswith("\\\\?\\") or raw.startswith("//?/"):
+            raw = raw[4:]
+    return normalize_windows_local_absolute_path(raw)
+
+
 def _path_key(path: Path) -> str:
     return ntpath.normcase(ntpath.normpath(str(path)))
 
@@ -144,7 +154,7 @@ class PathPolicy:
         except (OSError, RuntimeError) as exc:
             raise PathPolicyError("path resolution failed") from exc
         try:
-            return normalize_windows_local_absolute_path(resolved)
+            return _normalize_resolver_output(resolved)
         except PathPolicyError as exc:
             raise PathPolicyError("resolved path is outside local Windows paths") from exc
 
@@ -191,6 +201,25 @@ class PathPolicy:
 
         if self._contains_kb_marker(candidate, resolved_candidate):
             raise PathPolicyError("capture root is inside a knowledge base")
+        return resolved_candidate
+
+    def validate_config_path(
+        self,
+        value: str | os.PathLike[str],
+    ) -> Path:
+        """Resolve a machine config path and enforce the injected test boundary."""
+
+        candidate = normalize_windows_local_absolute_path(value)
+        resolved_candidate = self._resolve(candidate)
+        if self._test_owned_root is None:
+            return resolved_candidate
+
+        resolved_owner = self._resolve(self._test_owned_root)
+        if not _is_within(candidate, self._test_owned_root) or not _is_within(
+            resolved_candidate,
+            resolved_owner,
+        ):
+            raise PathPolicyError("config path escapes the test-owned root")
         return resolved_candidate
 
 

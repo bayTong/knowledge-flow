@@ -77,6 +77,30 @@ class PathPolicyTest(unittest.TestCase):
             with self.subTest(candidate=candidate), self.assertRaises(PathPolicyError):
                 normalize_windows_local_absolute_path(candidate)
 
+    def test_cfg_06_os_extended_local_resolver_result_is_canonicalized(self) -> None:
+        owned = Path(r"C:\KnowledgeFlowTests\owned")
+
+        def extended_local(path: Path) -> Path:
+            return Path("\\\\?\\" + str(path))
+
+        policy = PathPolicy.test_owned(owned, resolver=extended_local)
+        candidate = owned / "config" / "config.yaml"
+
+        self.assertEqual(policy.validate_config_path(candidate), candidate)
+
+    def test_cfg_06_os_extended_unc_resolver_result_is_rejected(self) -> None:
+        def extended_unc(_path: Path) -> Path:
+            return Path(r"\\?\UNC\server\share\capture-store")
+
+        policy = PathPolicy.production(
+            source_root=Path(r"C:\repo\knowledge-flow"),
+            system_temp_root=Path(r"C:\Temp"),
+            resolver=extended_unc,
+        )
+
+        with self.assertRaises(PathPolicyError):
+            policy.validate_capture_root(Path(r"D:\capture-store"))
+
     def test_cfg_06_test_policy_rejects_reparse_escape_and_sibling(self) -> None:
         owned = Path(r"C:\KnowledgeFlowTests\owned")
         linked = owned / "link" / "capture-store"
@@ -95,6 +119,24 @@ class PathPolicyTest(unittest.TestCase):
 
         allowed = owned / "direct" / "capture-store"
         self.assertEqual(policy.validate_capture_root(allowed), allowed)
+
+    def test_config_path_uses_same_injected_test_boundary(self) -> None:
+        owned = Path(r"C:\KnowledgeFlowTests\owned")
+        linked = owned / "link" / "config.yaml"
+
+        def resolver(path: Path) -> Path:
+            if str(path).casefold() == str(linked).casefold():
+                return Path(r"D:\escaped\config.yaml")
+            return path
+
+        policy = PathPolicy.test_owned(owned, resolver=resolver)
+
+        allowed = owned / "config" / "config.yaml"
+        self.assertEqual(policy.validate_config_path(allowed), allowed)
+        with self.assertRaises(PathPolicyError):
+            policy.validate_config_path(Path(r"C:\KnowledgeFlowTests\outside.yaml"))
+        with self.assertRaises(PathPolicyError):
+            policy.validate_config_path(linked)
 
 
 if __name__ == "__main__":
