@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -16,13 +17,25 @@ if str(_SOURCE_ROOT) not in sys.path:
 
 from knowledgeflow_capture.locking import acquire_initialization_lock
 from knowledgeflow_capture.paths import PathPolicy
-from knowledgeflow_capture.store import init_capture_store
+from knowledgeflow_capture.store import (
+    _InitFaultPoint,
+    _StoreDependencies,
+    _init_capture_store_with_dependencies,
+    init_capture_store,
+)
+
+
+FAULT_EXIT_CODE = 70
 
 
 def _write_marker(path: Path) -> None:
     with path.open("xb") as stream:
         stream.write(b"ready")
         stream.flush()
+
+
+def _exit_at_fault_point() -> None:
+    os._exit(FAULT_EXIT_CODE)
 
 
 def _hold_lock(
@@ -71,6 +84,34 @@ def _init_store(
         max_text_version_bytes=maximum,
         path_policy=PathPolicy.test_owned(owned_root),
     )
+    return _write_result(result, result_path)
+
+
+def _init_store_fault(
+    owned_root: Path,
+    config_path: Path,
+    capture_root: Path,
+    inline_threshold: int,
+    maximum: int,
+    fault_point: str,
+    result_path: Path,
+) -> int:
+    dependencies = _StoreDependencies(
+        fault_point=_InitFaultPoint(fault_point),
+        fault_hook=_exit_at_fault_point,
+    )
+    result = _init_capture_store_with_dependencies(
+        config_path=config_path,
+        capture_root=capture_root,
+        inline_text_threshold_bytes=inline_threshold,
+        max_text_version_bytes=maximum,
+        path_policy=PathPolicy.test_owned(owned_root),
+        dependencies=dependencies,
+    )
+    return _write_result(result, result_path)
+
+
+def _write_result(result: object, result_path: Path) -> int:
     encoded = json.dumps(
         result.to_dict(),
         ensure_ascii=False,
@@ -100,6 +141,14 @@ def main(argv: list[str] | None = None) -> int:
     initializer.add_argument("started_path", type=Path)
     initializer.add_argument("gate_path", type=Path)
     initializer.add_argument("result_path", type=Path)
+    fault_initializer = subparsers.add_parser("init-store-fault")
+    fault_initializer.add_argument("owned_root", type=Path)
+    fault_initializer.add_argument("config_path", type=Path)
+    fault_initializer.add_argument("capture_root", type=Path)
+    fault_initializer.add_argument("inline_threshold", type=int)
+    fault_initializer.add_argument("maximum", type=int)
+    fault_initializer.add_argument("fault_point", type=str)
+    fault_initializer.add_argument("result_path", type=Path)
     arguments = parser.parse_args(argv)
     if arguments.command == "hold-lock":
         return _hold_lock(
@@ -117,6 +166,16 @@ def main(argv: list[str] | None = None) -> int:
             arguments.maximum,
             arguments.started_path,
             arguments.gate_path,
+            arguments.result_path,
+        )
+    if arguments.command == "init-store-fault":
+        return _init_store_fault(
+            arguments.owned_root,
+            arguments.config_path,
+            arguments.capture_root,
+            arguments.inline_threshold,
+            arguments.maximum,
+            arguments.fault_point,
             arguments.result_path,
         )
     return 2

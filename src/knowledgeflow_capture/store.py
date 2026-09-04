@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import StrEnum
 import hashlib
 import json
 import ntpath
@@ -82,6 +83,27 @@ _LockFactory = Callable[[Path], InitializationLock]
 _UtcNow = Callable[[], datetime]
 _StoreIdFactory = Callable[[], str]
 _UuidFactory = Callable[[], UUID]
+_FaultHook = Callable[[], None]
+
+
+class _InitFaultPoint(StrEnum):
+    """Internal crash-injection points for initialization recovery tests.
+
+    Never selectable through YAML, environment variables, CLI, or any public
+    parameter; production dependencies leave ``fault_point`` unset so every
+    hook invocation stays a no-op.
+    """
+
+    AFTER_INIT_TEMP_CREATED = "after_init_temp_created"
+    AFTER_MANIFEST_WRITTEN = "after_manifest_written"
+    AFTER_MANIFEST_FLUSHED = "after_manifest_flushed"
+    AFTER_ROOT_RENAMED = "after_root_renamed"
+    BEFORE_CONFIG_REPLACED = "before_config_replaced"
+    AFTER_CONFIG_REPLACED = "after_config_replaced"
+
+
+def _noop_fault_hook() -> None:
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +177,14 @@ def _default_utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _trigger_fault(
+    point: _InitFaultPoint,
+    dependencies: _StoreDependencies,
+) -> None:
+    if dependencies.fault_point == point:
+        dependencies.fault_hook()
+
+
 @dataclass(frozen=True, slots=True)
 class _StoreDependencies:
     durability: DurabilityBackend = field(default_factory=DurabilityBackend)
@@ -175,6 +205,16 @@ class _StoreDependencies:
     )
     uuid_factory: _UuidFactory = field(
         default=generate_uuid7,
+        repr=False,
+        compare=False,
+    )
+    fault_point: _InitFaultPoint | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
+    fault_hook: _FaultHook = field(
+        default=_noop_fault_hook,
         repr=False,
         compare=False,
     )
@@ -581,6 +621,7 @@ def _build_staged_store(
 
     staged_store = transaction_path / "store"
     _create_directory(staged_store, dependencies)
+    _trigger_fault(_InitFaultPoint.AFTER_INIT_TEMP_CREATED, dependencies)
     for parts in CAPTURE_STORE_REQUIRED_DIRECTORIES:
         _create_directory(staged_store.joinpath(*parts), dependencies)
 
@@ -595,7 +636,12 @@ def _build_staged_store(
         staged_store / CAPTURE_STORE_MANIFEST_FILENAME,
         manifest_bytes,
         validator=load_capture_store_manifest,
+        _before_flush=lambda _path: _trigger_fault(
+            _InitFaultPoint.AFTER_MANIFEST_WRITTEN,
+            dependencies,
+        ),
     )
+    _trigger_fault(_InitFaultPoint.AFTER_MANIFEST_FLUSHED, dependencies)
     staged_manifest = _inspect_store(staged_store)
     if staged_manifest != manifest:
         _fail(
@@ -919,6 +965,8 @@ def _create_or_adopt_store(
             created = True
         except DestinationAlreadyExistsError:
             created = False
+        if created:
+            _trigger_fault(_InitFaultPoint.AFTER_ROOT_RENAMED, dependencies)
 
         final_manifest = _inspect_store(request.capture_root)
         if final_manifest is None:
@@ -983,6 +1031,7 @@ def _connect_config(
         dependencies=dependencies,
     )
     try:
+        _trigger_fault(_InitFaultPoint.BEFORE_CONFIG_REPLACED, dependencies)
         try:
             dependencies.durability.commit_file_no_replace(
                 config_temp,
@@ -1005,6 +1054,7 @@ def _connect_config(
                 request.local_config,
             ):
                 _fail(PublicErrorCode.CONFIG_STORE_CONFLICT)
+        _trigger_fault(_InitFaultPoint.AFTER_CONFIG_REPLACED, dependencies)
 
         connected = _read_config(request.config_path, path_policy=path_policy)
         if connected is None or not _configs_match(connected, request.local_config):
@@ -1111,11 +1161,34 @@ def init_capture_store(
     inline_text_threshold_bytes: int,
     max_text_version_bytes: int,
     path_policy: PathPolicy,
-    _dependencies: _StoreDependencies | None = None,
 ) -> InitStoreOperationResult:
     """Initialize or idempotently reopen one Store without overwriting targets."""
 
-    dependencies = _dependencies or _StoreDependencies()
+    return _init_capture_store_with_dependencies(
+        config_path=config_path,
+        capture_root=capture_root,
+        inline_text_threshold_bytes=inline_text_threshold_bytes,
+        max_text_version_bytes=max_text_version_bytes,
+        path_policy=path_policy,
+        dependencies=_StoreDependencies(),
+    )
+
+
+def _init_capture_store_with_dependencies(
+    *,
+    config_path: str | os.PathLike[str],
+    capture_root: str | os.PathLike[str],
+    inline_text_threshold_bytes: int,
+    max_text_version_bytes: int,
+    path_policy: PathPolicy,
+    dependencies: _StoreDependencies,
+) -> InitStoreOperationResult:
+    """Internal entry point reserved for the test support subprocess.
+
+    Production callers must use ``init_capture_store``, which never exposes the
+    dependency or fault-hook injection channel.
+    """
+
     try:
         return _initialize(
             config_path=config_path,

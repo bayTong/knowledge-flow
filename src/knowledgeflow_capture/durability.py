@@ -18,6 +18,7 @@ _REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 _FileValidator = Callable[[bytes], object]
 _FileFsync = Callable[[int], None]
 _FileReader = Callable[[Path], bytes]
+_FileBeforeFlush = Callable[[Path], None]
 _NewFileOpener = Callable[[Path], BinaryIO]
 _Rename = Callable[[Path, Path], None]
 _Unlink = Callable[[Path], None]
@@ -200,8 +201,14 @@ class DurabilityBackend:
         data: bytes | bytearray | memoryview,
         *,
         validator: _FileValidator | None = None,
+        _before_flush: _FileBeforeFlush | None = None,
     ) -> DirectoryFlushStatus:
-        """Exclusively create, fsync, close, reread, and validate one exact file."""
+        """Exclusively create, fsync, close, reread, and validate one exact file.
+
+        ``_before_flush`` is an internal-only hook invoked once all bytes have
+        been handed to the stream but before the application buffer is flushed;
+        production callers must keep it unset.
+        """
 
         target = Path(path)
         if not isinstance(data, (bytes, bytearray, memoryview)):
@@ -223,6 +230,8 @@ class DurabilityBackend:
                     if written is None or written <= 0:
                         raise OSError("short write")
                     remaining = remaining[written:]
+                if _before_flush is not None:
+                    _before_flush(target)
                 stream.flush()
                 try:
                     self._fsync(stream.fileno())

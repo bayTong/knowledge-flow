@@ -1,8 +1,9 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-> 状态：Approved Design；C0–C2A 已完成，Capture Store 与业务操作尚未实现<br>
+> 状态：Approved Design；C0–C2 已完成，四个捕获业务操作尚未实现<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
+> C2 完成记录日期：2026-09-04<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：本文件不声称任何业务能力已经实现，也不替代后续 SOP 的具体执行规范
 
@@ -37,8 +38,8 @@
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4 MiB 内联阈值和 64 MiB 默认安全上限 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | 9 项技术选择已确认；C0–C2A 已完成，C2B 尚未授权 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C0–C2A 已完成并停在 C2B 门禁前 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | 9 项技术选择已确认；C0–C2 已完成并通过 85 项测试，C3 尚未授权 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C0–C2 已完成并停在 C3 门禁前 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
 | 可信知识写入、精确批准和回滚 | 尚待重构的 SOP-002 | Blocking Draft | 旧 SOP-002 不得作为自动语义写入授权 |
@@ -244,6 +245,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准，C0–C2A 已完成并通过 48 项自动化测试。下一步仍需明确授权 C2B，才可实现锁、durability、测试临时 Store 初始化、重开、并发和故障恢复。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准，C0–C2 已完成并通过 85 项自动化测试。下一步仍需明确授权 C3，才可在测试持有的 Store 中实现 `capture_text`。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。

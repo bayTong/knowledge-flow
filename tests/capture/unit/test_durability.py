@@ -39,10 +39,13 @@ class _TrackedFile:
         return False
 
     def write(self, data: object) -> int:
-        return self._stream.write(data)
+        written = self._stream.write(data)
+        self._events.append("write")
+        return written
 
     def flush(self) -> None:
         self._stream.flush()
+        self._events.append("flush")
 
     def fileno(self) -> int:
         return self._stream.fileno()
@@ -102,7 +105,16 @@ class DurabilityBackendTest(unittest.TestCase):
         self.assertEqual(target.read_bytes(), expected)
         self.assertEqual(
             events,
-            ["open", "fsync", "close", "readback", "validate", "directory-flush"],
+            [
+                "open",
+                "write",
+                "flush",
+                "fsync",
+                "close",
+                "readback",
+                "validate",
+                "directory-flush",
+            ],
         )
 
         failed_target = self.root / "fsync-failure.tmp"
@@ -382,6 +394,60 @@ class DurabilityBackendTest(unittest.TestCase):
                 "retryable": False,
                 "details": {"stage": "directory-metadata"},
             },
+        )
+
+    def test_dur_05_before_flush_callback_runs_after_write_before_flush(self) -> None:
+        expected = b"durable payload with fault hook"
+        target = self.root / "before-flush.tmp"
+        events: list[str] = []
+
+        def open_new(path: Path) -> _TrackedFile:
+            events.append("open")
+            return _TrackedFile(path, events)
+
+        def before_flush(path: Path) -> None:
+            events.append("before-flush")
+            self.assertEqual(path, target)
+
+        def fsync(descriptor: int) -> None:
+            events.append("fsync")
+            os.fsync(descriptor)
+
+        def read_bytes(path: Path) -> bytes:
+            events.append("readback")
+            return path.read_bytes()
+
+        def flush_directory(_path: Path) -> bool:
+            events.append("directory-flush")
+            return True
+
+        backend = DurabilityBackend(
+            _fsync=fsync,
+            _read_bytes=read_bytes,
+            _open_new=open_new,
+            _directory_flusher=flush_directory,
+        )
+
+        status = backend.write_new_file_durable(
+            target,
+            expected,
+            _before_flush=before_flush,
+        )
+
+        self.assertEqual(status, DirectoryFlushStatus.FLUSHED)
+        self.assertEqual(target.read_bytes(), expected)
+        self.assertEqual(
+            events,
+            [
+                "open",
+                "write",
+                "before-flush",
+                "flush",
+                "fsync",
+                "close",
+                "readback",
+                "directory-flush",
+            ],
         )
 
 

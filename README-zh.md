@@ -5,7 +5,7 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-03）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。MVP-0 技术设计和编码方案已经批准；C0–C2A 已完成并通过 48 项测试，现有实现包括确定性基础原语、配置、路径策略和 Manifest，但 Capture Store 初始化、四个捕获操作和生产 Store 均不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-04）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。MVP-0 技术设计和编码方案已经批准；C0–C2 已完成并通过 85 项测试，现有实现包括确定性基础原语、配置、路径策略、Manifest 身份、Windows 初始化锁和 durability、安全测试 Store 初始化、并发与进程崩溃恢复。四个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -171,11 +171,16 @@ knowledge-flow/
 │       ├── codec.py                  C1 受限 YAML 与 Envelope v1 schema
 │       ├── config.py                 C2A 本地配置契约与规范发射
 │       ├── paths.py                  C2A Windows 路径安全策略
-│       └── manifest.py               C2A Capture Store 身份契约
+│       ├── manifest.py               C2A Capture Store 身份契约
+│       ├── locking.py                C2B Windows 初始化锁
+│       ├── durability.py             C2B 耐久写入与无覆盖提交原语
+│       └── store.py                  C2B 安全初始化、重开与恢复
 ├── tests/
 │   └── capture/
 │       ├── fixtures/                 C1–C2A 的 5 份 JSON/YAML golden 文件
-│       └── unit/                     C0–C2A 的 48 项自动化测试
+│       ├── unit/                     C0–C2 单元与平台测试
+│       ├── integration/              C2B 初始化与并发测试
+│       └── fault/                    C2B 进程崩溃恢复测试（总计 85 项）
 ├── docs/
 │   ├── sop-v2-full.md               旧版 SOP 全集（部分已被新设计取代）
 │   ├── build-plan.md                建设规划与路线图（外置第二大脑建设规划）
@@ -226,11 +231,11 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现，目前只有可测试的确定性基础原语、配置、路径策略和 Manifest，没有可宣称“开箱即用”的保存链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。确定性基础原语和安全 Store 初始化底座已经通过测试，但 `capture_text` 仍不存在，因此还没有可宣称“开箱即用”的保存链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准，C0–C2A 已完成；仍需明确授权 C2B，才实现锁、durability 与测试临时 Store 初始化。
-3. 按 C2B–C8 逐批闭合纯本地文本捕获，再增加人工路由、SOP-000A 和 GBrain 未审核镜像。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准，C0–C2 已完成；仍需明确授权 C3，才在测试持有的 Store 中实现 `capture_text`。
+3. 按 C3–C8 逐批闭合纯本地文本捕获，再增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
