@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 import re
@@ -94,59 +94,89 @@ _POST_COMMIT_CAUSES = frozenset(
     }
 )
 
-_FORBIDDEN_DIAGNOSTIC_KEYS = frozenset(
+_SAFE_STAGE = re.compile(r"[a-z0-9][a-z0-9-]{0,63}\Z")
+_CAPTURE_ID = re.compile(
+    r"cap_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z"
+)
+_EVENT_ID = re.compile(
+    r"evt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z"
+)
+_SHA256 = re.compile(r"sha256:[0-9a-f]{64}\Z")
+_DIAGNOSTIC_INTEGER_FIELDS = frozenset(
     {
-        "api_key",
-        "body",
-        "capture_root",
-        "content",
-        "credential",
-        "credentials",
-        "file_path",
-        "idempotency_key",
-        "password",
-        "path",
-        "payload",
-        "preview",
-        "raw_idempotency_key",
-        "secret",
-        "text",
-        "token",
+        "current_version",
+        "expected_current_version",
+        "maximum_bytes",
+        "observed_bytes",
+        "requested_version",
     }
 )
-_WINDOWS_ABSOLUTE_PATH = re.compile(r"(?:[A-Za-z]:[\\/]|\\\\)")
-_POSIX_ABSOLUTE_PATH = re.compile(r"(?:^|[\s\"'=(])/(?!/)")
-_FORBIDDEN_DIAGNOSTIC_KEY_TOKENS = frozenset(
-    re.sub(r"[^a-z0-9]", "", key.casefold())
-    for key in _FORBIDDEN_DIAGNOSTIC_KEYS
+_DIAGNOSTIC_DETAIL_FIELDS = _DIAGNOSTIC_INTEGER_FIELDS | {"stage"}
+_RECEIPT_FIELDS = frozenset(
+    {
+        "capture_id",
+        "durability",
+        "envelope_sha256",
+        "event_id",
+        "gbrain_sync_status",
+        "payload_set_sha256",
+        "previous_version",
+        "primary_payload_sha256",
+        "routing_status",
+        "trust_status",
+        "version",
+    }
 )
 _RESERVED_SUCCESS_KEYS = frozenset({"ok", "saved", "commit_state", "warnings"})
 
 
-def _freeze_safe_json(value: object, *, key_path: str = "details") -> object:
-    if value is None or type(value) in {bool, int}:
-        return value
-    if type(value) is str:
-        if len(value) > 512 or "\n" in value or "\r" in value:
-            raise ValueError(f"{key_path} contains an unsafe diagnostic string")
-        if _WINDOWS_ABSOLUTE_PATH.search(value) or _POSIX_ABSOLUTE_PATH.search(value):
-            raise ValueError(f"{key_path} must not contain an absolute path")
-        return value
-    if isinstance(value, Mapping):
-        frozen: dict[str, object] = {}
-        for key, item in value.items():
-            if type(key) is not str:
-                raise ValueError(f"{key_path} keys must be strings")
-            normalized_key = re.sub(r"[^a-z0-9]", "", key.casefold())
-            if normalized_key in _FORBIDDEN_DIAGNOSTIC_KEY_TOKENS:
-                raise ValueError(f"{key_path} contains forbidden field {key!r}")
-            frozen[key] = _freeze_safe_json(item, key_path=f"{key_path}.{key}")
-        return MappingProxyType(frozen)
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return tuple(
-            _freeze_safe_json(item, key_path=f"{key_path}[]") for item in value
-        )
-    raise ValueError(f"{key_path} contains a non-JSON or unsafe value")
+def _freeze_receipt(value: Mapping[str, object]) -> Mapping[str, object]:
+    """Validate the exact metadata-only success receipt shape."""
+
+    frozen: dict[str, object] = {}
+    for key, item in value.items():
+        if type(key) is not str or key not in _RECEIPT_FIELDS:
+            raise ValueError(f"receipt contains unsupported field {key!r}")
+        if key == "capture_id":
+            valid = type(item) is str and _CAPTURE_ID.fullmatch(item) is not None
+        elif key == "event_id":
+            valid = type(item) is str and _EVENT_ID.fullmatch(item) is not None
+        elif key.endswith("_sha256"):
+            valid = type(item) is str and _SHA256.fullmatch(item) is not None
+        elif key in {"version", "previous_version"}:
+            valid = (
+                item is None and key == "previous_version"
+            ) or (type(item) is int and item > 0)
+        elif key == "durability":
+            valid = item == "durable"
+        elif key == "routing_status":
+            valid = item == "unassigned"
+        elif key == "trust_status":
+            valid = item == "unreviewed-capture"
+        else:
+            valid = item == "not-requested"
+        if not valid:
+            raise ValueError(f"receipt.{key} has an invalid value")
+        frozen[key] = item
+    return MappingProxyType(frozen)
+
+
+def _freeze_diagnostic_details(value: Mapping[str, object]) -> Mapping[str, object]:
+    """Freeze the small, typed allowlist exposed by public diagnostics."""
+
+    frozen: dict[str, object] = {}
+    for key, item in value.items():
+        if type(key) is not str:
+            raise ValueError("details keys must be strings")
+        if key not in _DIAGNOSTIC_DETAIL_FIELDS:
+            raise ValueError(f"details contains unsupported field {key!r}")
+        if key == "stage":
+            if type(item) is not str or _SAFE_STAGE.fullmatch(item) is None:
+                raise ValueError("details.stage must be a safe machine token")
+        elif type(item) is not int or item < 0:
+            raise ValueError(f"details.{key} must be a non-negative integer")
+        frozen[key] = item
+    return MappingProxyType(frozen)
 
 
 def _thaw_json(value: object) -> object:
@@ -187,7 +217,7 @@ class OperationError:
             raise ValueError("retryable must be boolean")
         if not isinstance(self.details, Mapping):
             raise ValueError("details must be a mapping")
-        object.__setattr__(self, "details", _freeze_safe_json(self.details))
+        object.__setattr__(self, "details", _freeze_diagnostic_details(self.details))
 
     @property
     def message(self) -> str:
@@ -216,7 +246,7 @@ class OperationWarning:
         object.__setattr__(self, "code", code)
         if not isinstance(self.details, Mapping):
             raise ValueError("details must be a mapping")
-        object.__setattr__(self, "details", _freeze_safe_json(self.details))
+        object.__setattr__(self, "details", _freeze_diagnostic_details(self.details))
 
     @property
     def message(self) -> str:
@@ -266,7 +296,7 @@ class CommittedWriteResult:
         reserved = _RESERVED_SUCCESS_KEYS.intersection(self.receipt)
         if reserved:
             raise ValueError("receipt must not override operation result fields")
-        object.__setattr__(self, "receipt", _freeze_safe_json(self.receipt, key_path="receipt"))
+        object.__setattr__(self, "receipt", _freeze_receipt(self.receipt))
         warnings = tuple(self.warnings)
         if not all(isinstance(warning, OperationWarning) for warning in warnings):
             raise TypeError("warnings must contain OperationWarning values")

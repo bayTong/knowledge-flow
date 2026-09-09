@@ -5,7 +5,7 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-04）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。MVP-0 技术设计和编码方案已经批准；C0–C2 已完成并通过 85 项测试，现有实现包括确定性基础原语、配置、路径策略、Manifest 身份、Windows 初始化锁和 durability、安全测试 Store 初始化、并发与进程崩溃恢复。四个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-09）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C0–C2 已完成，C3-0 行为决策已获批但尚未实现；当前全量测试为 93 项（捕获内核 86 项、维护脚本回归 7 项），全部通过。现有实现包括确定性基础原语、配置、路径策略、Manifest 身份、Windows 初始化锁和 durability、安全测试 Store 初始化、并发与进程崩溃恢复。四个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -176,11 +176,13 @@ knowledge-flow/
 │       ├── durability.py             C2B 耐久写入与无覆盖提交原语
 │       └── store.py                  C2B 安全初始化、重开与恢复
 ├── tests/
-│   └── capture/
-│       ├── fixtures/                 C1–C2A 的 5 份 JSON/YAML golden 文件
-│       ├── unit/                     C0–C2 单元与平台测试
-│       ├── integration/              C2B 初始化与并发测试
-│       └── fault/                    C2B 进程崩溃恢复测试（总计 85 项）
+│   ├── capture/
+│   │   ├── fixtures/                 C1–C2A 的 5 份 JSON/YAML golden 文件
+│   │   ├── unit/                     C0–C2 单元与平台测试
+│   │   ├── integration/              C2B 初始化与并发测试
+│   │   └── fault/                    C2B 进程崩溃恢复测试（捕获测试共 86 项）
+│   └── scripts/
+│       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
 ├── docs/
 │   ├── sop-v2-full.md               旧版 SOP 全集（部分已被新设计取代）
 │   ├── build-plan.md                建设规划与路线图（外置第二大脑建设规划）
@@ -219,7 +221,7 @@ knowledge-flow/
 ├── templates/
 │   └── SCHEMA-template.md           可复用知识库宪法模板（7 章起步）
 ├── examples/
-│   ├── curation-map-example.md      策展地图样例（25K 行对话的粗读产物）
+│   ├── curation-map-example.md      历史策展地图样例（25K 行；原始材料未收录）
 │   └── wiki-page-example.md         wiki 页面样例（策展入库产出）
 └── archive/
     └── v1.0/                         v1.0 历史版本归档
@@ -260,7 +262,7 @@ knowledge-flow/
 
 ## 实践数据
 
-> 已在 4 个跨领域知识库上实战验证，覆盖 LLM 架构、应用开发、策展工具链设计等方向——[`examples/`](examples/) 目录提供了其中一份 25K 行对话的完整策展地图与策展产出。
+> 方法论形成过程参考了 4 个跨领域知识库的实践。仓库内当前可核查的证据只有 [`examples/`](examples/) 中一份历史 25K 行策展地图样例和一份派生 wiki 页面；原始材料未收录，因此它们是说明性样例，不构成可复现实证。
 
 ---
 

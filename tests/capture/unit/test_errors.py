@@ -149,10 +149,13 @@ class ErrorModelTest(unittest.TestCase):
     def test_diagnostics_reject_sensitive_fields_and_paths(self) -> None:
         unsafe_details = (
             {"text": "private note"},
+            {"payload_text": "private note"},
             {"preview": "private note"},
+            {"text_preview": "private note"},
             {"idempotency_key": "raw-key"},
             {"idempotencyKey": "raw-key"},
             {"credentials": "secret"},
+            {"reason": "private note"},
             {"path": r"E:\Private\note.txt"},
             {"location": r"E:\Private\note.txt"},
             {"location": r"failed at E:\Private\note.txt"},
@@ -166,8 +169,49 @@ class ErrorModelTest(unittest.TestCase):
                     details=details,
                 )
 
+    def test_diagnostics_accept_only_typed_allowlisted_fields(self) -> None:
+        error = OperationError(
+            code=PublicErrorCode.VERSION_CONFLICT,
+            retryable=False,
+            details={
+                "stage": "version-check",
+                "current_version": 3,
+                "expected_current_version": 2,
+            },
+        )
+
+        self.assertEqual(
+            error.to_dict()["details"],
+            {
+                "stage": "version-check",
+                "current_version": 3,
+                "expected_current_version": 2,
+            },
+        )
+        for details in (
+            {"stage": "contains private note"},
+            {"stage": r"E:\Private\note.txt"},
+            {"current_version": True},
+            {"observed_bytes": -1},
+            {"maximum_bytes": "64"},
+            {"stage": {"text": "private note"}},
+        ):
+            with self.subTest(details=details), self.assertRaises(ValueError):
+                OperationError(
+                    code=PublicErrorCode.INVALID_INPUT,
+                    retryable=False,
+                    details=details,
+                )
+
     def test_receipt_cannot_override_reserved_or_embed_payload_text(self) -> None:
-        for receipt in ({"ok": False}, {"text": "private note"}):
+        for receipt in (
+            {"ok": False},
+            {"text": "private note"},
+            {"payload_text": "private note"},
+            {"reason": "private note"},
+            {"capture_id": "private note"},
+            {"version": True},
+        ):
             with self.subTest(receipt=receipt), self.assertRaises(ValueError):
                 CommittedWriteResult(receipt=receipt)
 

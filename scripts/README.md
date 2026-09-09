@@ -17,15 +17,15 @@ python scripts/index-generator.py <知识库路径> [--write]            # index
 
 | 编号 | 检查项 | 级别 | 说明 |
 |---|---|---|---|
-| 1 | wikilink 格式与断链 | Error | 排除代码块与行内代码中的链接 |
+| 1 | wikilink 格式、断链与文件名唯一性 | Error | 排除代码块与行内代码；basename-only 链接要求全库文件名唯一 |
 | 2 | 孤立页面 | Error | 无入链的 wiki 页面 |
-| 3 | index 完整性 | Error | wiki/ 文件与 index.md 条目双向对比 |
-| 4 | frontmatter 完整性 | Error | 7 字段 + type 合法性 + title 格式 |
-| 5 | 标签合规 | Error/Warning | 未注册标签告警;已注册未使用提醒 |
+| 3 | index 完整性 | Warning | wiki/ 文件与 index.md 条目双向对比 |
+| 4 | frontmatter 完整性 | Error/Warning | 必填字段缺失报错；推荐字段、type、title 格式告警 |
+| 5 | 标签合规 | Warning/Notice | 未注册标签告警；已注册未使用提醒 |
 | 6 | 页面行数 | Warning/Error | >300 行警告(拆分候选)、>500 行错误(必须拆分) |
 | 7 | 日志轮转 | Notice | 仅报告,轮转由执行 SOP-003 的 Agent 处理 |
 | 8 | entity 孤立专项 | Error | `wiki/entities/` 下无 concept 入链 |
-| 9 | 图谱过滤规则 | Notice | 仅报告;非 Obsidian 知识库自动跳过 |
+| 9 | 图谱过滤规则 | Warning/Error | 配置缺失告警；配置损坏或过滤条件缺失报错；非 Obsidian KB 跳过 |
 
 ## Windows 平台注意事项(重要)
 
@@ -37,10 +37,10 @@ python scripts/index-generator.py <知识库路径> [--write]            # index
 
 ## `--json` 输出契约
 
-- 输出为合法 UTF-8 JSON,`lint.py` 的结构为 `{ "kb": ..., "errors": [...], "warnings": [...], "notices": [...] }`
+- 输出为合法 UTF-8 JSON，`lint.py` 的结构为 `{ "kb_path": ..., "errors": [...], "warnings": [...], "notices": [...] }`
   (消息对象含 `[检查N]` 编号字段),供 `doc-check.py` 或 CI 消费。
-- 退出码:检出 Error 时非 0(`link-validator.py` 为未解析链接非 0),供脚本链/CI 判失败。
+- 退出码：`0` 表示通过，`1` 表示扫描检出 Error/未解析链接，`2` 表示知识库前置条件无效或输出无法安全生成。三个脚本在 `wiki/` 缺失或类型错误时均以 `2` 失败；basename 重名时 `lint.py` 报 Error 并以 `1` 退出，专项验证器和生成器以 `2` 拒绝歧义输入。`index-generator.py --write` 不会在致命失败时创建或覆盖 index。
 
 ## 测试状态
 
-当前尚未提交 `scripts/` 专用自动化回归测试或固定夹具。后续实现 P2-1 时，测试代码与合成夹具必须同批加入；临时实验目录不得作为固定夹具提交。
+已提交 7 项标准库 `unittest` 回归测试，覆盖三个脚本的致命退出码、`index-generator.py --write` 失败不覆盖、行内代码排除、重复 basename 检出与拒绝。测试运行时只在测试框架持有的临时目录生成合成 KB，不提交临时夹具。更完整的 P2-1 场景矩阵仍可继续扩展。

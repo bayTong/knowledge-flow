@@ -10,9 +10,12 @@
 - **冻结语义写入边界**：捕获允许先保存后审核；模型只生成路由或策展提案；旧 SOP-002 及其写入提示词暂停执行，策展地图迁移到 `proposals/curation-maps/`。
 - **完成 C0–C2**：新增内部 `knowledgeflow-capture` Python 包，实现结构化错误与三态提交状态、UUIDv7、Payload/Payload Set/Request Fingerprint/Envelope 四类哈希、受限 YAML 语法门禁/schema 校验/确定性发射、本地配置、Windows 路径策略、Store Manifest v1、初始化内核锁、durability 原语及安全 Store 初始化。
 - **闭合初始化恢复边界**：实现幂等重开、无覆盖配置连接、同请求/异 root 多进程竞争、保守事务残片归属，以及六个仅内部可选的初始化故障点和跨进程崩溃恢复验证；不宣称突然断电安全。
-- **建立可复现验证**：加入 85 项自动化测试和五份 JSON/YAML golden fixture；严格 `ResourceWarning`、`compileall`、依赖完整性和 diff 检查均通过。golden 文件固定使用 LF，避免 Windows checkout 改变契约字节。
+- **建立可复现验证**：C0–C2 里程碑形成 85 项自动化测试和五份 JSON/YAML golden fixture；严格 `ResourceWarning`、`compileall`、依赖完整性和 diff 检查均通过。golden 文件固定使用 LF，避免 Windows checkout 改变契约字节。
 - **清理仓库临时产物**：删除误提交的 `.eval-tmp` 合成数据，补充本地环境、构建产物和实验目录忽略规则。
 - **明确尚未交付范围**：四个文本操作、Capture Item/版本事务、State Event、幂等索引、生产 Store、人工路由、GBrain、Harness、UI 和可信知识写入均未实现。
+- **冻结 C3-0 行为边界**：确认文本/流输入、完整 Item + `capture.created` 原子提交、初始投影、Store 级写锁、幂等身份及 actor/UTC 规则；仍未授权或实现 C3。
+- **完成 C3 前稳定化**：公共错误诊断和成功回执改为类型化字段白名单；三个维护脚本对无效 KB 与重复 basename 失败关闭，`index-generator --write` 不再在失败时覆盖 index，Wikilink 验证排除行内代码；新增 1 项错误模型和 7 项脚本回归测试，全量测试增至 93 项。
+- **收口当前文档口径**：当前活跃调用数统一为 A=2、A-fast=1、B=3、C=4；Mode B 保留并填写第 7/8 节但明确不重读源文；历史样例补充不可复原的第 10 节声明并移除旧 SOP-002 执行指令；实践数据改为可审计口径。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
 
@@ -64,6 +67,8 @@
 - `docs/sop-v2-full.md` 策展地图 9→10 节，字数阈值统一
 - `docs/build-plan.md` 阶段 1 更新
 - `docs/adaptive-extraction-plan.md` — 新增修改方案文档
+
+## v2.1 — 2026-07-11
 
 ### 项目工程化补全——prompts/ 目录 + 术语统一 + 文档合并
 

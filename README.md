@@ -6,7 +6,7 @@
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-04):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. The MVP-0 technical design and coding plan are approved. C0–C2 are complete with 85 passing tests; deterministic primitives, configuration, path policy, Manifest identity, Windows initialization locking and durability, safe test-Store initialization, concurrency, and process-crash recovery are implemented. The four capture operations and the production Store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-09):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C2 are complete, and the C3-0 behavior decisions are approved but not implemented. The current suite has 93 passing tests (86 capture-kernel tests and 7 maintenance-script regressions). Deterministic primitives, configuration, path policy, Manifest identity, Windows initialization locking and durability, safe test-Store initialization, concurrency, and process-crash recovery are implemented. The four capture operations and the production Store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -176,11 +176,13 @@ knowledge-flow/
 │       ├── durability.py             C2B durable file and no-replace commit primitives
 │       └── store.py                  C2B safe initialization, reopen, and recovery
 ├── tests/
-│   └── capture/
-│       ├── fixtures/                 Five C1–C2A JSON/YAML golden files
-│       ├── unit/                     C0–C2 unit and platform tests
-│       ├── integration/              C2B initialization and concurrency tests
-│       └── fault/                    C2B process-crash recovery tests (85 total)
+│   ├── capture/
+│   │   ├── fixtures/                 Five C1–C2A JSON/YAML golden files
+│   │   ├── unit/                     C0–C2 unit and platform tests
+│   │   ├── integration/              C2B initialization and concurrency tests
+│   │   └── fault/                    C2B process-crash recovery tests (86 capture tests total)
+│   └── scripts/
+│       └── test_maintenance_scripts.py  7 maintenance-script regressions
 ├── docs/
 │   ├── sop-v2-full.md               Legacy SOP collection (partly superseded)
 │   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
@@ -219,7 +221,7 @@ knowledge-flow/
 ├── templates/
 │   └── SCHEMA-template.md           Reusable knowledge base constitution template
 ├── examples/
-│   ├── curation-map-example.md      Curation map from a 25K-line technical dialogue
+│   ├── curation-map-example.md      Historical 25K-line curation-map example (raw source absent)
 │   └── wiki-page-example.md         Resulting wiki page after curation
 └── archive/
     └── v1.0/                         v1.0 historical archive
@@ -244,7 +246,7 @@ The existing `prompts/sop-001-*` files remain useful for studying curation-map e
 
 ## In Practice
 
-> Battle-tested across 4 cross-domain knowledge bases covering LLM architecture, application development, and curation toolchain design — the [`examples/`](examples/) directory contains a complete curation map and curated output from one 25K-line dialogue.
+> The methodology was informed by work across four cross-domain knowledge bases. Repository-verifiable evidence currently consists of one historical 25K-line curation-map example and one derived wiki-page example in [`examples/`](examples/); the raw source is not included, so these files are illustrative rather than reproducible validation evidence.
 
 ---
 

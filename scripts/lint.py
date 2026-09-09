@@ -11,7 +11,7 @@ SOP-003 知识库 Lint 扫描器（全量健康检查）。
 
   | #  | 检查项                                 | 严重度                            |
   |----|---------------------------------------|----------------------------------|
-  | 1  | 断裂 wikilink + 管道格式校验           | Error                            |
+  | 1  | wikilink 断裂/格式 + 文件名唯一性       | Error                            |
   | 2  | 孤立页面（非 entity，入站链接 0）      | Error                            |
   | 3  | index 完整性（缺失 / 多余条目）        | Warning                          |
   | 4  | Frontmatter（7 字段 / type / title）   | Error（必填缺失）/ Warning（其余） |
@@ -19,7 +19,7 @@ SOP-003 知识库 Lint 扫描器（全量健康检查）。
   | 6  | 页面过大（>300 拆分候选 / >500 红线）  | Warning / Error                  |
   | 7  | 日志轮转（log.md >500 条）             | Notice                           |
   | 8  | entity 孤立（无内容页入链）            | Error                            |
-  | 9  | 图谱过滤规则（graph.json search 字段） | Error                            |
+  | 9  | 图谱过滤规则（graph.json search 字段） | Warning / Error                  |
 
 与 SOP-003 的脚本边界（Agent 职责不在脚本内做）：
   - 检查 3 缺失条目补全、检查 7 日志轮转、检查 9 search 字段补全在
@@ -241,7 +241,11 @@ def check_tag_registry(fm: dict, schema_tags: set) -> list:
     return issues
 
 
-def check_wikilinks(content: str, all_wiki_slugs: set) -> list:
+def check_wikilinks(
+    content: str,
+    all_wiki_slugs: set,
+    ambiguous_stems: set | frozenset = frozenset(),
+) -> list:
     """
     检查 1：wikilink 管道格式与断链。
 
@@ -259,6 +263,9 @@ def check_wikilinks(content: str, all_wiki_slugs: set) -> list:
             issues.append(("error", f"[检查1] wikilink 缺少管道格式: [[{link}]]（期望 [[slug|title]]）"))
             continue
         target = wikilink_target_slug(link)
+        if target in ambiguous_stems:
+            issues.append(("error", f"[检查1] wikilink 目标不唯一: [[{link}]] → '{target}' 在多个目录中存在"))
+            continue
         found = any(target == slug or target == Path(slug).stem for slug in all_wiki_slugs)
         if not found:
             issues.append(("error", f"[检查1] wikilink 目标不存在: [[{link}]] → '{target}'"))
@@ -369,8 +376,8 @@ def lint(kb_path: str) -> dict:
     log_path = schema_dir / "log.md"
     obsidian_dir = kb / ".obsidian"
 
-    if not wiki_dir.exists():
-        return {"kb_path": str(kb), "error": "wiki/ 目录不存在"}
+    if not wiki_dir.is_dir():
+        return {"kb_path": str(kb), "error": "wiki/ 目录不存在或不是目录"}
 
     schema_tags = load_schema_tags(schema_path)
     index_slugs = load_index_slugs(index_path)
@@ -378,15 +385,23 @@ def lint(kb_path: str) -> dict:
     # 预读全部页面；slug 集合含完整相对路径与纯文件名两种形式（断链解析用）
     wiki_files = sorted(wiki_dir.rglob("*.md"))
     pages = {}
-    pages_by_stem = {}   # {文件名: 完整相对路径}，index 完整性比对用
-    all_wiki_slugs = set()
+    stem_paths = defaultdict(list)
     for f in wiki_files:
         rel = str(f.relative_to(wiki_dir).with_suffix("")).replace("\\", "/")
         content = f.read_text(encoding="utf-8-sig")
         pages[rel] = {"content": content, "fm": parse_frontmatter(content)}
-        all_wiki_slugs.add(rel)
-        all_wiki_slugs.add(Path(rel).stem)
-        pages_by_stem[Path(rel).stem] = rel
+        stem_paths[Path(rel).stem].append(rel)
+
+    ambiguous_stems = {
+        stem for stem, paths in stem_paths.items() if len(paths) > 1
+    }
+    pages_by_stem = {
+        stem: paths[0]
+        for stem, paths in stem_paths.items()
+        if len(paths) == 1
+    }
+    all_wiki_slugs = set(pages)
+    all_wiki_slugs.update(pages_by_stem)
 
     results = {
         "kb_path": str(kb),
@@ -404,6 +419,16 @@ def lint(kb_path: str) -> dict:
             results["warnings"].append(entry)
         else:
             results["notices"].append(entry)
+
+    for stem in sorted(ambiguous_stems):
+        locations = ", ".join(stem_paths[stem])
+        for rel in stem_paths[stem]:
+            add(
+                "error",
+                rel,
+                f"[检查1] wiki 文件名不唯一: '{stem}' 同时存在于 {locations}；"
+                "basename-only Wikilink 无法无歧义解析",
+            )
 
     # 第一遍：入链映射（哪些页面被哪些页面引用）
     inbound = defaultdict(set)
@@ -423,7 +448,11 @@ def lint(kb_path: str) -> dict:
         if schema_tags:
             for severity, msg in check_tag_registry(fm, schema_tags):
                 add(severity, rel, msg)
-        for severity, msg in check_wikilinks(content, all_wiki_slugs):
+        for severity, msg in check_wikilinks(
+            content,
+            all_wiki_slugs,
+            ambiguous_stems,
+        ):
             add(severity, rel, msg)
         for severity, msg in check_page_lines(content):
             add(severity, rel, msg)
@@ -554,6 +583,8 @@ if __name__ == "__main__":
         # 默认模式：人类可读报告
         print(format_report(results, quiet=quiet))
 
-    # 退出码：有 Error 时返回 1，方便 CI/脚本判断
+    # 退出码：致命前置条件为 2；扫描检出 Error 为 1。
+    if "error" in results:
+        sys.exit(2)
     if results.get("errors"):
         sys.exit(1)

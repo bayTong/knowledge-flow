@@ -21,6 +21,7 @@ Index.md 自动生成器 —— 从 wiki/ 目录结构自动生成索引文件�
 免责：
   `--write` 全量重生成会覆盖 index.md 中的手工维护内容（人工摘要、
   手工排序）。建议与 git 配合使用——重生成后 git diff 审阅，必要时回滚。
+  `wiki/` 缺失、类型错误或存在重复 basename 时失败关闭，不创建或覆盖 index。
 
 用法：
   python scripts/index-generator.py /path/to/kb          # 预览（stdout）
@@ -43,6 +44,10 @@ from datetime import datetime
 # ============================================================
 
 SUMMARY_LIMIT = 80  # 机械摘要的单行截断长度（字符）
+
+
+class IndexGenerationError(RuntimeError):
+    """The requested index cannot be generated without ambiguous output."""
 
 
 def parse_frontmatter(content: str) -> dict:
@@ -130,8 +135,27 @@ def generate(kb_path: str) -> str:
     """
     kb = Path(kb_path)
     wiki_dir = kb / "wiki"
-    if not wiki_dir.exists():
-        return f"# Wiki Index\n\n> wiki/ 目录不存在: {wiki_dir}"
+    if not wiki_dir.is_dir():
+        raise IndexGenerationError("wiki/ 目录不存在或不是目录")
+
+    wiki_files = sorted(wiki_dir.rglob("*.md"))
+    paths_by_stem = {}
+    for f in wiki_files:
+        rel = str(f.relative_to(wiki_dir).with_suffix("")).replace("\\", "/")
+        paths_by_stem.setdefault(f.stem, []).append(rel)
+    duplicates = {
+        stem: paths
+        for stem, paths in paths_by_stem.items()
+        if len(paths) > 1
+    }
+    if duplicates:
+        summary = "; ".join(
+            f"{stem}: {', '.join(paths)}"
+            for stem, paths in sorted(duplicates.items())
+        )
+        raise IndexGenerationError(
+            "wiki/ 中存在重复文件名，无法生成 basename-only Wikilink: " + summary
+        )
 
     # modules = {"01-模块名": [(slug, title, summary), ...]}
     # entities / queries = [(slug, title, summary), ...]
@@ -139,7 +163,7 @@ def generate(kb_path: str) -> str:
     entities = []
     queries = []
 
-    for f in sorted(wiki_dir.rglob("*.md")):
+    for f in wiki_files:
         rel = f.relative_to(wiki_dir)
         parts = rel.parts
         content = f.read_text(encoding="utf-8-sig")
@@ -219,7 +243,11 @@ if __name__ == "__main__":
     kb_path = sys.argv[1]
     do_write = "--write" in sys.argv
 
-    output = generate(kb_path)
+    try:
+        output = generate(kb_path)
+    except IndexGenerationError as exc:
+        print(f"致命错误: {exc}", file=sys.stderr)
+        sys.exit(2)
 
     if do_write:
         index_path = Path(kb_path) / "schema" / "index.md"

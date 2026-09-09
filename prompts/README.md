@@ -1,6 +1,6 @@
 # Prompt 模板使用说明
 
-> **状态说明（2026-09-01）**：SOP-001 系列当前只作为策展地图提取/覆盖审计模板使用，产物应进入 `proposals/curation-maps/` 并停在人工审核处。`sop-002-curator.md` 已暂停执行，不能用于真实 KB 写入，等待新的精确版本绑定、精确 diff、事务和回滚协议。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **状态说明（2026-09-09）**：SOP-001 系列当前只作为策展地图提取/覆盖审计模板使用，产物应进入 `proposals/curation-maps/` 并停在人工审核处。下文调用次数只统计当前活跃的提取/审计调用，不包含已暂停的旧策展写入。`sop-002-curator.md` 已暂停执行，不能用于真实 KB 写入，等待新的精确版本绑定、精确 diff、事务和回滚协议。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 
 本文档说明 `prompts/` 目录下的 LLM-agnostic 提示词模板的使用方式、提取模式选择、覆盖报告机制、以及如何接入不同的 LLM 工具。
 
@@ -24,10 +24,10 @@ if 源文字数 > 10000:
     → 至少模式 B（长文注意力衰减显著）
 
 else if 源文字数 < 3000 且用户确认使用快速路径:
-    → 模式 A-fast（2 次 LLM，覆盖报告为自检）
+    → 模式 A-fast（1 次活跃 LLM 调用，覆盖报告为自检）
 
 else:
-    → 模式 A（默认 3 次 LLM，覆盖报告为独立审计）
+    → 模式 A（默认 2 次活跃 LLM 调用，覆盖报告为独立审计）
 
 人审策展地图时发现遗漏 → 升级到更高模式重新提取整篇。
 ```

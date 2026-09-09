@@ -5,7 +5,7 @@ Wikilink 验证器 —— 专项检查 [[wikilink]] 的目标是否存在。
 与 lint.py 的区别：
   - lint.py 做 SOP-003 全量 9 项检查（断链 / 孤立页面 / index 完整性 / frontmatter /
     标签审计 / 页面过大 / 日志轮转 / entity 孤立 / 图谱过滤），见其文档字符串
-  - link-validator.py 只做 wikilink 专项深度验证
+  - link-validator.py 只做 wikilink 专项深度验证，并拒绝导致 basename 链接歧义的重名页面
   - 适合只想快速修断链时使用——更快、更聚焦
 
 用法：
@@ -30,7 +30,7 @@ from collections import defaultdict
 
 def extract_wikilinks(content: str) -> list[tuple[str, str, str]]:
     """
-    从 markdown 正文中提取所有 [[wikilink]]，排除代码块。
+    从 markdown 正文中提取所有 [[wikilink]]，排除代码块与行内代码。
 
     返回三元组列表：
       (原始链接, 目标 slug, 显示文本)
@@ -51,7 +51,8 @@ def extract_wikilinks(content: str) -> list[tuple[str, str, str]]:
             continue
         if in_code_block:
             continue
-        for match in re.finditer(r"\[\[([^\]]+)\]\]", line):
+        text = re.sub(r"`[^`]*`", "", line)
+        for match in re.finditer(r"\[\[([^\]]+)\]\]", text):
             raw = match.group(1)
             # 跳过外部 URL
             if raw.startswith("http://") or raw.startswith("https://"):
@@ -104,17 +105,37 @@ def validate(kb_path: str) -> dict:
     """
     kb = Path(kb_path)
     wiki_dir = kb / "wiki"
-    if not wiki_dir.exists():
-        return {"error": "wiki/ 目录不存在"}
+    if not wiki_dir.is_dir():
+        return {"kb_path": str(kb), "error": "wiki/ 目录不存在或不是目录"}
 
     # 建立页面索引：两种 key 形式都支持匹配
     #   "01-模块/页面名"（完整相对路径）
     #   "页面名"（纯文件名，用于只有文件名的 wikilink）
+    wiki_files = sorted(wiki_dir.rglob("*.md"))
+    pages_by_stem = defaultdict(list)
     all_pages = {}
-    for f in sorted(wiki_dir.rglob("*.md")):
+    for f in wiki_files:
         rel = str(f.relative_to(wiki_dir).with_suffix("")).replace("\\", "/")
         all_pages[rel] = f
-        all_pages[f.stem] = f
+        pages_by_stem[f.stem].append((rel, f))
+
+    duplicate_pages = [
+        {
+            "slug": stem,
+            "paths": [rel for rel, _ in pages],
+        }
+        for stem, pages in sorted(pages_by_stem.items())
+        if len(pages) > 1
+    ]
+    if duplicate_pages:
+        return {
+            "kb_path": str(kb),
+            "error": "wiki/ 中存在重复文件名，basename-only Wikilink 无法无歧义解析",
+            "duplicates": duplicate_pages,
+        }
+
+    for stem, pages in pages_by_stem.items():
+        all_pages[stem] = pages[0][1]
 
     results = {
         "kb_path": str(kb),
@@ -126,7 +147,7 @@ def validate(kb_path: str) -> dict:
     total = 0
     resolved_count = 0
 
-    for f in sorted(wiki_dir.rglob("*.md")):
+    for f in wiki_files:
         rel = str(f.relative_to(wiki_dir).with_suffix("")).replace("\\", "/")
         content = f.read_text(encoding="utf-8-sig")
         links = extract_wikilinks(content)
@@ -164,7 +185,12 @@ def validate(kb_path: str) -> dict:
 def format_report(results: dict) -> str:
     """将验证结果转为人类可读报告。"""
     if "error" in results:
-        return f"致命错误: {results['error']}"
+        lines = [f"致命错误: {results['error']}"]
+        for duplicate in results.get("duplicates", []):
+            lines.append(
+                f"  - {duplicate['slug']}: {', '.join(duplicate['paths'])}"
+            )
+        return "\n".join(lines)
 
     stats = results["stats"]
     lines = ["=== Wikilink 验证报告 ===", ""]
@@ -226,6 +252,8 @@ if __name__ == "__main__":
     else:
         print(format_report(results))
 
-    # 有未解析链接时退出码为 1，方便 CI 判定
+    # 退出码：致命前置条件为 2；未解析链接为 1。
+    if "error" in results:
+        sys.exit(2)
     if results.get("unresolved"):
         sys.exit(1)

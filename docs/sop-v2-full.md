@@ -1,10 +1,10 @@
-# KnowledgeFlow — 完整 SOP 体系 v2.0
+# KnowledgeFlow — 旧版完整 SOP 体系 v2.2（部分已暂停）
 
 > **状态：Partially Superseded（2026-09-01）**
 > 本文件仍可作为旧版策展地图格式、覆盖审计和知识库维护方法的参考，但不再是全主题权威。捕获、Global Intake、临时 KB、策展地图存放路径和可信写入权限分别以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、[捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)、[Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)及 [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)为准。
 > 旧 SOP-002 允许的自动领域扩展、标签注册和直接 wiki 写入暂停执行，等待绑定精确版本、精确 diff、事务和回滚的新 SOP-002。
 >
-> 版本：v2.0（引入粗读器后的全流程修订）
+> 文档基线：v2.2（含 10 节策展地图与自适应提取；当前执行边界以主题级权威文件为准）
 > 修订时间：2026-07-06
 >
 > **变更摘要：**

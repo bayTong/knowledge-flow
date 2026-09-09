@@ -1,6 +1,6 @@
 # KnowledgeFlow 需求与治理基线
 
-> 状态：Approved Design；治理原则已确认，C1 基础原语已实现但系统尚未完整实现<br>
+> 状态：Approved Design；治理原则已确认，C0–C2 已实现，C3-0 行为已确认但四个捕获操作尚未实现<br>
 > 整理日期：2026-08-31<br>
 > 确认日期：2026-09-01<br>
 > 作用：记录已经对齐的产品目标、治理原则、最小流程和仍待决策项<br>
@@ -335,7 +335,7 @@ knowledge-hub/                 # 可选：只保存 KB 注册表和全局 Intake
 
 主题级优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准。推荐顺序：
 
-1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C2 已完成并通过 85 项自动化测试。下一步仍需明确授权 C3，才实现 `capture_text`。
+1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过。下一步仍需明确授权 C3，才实现 `capture_text`。
 2. 按 C3–C8 逐批验收纯本地文本捕获、读取、追加、恢复和机器适配接口。
 3. 增加人工路由与 SOP-000A 执行边界。
 4. 实证 GBrain 未审核镜像和查询隔离。
