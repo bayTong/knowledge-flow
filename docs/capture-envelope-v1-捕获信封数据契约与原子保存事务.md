@@ -1,9 +1,11 @@
 # Capture Envelope v1：捕获信封数据契约与原子保存事务
 
-> 状态：Approved Design；C1 已实现 Envelope codec/哈希原语，Store 事务尚未实现<br>
+> 状态：Approved Design；C0–C2 与 C3-0 设计已完成，Capture Item 事务尚未实现<br>
 > 整理日期：2026-09-01<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-02<br>
+> C3-0 补充确认日期：2026-09-08<br>
+> 原子 Event 补充确认日期：2026-09-08<br>
 > 适用范围：MVP-0 的文本捕获，以及未来 URL、文件 Payload 必须保持的身份与事务语义<br>
 > 本文只定义数据和事务边界，不代表已经实现
 
@@ -157,6 +159,8 @@ State Event 是状态变化的追加式记录，建议一个事件一个文件�
 
 路由提案和 Route Record 仍由捕获与路由规范定义；Capture Event 只记录它们的引用，不复制全部语义内容。
 
+State Event 不是运行日志。Event 具有稳定 schema 和 `event_id`，属于 Capture Store 的业务事实，用于审计和重建投影；运行日志只用于排障和运维，可以轮转或清理，不能参与身份、幂等或状态恢复。日志可以记录安全的 `event_id` 与错误码来关联 Event，但不得替代 Event，也不得记录正文、原始幂等键、凭据或敏感绝对路径。
+
 ### 4.8 Delivery Request 与 Outbox
 
 Delivery Request 表示本地捕获成功后需要异步执行的机械投递，例如镜像到 GBrain。
@@ -198,22 +202,25 @@ job_id:     job_01991a7e-7b23-7eba-b6e4-0f4d5eb03862
 
 ### 5.3 幂等键
 
-入口可提供 `idempotency_key`。服务端按以下逻辑作用域处理：
+入口可提供 `idempotency_key`。C3 使用无歧义、带域前缀的规则：
 
 ```text
-idempotency_scope = channel_type + channel_instance + operation
-idempotency_identity = sha256(scope + "\n" + idempotency_key)
+scope = <channel.type>:<channel.instance_id>:<operation>
+key_sha256 = sha256("knowledgeflow.idempotency-key.v1\n" + utf8(idempotency_key))
+idempotency_identity = (scope, key_sha256)
 ```
 
 规则：
 
+- `channel.type` 和 `channel.instance_id` 必须分别为 1–64 个小写 ASCII 字母、数字、点、下划线或连字符，不允许冒号、斜杠、反斜杠、空白或换行；`operation` 来自固定枚举，因此 scope 分段无歧义。
+- `idempotency_key` 可以省略；提供时必须是非空字符串，UTF-8 编码不超过 512 bytes。
 - 同一作用域、同一幂等身份且请求指纹相同，返回原 `event_id + capture_id + version`。
 - 同一幂等键若对应不同请求指纹，即使 Payload 字节相同但明确用户意图不同，也返回 `idempotency_conflict`，不能静默采用任一请求。
 - 原始幂等键默认不落盘，只保存哈希；外部消息 ID 如需审计，单独存放在来源字段中。
 - 入口不提供幂等键时，每次请求按新的主动保存处理。
 - 内容哈希不是幂等键，不能单独用来吞掉 Capture Event。
 
-`idempotency.key_sha256` 是为了查询重试记录而保存的单向键摘要，目的只是避免落盘原始幂等键。它不描述 Payload、整包输入、请求内容或 Envelope，因此不计入第 8.6 节的四类核心哈希。
+`idempotency.key_sha256` 是按上述带域前缀规则生成的单向键摘要，目的只是避免落盘原始幂等键。幂等身份由 `scope + key_sha256` 二元组表达；它不描述 Payload、整包输入、请求内容或 Envelope，因此不计入第 8.6 节的四类核心哈希。
 
 ## 6. 原件保真等级
 
@@ -229,10 +236,11 @@ idempotency_identity = sha256(scope + "\n" + idempotency_key)
 
 ### 6.2 `channel-exact`
 
-适用于入口已经解码成字符串的文本消息。
+适用于入口已经解码成字符串的文本消息，或经严格 UTF-8 增量校验的二进制文本流。
 
-- 精确保留渠道 API 交付给 KnowledgeFlow 的字符序列。
+- 字符串精确保留渠道 API 交付给 KnowledgeFlow 的字符序列；字节流精确保留通过严格 UTF-8 校验的输入字节。
 - 以 UTF-8、无 BOM 的方式写入 Payload 文件。
+- 输入开头的 UTF-8 BOM 或字符串 `U+FEFF` 拒绝，不静默删除。
 - 不做 Unicode 规范化、trim、换行转换或自动补标题。
 - 不能声称恢复渠道在解码前的网络字节。
 
@@ -393,9 +401,13 @@ Envelope 顶层采用“字段存在，但值可以按 schema 为 `null`”的�
 ### 8.3 时间语义
 
 - `received_at`：KnowledgeFlow 开始接收请求的服务端 UTC 时间。
-- `captured_at`：服务端在生成最终 Envelope、准备提交该版本时固定的 UTC 记录时间。真正完成原子 rename 的时间写入后续 `capture.created` 事件的 `occurred_at`，避免让提交前生成的 Envelope 声称一个尚未发生的完成时刻。
+- `captured_at`：服务端在生成最终 Envelope、准备提交该版本时固定的 UTC 记录时间。
+- `capture.created.occurred_at`：在创建 Event 写入 staging、最终 flush 与原子 rename 前固定，表示本次创建事件的逻辑发生时间；Event 只有随整个 Item rename 成功后才成为正式可见事实。它不宣称是底层文件系统完成 rename 的精确物理时刻。
 - 渠道提供的消息时间另存为 `channel.source_created_at`，不得冒充本地捕获时间。
-- 所有机器时间使用带 `Z` 的 ISO-8601 UTC；UI 可以按用户时区展示。
+- 核心生成的机器时间固定为带 `Z`、毫秒精度的 UTC：`YYYY-MM-DDTHH:MM:SS.mmmZ`；UI 可以按用户时区展示。
+- `channel.source_created_at` 可以为 `null`；非空时必须已经符合上述规范 UTC 格式，C3 不猜测时区或静默改写时间。
+- MVP-0 是单用户本地模式，核心固定写入 `actor.type: user` 与 `actor_id: local-user`；普通请求不能覆盖可信 actor。多用户或远程身份必须通过后续独立可信身份上下文设计。
+- `channel.external_ref` 可以为 `null`；非空时 UTF-8 编码不超过 2048 bytes，只作为来源证据并参与 Request Fingerprint，不参与路径生成。
 
 ### 8.4 用户意图边界
 
@@ -550,6 +562,35 @@ updated_at: "2026-09-01T02:10:12.456Z"
 - 投影中的版本和哈希必须能在不可变版本目录中找到。
 - 投影与事件不一致时，以不可变版本和追加事件为准，投影标记 `needs-rebuild` 后重建。
 - GBrain page ID、Git commit 和错误次数等异步信息只能进入投影或事件，不能回写旧 Envelope。
+- C3 初始投影固定使用第 9.1 节的完整字段和值域：`durable`、`unassigned`、`unreviewed-capture`、`not-requested` 与 `uncommitted`；此时不执行路由、GBrain 或 Git。
+- `capture.yaml` 使用受限 YAML、严格 `knowledgeflow.capture-state` v1 schema 和 schema-defined 字段顺序。缺失或损坏只产生重建需求，不代表不可变原件丢失。
+
+### 9.3 `capture.created` State Event v1
+
+C3 只冻结创建事件，不提前设计追加版本、路由、GBrain 或归档事件的字段：
+
+```yaml
+schema: "knowledgeflow.capture-event"
+schema_version: 1
+event_id: "evt_01991a7e-7b21-72ae-9ef5-4f45249ad332"
+event_type: "capture.created"
+capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+version: 1
+envelope_sha256: "sha256:<64位小写十六进制>"
+occurred_at: "2026-09-08T00:00:00.000Z"
+actor:
+  type: "user"
+  actor_id: "local-user"
+```
+
+固定规则：
+
+- 路径是所属 Item 下的 `events/<event-id>.yaml`，一个 Event 一个文件，只追加、不覆盖。
+- 使用受限 YAML、严格 `knowledgeflow.capture-event` v1 schema、上述字段顺序和规范发射。
+- `event_id`、actor 必须与 Envelope 一致；`capture_id + version + envelope_sha256` 必须指向同一 staging Item 内已经回读验证通过的版本。
+- `occurred_at` 在最终 flush 与 rename 前写入；Event 与版本一起提交。Event 写入、schema 或交叉引用失败时不得提交 Item，不能在提交后再猜测原始时间。
+- 同一事件文件重试时，规范字节完全一致才视为幂等；内容不同则报告完整性或身份冲突，不能覆盖。
+- Event 是持久业务历史；运行日志可以引用其 `event_id`，但不能替代、重建或删除 Event。
 
 ## 10. 创建捕获的原子事务
 
@@ -557,7 +598,7 @@ updated_at: "2026-09-01T02:10:12.456Z"
 
 最小输入：
 
-- 一个或多个 Payload 字节/字符串。
+- 一个或多个 Payload 字节/字符串；C3 文本允许 Python `str` 或提供 `read(size)` 的二进制 UTF-8 流，两者共享同一个有界分块写入器。
 - 渠道信息。
 - 可选 `idempotency_key`。
 - 可选、但必须来自用户明确表达的 `user_intent`。
@@ -570,101 +611,67 @@ updated_at: "2026-09-01T02:10:12.456Z"
 - Git commit 或 push。
 - embedding。
 
-### 10.2 事务步骤
+### 10.2 C3 创建事务步骤
 
 ```text
-T0 接收并做机械校验
-  -> T1 获取幂等/创建锁
-  -> T2 查询已有幂等结果
-  -> T3 分配 event_id 与 capture_id
-  -> T4 在同盘 .staging 写入原始 Payload
-  -> T5 计算哈希并写 envelope.yaml
-  -> T6 flush + 回读校验
-  -> T7 原子 rename 为 versions/000001
-  -> T8 写追加事件并重建/更新 capture.yaml
-  -> T9 登记可重建 outbox 投影
-  -> T10 返回成功回执
+T0 校验机械元数据，建立本事务独占 staging
+  -> T1 单次流式写入正文，严格校验 UTF-8、大小并计算候选哈希
+  -> T2 生成 Payload Set 与 Request Fingerprint
+  -> T3 获取 Store 级 Windows 内核写锁
+  -> T4 扫描不可变 Envelope，执行幂等命中或冲突判断
+  -> T5 分配 capture_id/event_id，构造包含创建 Event 的完整 staging Item
+  -> T6 写入并封存 Envelope 与 capture.created，flush、回读和复算哈希/引用
+  -> T7 将完整 Item 原子 rename 到最终 <capture-id> 目录并回读版本与 Event
+  -> T8 原子写 capture.yaml；投影失败只产生 repair warning
+  -> T9 释放内核锁，返回结构化回执
 ```
 
-#### T0：机械校验
+#### T0–T2：机械校验、单次 staging 与请求指纹
 
-允许：
+- staging 必须由本事务建立所有权标记，并与 `items/` 位于同一文件系统。
+- `str` 按 UTF-8 分块编码；二进制流按严格 UTF-8 增量校验，不要求 seek 或重复读取。
+- 空文本、BOM、非法 UTF-8 和超过配置安全上限分别按操作契约拒绝；只含空白的非空文本允许保存。
+- 写入过程中同步计算候选 Payload 哈希；Request Fingerprint 形成后才能进行幂等判断。最终成功仍必须依据 staging 与最终文件的磁盘回读结果，不能只信任入口或候选哈希。
+- 允许机械检查类型、大小、路径与编码；禁止判断内容价值、自动改标题、修正文风、清洗观点或因模型分类失败而拒绝捕获。
 
-- 输入是否为空。
-- 数量和大小上限。
-- MIME 嗅探。
-- 路径安全检查。
-- 编码能否按声明处理。
+#### T3：Store 级写锁
 
-禁止：
+- 固定锁文件为 `<capture-root>/journal/capture-write.lock`，复用 C2 已验证的 Windows 内核排他锁。
+- 默认最多等待 10 秒；超时返回可重试的 `capture_store_unavailable + commit_state: not-committed`。
+- 锁文件可以长期存在，文件存在不表示当前持锁。进程退出或崩溃后由操作系统释放内核锁；不得按文件年龄、PID 或存在性删除所谓陈旧锁。
+- C3 先采用一个 Store 级写锁并持有到提交后投影 T8 尝试结束；细粒度锁和并行优化留到后续批次。
 
-- 判断内容值不值得保存。
-- 自动改标题、修正文风或清洗观点。
-- 因模型分类失败而拒绝捕获。
+#### T4：幂等查询
 
-#### T1：获取锁
+- C3 在写锁内扫描不可变 Envelope；不创建新的幂等索引磁盘格式。
+- 同一幂等身份和请求指纹命中已提交版本时，安全清理本事务拥有的未提交 staging，并返回原回执。
+- 同一幂等身份但请求指纹不同，返回 `idempotency_conflict`；不得覆盖或产生第二个 Item。
+- 没有幂等键时，每次调用都是新的主动保存。
 
-- 至少对 `idempotency_identity` 加互斥锁。
-- 无幂等键时，对新 ID 分配和目标目录建立过程加必要的短锁。
-- 锁文件不是业务真源；进程崩溃后的陈旧锁必须有可验证的清理规则。
+#### T5–T6：身份、Envelope、Event 与提交前验证
 
-#### T2：幂等查询
+- 幂等未命中后分配 UUIDv7 `event_id` 和 `capture_id`；目录分片年月来自服务端 `received_at`。
+- 在 staging 中构造完整 Item shell：版本下的 `envelope.yaml`、`payloads/primary.txt`，以及 Item 下的 `events/<event-id>.yaml`。
+- 记录实际 `byte_size` 与哈希，生成规范 Envelope；MVP-0 的 `delivery_requests` 固定为空。
+- 在最终提交前生成规范 UTC `occurred_at`，写入第 9.3 节的 `capture.created`；其 `event_id`、actor 和版本三元组必须与 Envelope 严格一致。
+- flush Payload、Envelope 与 Event，并从 staging 磁盘重新读取，复算大小、全部哈希和交叉引用；任一不一致不得进入提交。
 
-- 若找到同 key 且请求指纹相同的已提交版本，直接返回原回执。
-- 若找到同 key 但请求指纹不同，返回 `idempotency_conflict`。
-- 为生成请求指纹，可以在不落盘的前提下先对入口字节做流式候选哈希；最终成功仍必须使用 staging 文件的回读哈希，不能信任调用方声明或仅信任第一次读取。
-- 查询不能只依赖可丢失索引；索引缺失时必须能扫描不可变 Event/Envelope 恢复。
+#### T7：原子提交完整新 Item
 
-#### T3：分配身份
+- `items/YYYY/MM/` 可以机械创建；年月目录不是 Capture Item，只有最终 `<capture-id>/` 表示可见 Item。
+- 使用同盘、目标不得已存在的原子 rename，把完整 staging `item/` 移动到 `items/YYYY/MM/<capture-id>/`，不提前在最终区域创建 `<capture-id>/versions/` 半成品。
+- rename 后 `versions/000001/` 与已提交 Event 均不可变；在平台允许时 flush 最终父目录元数据，并从最终路径回读 Envelope、Payload 与 Event。
+- 只有可以证明最终版本和匹配的创建 Event 同时存在且通过校验时才进入 `committed`；rename 前失败为 `not-committed`，rename 附近无法判断时为 `unknown`。
 
-- 分配 UUIDv7 `event_id` 和 `capture_id`。
-- 目录分片年月来自服务端 `received_at`，不从用户内容推断。
-- 不提前向调用方确认成功。
+#### T8：状态投影
 
-#### T4：写入 staging
+- 最终版本和创建 Event 回读成功后，原子写入第 9.1 节的 `capture.yaml`。
+- 投影失败时，已提交版本与 Event 可以重建它；返回成功加 `projection_needs_rebuild` 警告，不修改或撤销版本/Event。
+- C3 没有 Delivery Request，不生成 outbox job；未来 outbox 仍是从 Envelope 可重建的提交后投影。
 
-- staging 必须与最终版本目录位于同一文件系统。
-- 文件 Payload 复制字节，不保存指向临时上传路径的唯一引用。
-- 原始文件名只作为元数据；实际存储名由系统生成，不能包含路径穿越片段。
-- 文本按保真等级写入，不自动 trim、换行转换或 Unicode 规范化。
+#### T9：释放与回执
 
-#### T5：生成 Envelope
-
-- 对 staging 中已经实际写入的字节计算 SHA256。
-- 记录实际 `byte_size`，不能只相信入口声明。
-- 生成规范化 `envelope.yaml` 和 `envelope_sha256`。
-- 只有显式启用某个异步投递目标时，才把对应请求写入 Envelope 的 `delivery_requests`，使 outbox 可重建；MVP-0 不接 GBrain，因此该列表为空。
-
-#### T6：持久化与回读
-
-- flush 所有 Payload 和 Envelope。
-- 在平台允许时 flush 目录元数据。
-- 从磁盘重新读取，而不是使用内存中的原输入，复算大小与 SHA256。
-- 任一不一致均不得进入提交步骤。
-
-#### T7：提交不可变版本
-
-- 使用同盘原子 rename，把完整 staging 目录移动到最终 `versions/000001/`。
-- 最终目录已存在时不得覆盖；转入幂等或冲突检查。
-- rename 完成后，该目录被视为不可变。
-- 在平台允许时 flush 最终父目录元数据，并从最终路径重新读取 Envelope 和全部 Payload，完成提交后的最终校验。
-
-#### T8：事件和投影
-
-- 追加 `capture.created` 事件，引用完整版本三元组。
-- 原子写入或修复 `capture.yaml`。
-- 创建事件或投影写入失败时，已提交 Envelope 中的 `event_id` 和幂等信息仍可用于重建；返回 repair-needed 警告，不修改版本目录。
-- 如果投影更新失败但不可变版本已经提交，捕获仍是 durable；返回警告并安排重建，不能谎报“完全没有保存”。
-
-#### T9：Outbox 投影
-
-- 根据 Envelope 中实际存在的 Delivery Request 生成 pending job；列表为空时不生成任务。
-- 如果 outbox 写入失败，不撤销已提交原件。
-- 后台扫描器可从 Envelope 重建遗漏 job，因此失败只产生 `repair-needed` 警告。
-
-#### T10：返回回执
-
-只有 T7 成功且版本回读校验通过，才能返回 `saved: true`。
+只有 T7 成功且最终版本、Envelope、Payload 与创建 Event 回读校验通过，才能返回 `saved: true`。实现只能清理由本事务明确拥有且尚未提交的 staging，不能按模糊名称或文件年龄删除其他进程的目录。
 
 回执至少包含：
 
@@ -716,7 +723,7 @@ warnings: []
 
 | 故障点 | 结果 | 恢复方式 |
 |---|---|---|
-| staging 写入前崩溃 | 没有捕获成功 | 清理陈旧锁，重试 |
+| staging 写入前崩溃 | 没有捕获成功 | 操作系统释放内核锁；按所有权规则处理本事务 staging 后重试，不删除持久锁文件 |
 | staging 写入中崩溃 | 只有不完整临时目录 | 启动时隔离/清理，不返回成功 |
 | 回读校验失败 | 不提交 | 保留诊断后重试 |
 | rename 前崩溃 | 最终版本不存在 | 同幂等键重试 |
@@ -971,9 +978,9 @@ v1 推荐暂不引入新的业务数据库：
 
 本文虽已获批，仍不应立即开发完整捕获系统。当前推荐顺序：
 
-1. C0–C2 已完成并通过 85 项自动化测试；Envelope 的 schema、受限 YAML codec、自哈希，以及配置、路径、Manifest、Store 初始化和初始化崩溃恢复基础均已通过测试。
+1. C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过；Envelope 的 schema、受限 YAML codec、自哈希，以及配置、路径、Manifest、Store 初始化和初始化崩溃恢复基础均已通过测试。
 2. 当前实现不包含 Capture Item/版本事务、State Event、幂等索引或四个操作，因此本文整体仍不是 `Effective`。
-3. 用户明确授权 C3 后，才可在测试持有的 Store 中实现 `capture_text`；不得创建生产 Store。
+3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批并同步进本文；C3 编码仍需用户另行明确授权，且只可在测试持有的 Store 中实现 `capture_text`，不得创建生产 Store。
 4. 后续按 C4–C6 逐批验收读取、追加、4 MiB 阈值两侧、64 MiB 上限、迁移和业务事务崩溃恢复；此阶段不接 GBrain。
 5. 本地链路验收后，再把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. 最后分别设计 URL 和文件 Payload 的入口门禁。

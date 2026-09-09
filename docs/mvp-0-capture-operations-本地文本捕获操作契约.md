@@ -1,7 +1,8 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；C0–C2 初始化基础已完成，四操作尚未实现<br>
+> 状态：Approved Design；C0–C2 已完成，C3-0 行为已确认，四操作尚未实现<br>
 > 确认日期：2026-09-02<br>
+> C3-0 补充确认日期：2026-09-08<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
 > 边界：本文定义调用方可见的操作，不代表代码已经实现，也不创建任何本地目录
 
@@ -24,6 +25,7 @@ MVP-0 只需要四个机械操作：
 
 - [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)决定 MVP 边界和功能门禁。
 - [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)继续负责身份、Envelope、哈希、不可变版本、幂等和原子事务，是底层权威。
+- [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)冻结 `capture_text` 编码前六项补充边界，已于 2026-09-08 获批并同步进本文。
 - [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)负责 MVP-1 以后如何选择 KB 和处理方式。
 - 本文只把底层事务收敛为四个调用方可以理解和测试的操作。
 
@@ -109,15 +111,16 @@ capture:
 
 ### 3.1 文本保真
 
-- 输入是入口已经解码完成的字符串。
-- 以 UTF-8、无 BOM 写入 `payloads/primary.txt`。
+- 核心操作接受 Python `str` 或提供 `read(size)` 的二进制 UTF-8 流；两者共享同一个有界分块写入器和保存事务。
+- `str` 按 UTF-8 分块编码；字节流执行严格 UTF-8 增量校验，不要求 seek 或重复读取。
+- 以 UTF-8、无 BOM 写入 `payloads/primary.txt`；开头的 UTF-8 BOM 字节或字符串 `U+FEFF` 拒绝，不静默删除。
 - 不做 `trim`、Unicode 规范化、换行转换、错字修正、摘要或自动标题。
 - 空字符串拒绝；只包含空格或换行的非空字符串仍允许保存，因为系统不判断内容价值。
 - 4 MiB 是内联传输阈值，不是存储上限。
-- 不超过 4 MiB 时允许以内联字符串进入事务；超过 4 MiB 时，同一个 `capture_text` 操作必须改用流式 staging 写入。
+- 不超过 4 MiB 时允许走内联路径；超过 4 MiB 时，同一个 `capture_text` 操作必须走有界分块 staging。阈值只改变内部传输方式，不改变 Item、Payload、哈希或回执身份。
 - MVP-0 单文本版本的默认安全上限是 64 MiB UTF-8 字节，可由机器本地配置调整。
 - 超过配置安全上限时返回 `text_too_large`；不得截断、摘要、自动拆成多个 Capture Item 或虚报成功。
-- 大文本仍保存为一个完整的 `payloads/primary.txt`。流式实现必须保持 UTF-8 字节顺序，并以最终落盘完整字节计算哈希。
+- 大文本仍保存为一个完整的 `payloads/primary.txt`。流式实现必须保持 UTF-8 字节顺序，以一次读取写入本事务 staging，并以 staging 和最终路径回读的完整字节计算哈希。
 
 本文中的 MiB 使用二进制定义：`1 MiB = 1,048,576 bytes`。配置必须满足 `0 < inline_text_threshold_bytes <= max_text_version_bytes`；修改上限只影响后续请求，不改变既有版本。
 
@@ -154,6 +157,8 @@ channel:
 
 界面入口可以自动填入自身渠道信息，不要求用户手工输入。
 
+MVP-0 的可信操作者不由普通请求传入，核心固定为 `actor.type: user`、`actor_id: local-user`。`channel.type` 和 `channel.instance_id` 分别限制为 1–64 个小写 ASCII token 字符；`source_created_at` 非空时必须是带 `Z`、毫秒精度的规范 UTC，`external_ref` 非空时最多 2048 UTF-8 bytes。
+
 `user_intent` 只记录用户在这次请求中明确表达的目标 KB、处理方式或新 KB 名称。MVP-0 只保存这份证据，不执行路由，也不运行 SOP。
 
 ### 3.4 幂等
@@ -163,6 +168,8 @@ channel:
 - `append_capture_version` 必须提供新的 `idempotency_key`，避免“提交成功但回执丢失”时重复追加版本。
 - 同一作用域、同一 key、相同请求指纹返回原回执；同一 key、不同指纹返回 `idempotency_conflict`。
 - 内容哈希不是幂等键；相同内容可以被用户主动保存为两个不同 Capture Item。
+- 提供的 key 必须非空且不超过 512 UTF-8 bytes；原始 key 不落盘。规范 `scope`、带域前缀的 `key_sha256` 及二元组身份规则以 Capture Envelope v1 第 5.3 节为准。
+- C3 在 Store 级写锁内扫描不可变 Envelope，不引入新的幂等索引磁盘格式；索引只作为后续可重建的性能优化。
 
 ### 3.5 统一失败结构
 
@@ -225,19 +232,21 @@ user_intent:
   requested_new_kb_name: null
 ```
 
+以上展示 `str` 内联形态。二进制流形态使用相同的渠道、幂等和 `user_intent` 元数据，但正文通过受控 `read(size)` 流提供，不嵌入 YAML/JSON，也不要求流可回退；两种形态不能在同一请求中同时提供。
+
 字段规则：
 
 | 字段 | 必填 | 规则 |
 |---|---:|---|
-| `text` | 是 | 非空文本；按 UTF-8 计算不超过配置安全上限，超过内联阈值时由适配器流式传输 |
-| `channel.type` | 是 | 由入口适配器填写，不从正文推断 |
-| `channel.instance_id` | 是 | 标识具体入口实例 |
-| `channel.external_ref` | 否 | 外部消息 ID 等来源引用 |
-| `channel.source_created_at` | 否 | 渠道给出的原消息 UTC 时间；省略时规范化为 `null`，不能冒充本地捕获时间 |
-| `idempotency_key` | 否 | 官方客户端应生成；核心允许主动重复保存 |
+| `text` 或二进制 UTF-8 流 | 二选一 | 非空文本；严格 UTF-8、无 BOM；按落盘字节计算且不超过配置安全上限，超过内联阈值时分块写 staging |
+| `channel.type` | 是 | 由入口适配器填写，不从正文推断；1–64 个规范 token 字符 |
+| `channel.instance_id` | 是 | 标识具体入口实例；1–64 个规范 token 字符 |
+| `channel.external_ref` | 否 | 外部消息 ID 等来源引用；非空时最多 2048 UTF-8 bytes |
+| `channel.source_created_at` | 否 | 渠道给出的原消息规范 UTC 时间；省略时为 `null`，不能冒充本地捕获时间 |
+| `idempotency_key` | 否 | 官方客户端应生成；提供时非空且最多 512 UTF-8 bytes；核心允许主动重复保存 |
 | `user_intent` | 是 | 可以全部为 `null`，只能记录用户明确表达 |
 
-调用方不能传入 `capture_id`、版本号、服务端时间、哈希、模型标题、摘要、标签或可信状态。
+调用方不能传入 `capture_id`、版本号、服务端时间、actor、哈希、模型标题、摘要、标签或可信状态。
 
 ### 4.3 成功回执
 
@@ -258,7 +267,7 @@ gbrain_sync_status: "not-requested"
 warnings: []
 ```
 
-`ok: true` 只要求不可变版本已经原子提交并从最终路径回读校验成功。它不等待模型、KB、Git、GBrain 或备份。
+`ok: true` 要求完整新 Item 已原子提交到最终 `<capture-id>/`，其中不可变版本 1 和匹配的 `capture.created` Event 均已从最终路径回读校验成功。创建 Event 失败发生在提交前，不得报告成功；只有提交后的 `capture.yaml` 投影失败产生 repair warning。回执不等待模型、KB、Git、GBrain 或备份。
 
 ### 4.4 明确不做
 
@@ -499,7 +508,7 @@ warnings: []
 
 - `capture-root` 未配置、不可写或磁盘空间不足时不得返回成功。
 - 超过 64 MiB 默认安全上限时返回 `text_too_large`，不产生部分版本，并且调用方不得丢弃原输入。
-- 在 staging、flush、rename、事件和投影阶段分别注入崩溃，不产生虚假成功。
+- 在 staging、Event/Envelope 封存、flush、整个 Item rename 和提交后投影阶段分别模拟失败；Event 提交前失败不得产生可见 Item，投影失败不得把已提交原件改报为失败。
 - GBrain 完全未安装时，四个操作全部正常工作。
 
 ## 11. 已确认的 MVP-0 默认值
@@ -517,7 +526,10 @@ warnings: []
 | 预览 | 当前正文前 160 个 Unicode code point，纯机械派生 |
 | 创建幂等键 | 核心可选，官方客户端默认生成 |
 | 追加幂等键 | 必填 |
+| C3 创建锁 | 固定 Store 级 Windows 内核锁；`journal/capture-write.lock` 可长期存在，不按文件存在或年龄清理 |
+| C3 原子提交单位 | 新建时提交完整 `<capture-id>` Item 目录；追加版本边界留到 C5 |
+| Event 与日志 | Event 是追加式业务事实并参与重建；运行日志只用于诊断，可轮转，不能替代 Event |
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批。C0–C2 已完成并通过 85 项自动化测试；四操作仍不存在。下一步只有在明确授权 C3 后才实现 `capture_text`，仍只使用测试持有的 Store，不接 GBrain，也不实现路由。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过；四操作仍不存在。下一步只有在另行明确授权 C3 编码后才实现 `capture_text`，仍只使用测试持有的 Store，不接 GBrain，也不实现路由。

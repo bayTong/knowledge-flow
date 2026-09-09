@@ -7,8 +7,9 @@
 > C2B-1 完成日期：2026-09-03<br>
 > C2B-2 完成日期：2026-09-03<br>
 > C2B-3 完成日期：2026-09-04<br>
+> C3-0 行为确认日期：2026-09-08<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；不授权 C3 四个捕获操作、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；不授权 C3 `capture_text`、C4–C5 其余三个捕获操作、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
 ## 0. 结论先行
 
@@ -22,7 +23,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；这不自动授权 C3 四个捕获操作、创建生产目录、提交 Git 或接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批并消除 `capture_text` 编码前的六项行为冲突。这仍不自动授权 C3 编码、创建生产目录、提交 Git 或接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -37,7 +38,7 @@
 - C2B-1 已实现 Windows 初始化内核锁、通用 durability 原语和多进程测试支持。
 - C2B-2 已实现 Capture Store 安全初始化编排、无覆盖配置连接、已有目标分类、保守残片归属和正常多进程并发，并建立 INIT-01–16 集成测试。
 - C2B-3 已实现六个内部初始化故障点（内部 no-op 钩子，公开接口无注入通道）和跨进程崩溃恢复测试，覆盖 FI-01–06。
-- 捕获包已精确锁定 `PyYAML==6.0.3`；自动发现共通过 85 项测试，其中 84 项覆盖 C1–C2，另 1 项为包导入 smoke test。
+- 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试。2026-09-09 稳定化新增 1 项错误模型和 7 项维护脚本回归测试后，全量为 93 项。
 
 ### 1.2 尚不存在
 
@@ -56,7 +57,7 @@
 | Python YAML 依赖 | C0 已在 `pyproject.toml` 锁定 `PyYAML==6.0.3` | 只能经项目受限 codec 使用，不能依赖默认加载/发射行为 |
 | Node.js | 22.22.3 | 可用，但仓库没有 Node 工程 |
 | Bun | 未安装 | 不应成为本地捕获前置条件 |
-| 自动化测试 | C0–C2 自动发现并通过 85 项测试 | 已覆盖确定性基础原语、配置、路径、Manifest、初始化锁、durability、安全 Store 初始化、并发与初始化崩溃恢复；尚无四操作及其故障恢复保障 |
+| 自动化测试 | C0–C2 里程碑 85 项；稳定化后全量 93 项通过 | 已覆盖确定性基础原语、配置、路径、Manifest、初始化锁、durability、安全 Store 初始化、并发、初始化崩溃恢复，以及诊断白名单和维护脚本关键失败语义；尚无四操作及其故障恢复保障 |
 | 生产 `capture-root` | 尚未创建 | 所有实现测试必须使用隔离临时目录 |
 
 这些是 2026-09-02 至 2026-09-04 的本机事实，不是跨机器规范。
@@ -505,11 +506,12 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-D1 | 技术选择基线 | 无 | 已于 2026-09-02 确认，后续实现不得静默偏离 |
 | M0-E1 | 建立隔离 Python 包和测试骨架 | M0-D1 | **已于 2026-09-02 通过：自动发现 1 项测试，包可从 `src/` 导入** |
 | M0-E2 | 配置解析和路径安全 | E1 | **已于 2026-09-03 通过：受限读取、规范写出、绝对解析、禁止目录、Windows 特殊路径和越界测试通过** |
-| M0-E3 | 错误模型、YAML codec 与 golden fixture | E1 | 公共错误/内部原因/警告分层；固定规范发射；危险或不合 schema 的 YAML 被拒绝 |
-| M0-E4 | UUIDv7、时钟、四类哈希和字节计数 | E1 | 固定向量、同毫秒唯一性、时钟回拨、四类 golden 和 4/64 MiB 边界通过 |
-| M0-E5 | 锁与 durability 原语 | E1 | 配置目标锁先于 Store 创建；同盘 staging/rename、原子替换和崩溃钩子可测试 |
-| M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | **C2A 已于 2026-09-03 完成规范 Manifest；`init_capture_store`、完整骨架、并发幂等和配置连接仍属 C2B** |
-| M0-E7 | `capture_text` | E2–E6 | 版本 1、哈希、Envelope、事件、投影和回执闭环 |
+| M0-E3 | 错误模型、YAML codec 与 golden fixture | E1 | **已于 2026-09-02 通过：错误分层、受限 YAML、Envelope schema 与 golden 已实现** |
+| M0-E4 | UUIDv7、时钟、四类哈希和字节计数 | E1 | **已于 2026-09-02 通过：固定向量、时钟回拨、流式字节计数与四类哈希通过** |
+| M0-E5 | 锁与 durability 原语 | E1 | **已于 2026-09-03 通过：Windows 内核锁、同盘无覆盖 rename、flush 与目录能力分级通过** |
+| M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | **已于 2026-09-04 通过：Manifest、完整骨架、并发幂等、配置连接与六点崩溃恢复通过** |
+| M0-D2 | C3 阻塞性行为冻结 | E2–E6 | **已于 2026-09-08 确认：输入、完整 Item/Event 原子提交、投影、写锁、幂等及 actor/时间边界已冻结** |
+| M0-E7 | `capture_text` | M0-D2 | 版本 1、哈希、Envelope、原子创建 Event、投影和回执闭环 |
 | M0-E8 | `get_capture` | E3、E7 | 最新/历史读取与完整性错误闭环 |
 | M0-E9 | `list_captures` | E3、E7 | 稳定排序、游标、预览和 Global Intake 视图闭环 |
 | M0-E10 | `append_capture_version` | E4、E5、E7–E8 | CAS 版本冲突、幂等重试和完整新版本闭环 |
@@ -527,9 +529,11 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 ### 9.1 `capture_text`
 
 - 内联和流式入口共享同一事务实现。
-- 版本目录提交前不返回成功。
+- 完整 Item（版本 1、Envelope、Payload 与匹配的 `capture.created` Event）原子提交并从最终路径回读前不返回成功。
 - 同幂等键重试返回同一 Item/Version/Event。
-- 事件或投影失败发生在版本提交后时返回成功加 repair warning。
+- 创建 Event 在提交前失败时不产生可见 Item；只有提交后的 `capture.yaml` 投影失败返回成功加 repair warning。
+- Store 级 Windows 内核写锁覆盖幂等扫描、完整 Item 提交、最终回读和投影尝试；锁文件存在不等于持锁。
+- 核心固定可信 actor 与规范 UTC 毫秒时间；普通请求不能覆盖 actor，也不能提交非法渠道 token、BOM 或非法 UTF-8。
 - 不生成标题、摘要、标签、KB 或 Delivery Request。
 
 ### 9.2 `get_capture`
@@ -662,6 +666,17 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | CT-11 | 同 key 同请求重试 | 返回同一回执 |
 | CT-12 | 同 key 不同请求 | `idempotency_conflict` |
 | CT-13 | GBrain、网络完全不可用 | 本地保存不受影响 |
+| CT-14 | `str` 与不可 seek 的二进制流输入同一正文 | 共享同一有界事务实现；Payload 与四类核心哈希一致 |
+| CT-15 | UTF-8 BOM、字符串首字符 `U+FEFF` 或非法 UTF-8 | `invalid_input`；不静默删除或替换，无可见 Item |
+| CT-16 | 非法渠道 token、越界 external ref/key、非规范来源时间或调用方 actor | 机械拒绝；核心 actor 固定为 `user/local-user`，时间为规范 UTC 毫秒格式 |
+| CT-17 | 两个进程以同 key、同请求并发 | 最多一个 Item；两者得到同一已提交回执 |
+| CT-18 | Store 写锁等待超过 10 秒 | 可重试 `capture_store_unavailable`，`commit_state: not-committed` |
+| CT-19 | 最终 `<capture-id>` 目标已存在 | 不覆盖；转入可证明的幂等/身份冲突结果 |
+| CT-20 | 正常创建完成 | 最终完整 Item 同时包含可回读、哈希与交叉引用正确的版本 1 和 `capture.created` |
+| CT-21 | Event 写入、schema 或交叉引用在 rename 前失败 | 不提交 Item，不返回成功 |
+| CT-22 | Item 已提交后 `capture.yaml` 投影失败 | 返回成功及 `projection_needs_rebuild`；不可变版本/Event 不变 |
+| CT-23 | rename 边界发生无法证明结果的 I/O 异常 | `commit_state: unknown`；不猜测成功或失败 |
+| CT-24 | 自有 staging 与未知 staging 并存后失败/重试 | 只清理可验证归属于本事务且未提交的 staging，未知对象逐字节不变 |
 
 ### 10.5 `get_capture`
 
@@ -834,4 +849,4 @@ before_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 已完成并通过 85 项自动化测试；安全 Store 初始化、并发和初始化进程崩溃恢复已经实现，但四个捕获操作及其业务事务恢复仍未完成，C3 编码尚未授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过；安全 Store 初始化、并发和初始化进程崩溃恢复已经实现，但四个捕获操作及其业务事务恢复仍未完成，C3 编码尚未授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
