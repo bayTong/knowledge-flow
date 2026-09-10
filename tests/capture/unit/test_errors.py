@@ -12,6 +12,32 @@ from knowledgeflow_capture.errors import (
     PublicErrorCode,
     WarningCode,
 )
+from .._samples import (
+    CAPTURE_ID,
+    EVENT_ID,
+    PAYLOAD_SHA256,
+    SINGLE_PAYLOAD_SET_SHA256,
+)
+
+
+ENVELOPE_SHA256 = (
+    "sha256:d060313160f00566464a47a23f37d530a8cd77a100a6efcda591a7224c17515a"
+)
+
+
+def capture_text_receipt() -> dict[str, object]:
+    return {
+        "capture_id": CAPTURE_ID,
+        "event_id": EVENT_ID,
+        "version": 1,
+        "primary_payload_sha256": PAYLOAD_SHA256,
+        "payload_set_sha256": SINGLE_PAYLOAD_SET_SHA256,
+        "envelope_sha256": ENVELOPE_SHA256,
+        "durability": "durable",
+        "routing_status": "unassigned",
+        "trust_status": "unreviewed-capture",
+        "gbrain_sync_status": "not-requested",
+    }
 
 
 class ErrorModelTest(unittest.TestCase):
@@ -82,7 +108,7 @@ class ErrorModelTest(unittest.TestCase):
 
     def test_projection_failure_is_committed_success_warning(self) -> None:
         result = CommittedWriteResult(
-            receipt={"capture_id": "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"},
+            receipt=capture_text_receipt(),
             warnings=(
                 OperationWarning(code=WarningCode.PROJECTION_NEEDS_REBUILD),
             ),
@@ -94,7 +120,7 @@ class ErrorModelTest(unittest.TestCase):
                 "ok": True,
                 "saved": True,
                 "commit_state": "committed",
-                "capture_id": "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421",
+                **capture_text_receipt(),
                 "warnings": [
                     {
                         "code": "projection_needs_rebuild",
@@ -104,6 +130,112 @@ class ErrorModelTest(unittest.TestCase):
                 ],
             },
         )
+        clean = CommittedWriteResult(receipt=capture_text_receipt()).to_dict()
+        warned = result.to_dict()
+        self.assertEqual(
+            {key: value for key, value in clean.items() if key != "warnings"},
+            {key: value for key, value in warned.items() if key != "warnings"},
+        )
+
+    def test_capture_text_receipt_requires_exact_operation_fields(self) -> None:
+        expected = capture_text_receipt()
+        self.assertEqual(
+            CommittedWriteResult(receipt=expected).to_dict(),
+            {
+                "ok": True,
+                "saved": True,
+                "commit_state": "committed",
+                **expected,
+                "warnings": [],
+            },
+        )
+
+        for missing_field in tuple(expected):
+            incomplete = dict(expected)
+            del incomplete[missing_field]
+            with self.subTest(missing=missing_field), self.assertRaises(ValueError):
+                CommittedWriteResult(receipt=incomplete)
+
+        extra = dict(expected)
+        extra["previous_version"] = None
+        with self.assertRaises(ValueError):
+            CommittedWriteResult(receipt=extra)
+
+        wrong_version = dict(expected)
+        wrong_version["version"] = 2
+        with self.assertRaises(ValueError):
+            CommittedWriteResult(receipt=wrong_version)
+
+    def test_all_public_error_messages_are_exact_contract_values(self) -> None:
+        expected = {
+            PublicErrorCode.CONFIG_NOT_FOUND: "capture configuration was not found",
+            PublicErrorCode.CONFIG_INVALID: "capture configuration is invalid",
+            PublicErrorCode.UNRECOGNIZED_EXISTING_DIRECTORY: (
+                "existing directory is not a recognized capture store"
+            ),
+            PublicErrorCode.UNSUPPORTED_STORE_VERSION: (
+                "capture store schema or layout version is unsupported"
+            ),
+            PublicErrorCode.CONFIG_STORE_CONFLICT: (
+                "capture configuration conflicts with the requested store"
+            ),
+            PublicErrorCode.CAPTURE_STORE_NOT_INITIALIZED: (
+                "capture store is not initialized"
+            ),
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE: "capture store is unavailable",
+            PublicErrorCode.INVALID_INPUT: "request input is invalid",
+            PublicErrorCode.TEXT_TOO_LARGE: "text exceeds the configured safety limit",
+            PublicErrorCode.CAPTURE_NOT_FOUND: "capture was not found",
+            PublicErrorCode.VERSION_NOT_FOUND: "capture version was not found",
+            PublicErrorCode.VERSION_CONFLICT: "capture version changed since it was read",
+            PublicErrorCode.IDEMPOTENCY_CONFLICT: (
+                "idempotency key refers to a different request"
+            ),
+            PublicErrorCode.INTEGRITY_CHECK_FAILED: (
+                "stored data failed integrity verification"
+            ),
+            PublicErrorCode.ATOMIC_COMMIT_FAILED: "atomic capture commit failed",
+        }
+        self.assertEqual(
+            {
+                code: OperationError(code=code, retryable=False).message
+                for code in PublicErrorCode
+                if code is not PublicErrorCode.INTEGRITY_CHECK_FAILED
+            },
+            {
+                code: message
+                for code, message in expected.items()
+                if code is not PublicErrorCode.INTEGRITY_CHECK_FAILED
+            },
+        )
+        self.assertEqual(
+            OperationError(
+                code=PublicErrorCode.INTEGRITY_CHECK_FAILED,
+                cause_code=CauseCode.EVENT_MISSING,
+                retryable=False,
+            ).message,
+            expected[PublicErrorCode.INTEGRITY_CHECK_FAILED],
+        )
+
+    def test_capture_event_integrity_causes_map_only_to_public_integrity_error(self) -> None:
+        for cause in (
+            CauseCode.EVENT_MISSING,
+            CauseCode.EVENT_SCHEMA_INVALID,
+            CauseCode.EVENT_REFERENCE_MISMATCH,
+        ):
+            with self.subTest(cause=cause):
+                error = OperationError(
+                    code=PublicErrorCode.INTEGRITY_CHECK_FAILED,
+                    cause_code=cause,
+                    retryable=False,
+                )
+                self.assertEqual(error.to_dict()["cause_code"], cause.value)
+                with self.assertRaises(ValueError):
+                    OperationError(
+                        code=PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+                        cause_code=cause,
+                        retryable=False,
+                    )
 
     def test_unknown_commit_is_failure_but_never_claims_saved_false(self) -> None:
         result = FailureResult(

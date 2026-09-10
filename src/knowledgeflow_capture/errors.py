@@ -39,6 +39,9 @@ class CauseCode(StrEnum):
     PAYLOAD_SET_HASH_MISMATCH = "payload_set_hash_mismatch"
     ENVELOPE_HASH_MISMATCH = "envelope_hash_mismatch"
     BYTE_SIZE_MISMATCH = "byte_size_mismatch"
+    EVENT_MISSING = "event_missing"
+    EVENT_SCHEMA_INVALID = "event_schema_invalid"
+    EVENT_REFERENCE_MISMATCH = "event_reference_mismatch"
     PAYLOAD_READ_FAILED = "payload_read_failed"
     PAYLOAD_WRITE_FAILED = "payload_write_failed"
     PROJECTION_UPDATE_FAILED = "projection_update_failed"
@@ -85,6 +88,9 @@ _INTEGRITY_CAUSES = frozenset(
         CauseCode.PAYLOAD_SET_HASH_MISMATCH,
         CauseCode.ENVELOPE_HASH_MISMATCH,
         CauseCode.BYTE_SIZE_MISMATCH,
+        CauseCode.EVENT_MISSING,
+        CauseCode.EVENT_SCHEMA_INVALID,
+        CauseCode.EVENT_REFERENCE_MISMATCH,
     }
 )
 _POST_COMMIT_CAUSES = frozenset(
@@ -112,20 +118,17 @@ _DIAGNOSTIC_INTEGER_FIELDS = frozenset(
     }
 )
 _DIAGNOSTIC_DETAIL_FIELDS = _DIAGNOSTIC_INTEGER_FIELDS | {"stage"}
-_RECEIPT_FIELDS = frozenset(
-    {
-        "capture_id",
-        "durability",
-        "envelope_sha256",
-        "event_id",
-        "gbrain_sync_status",
-        "payload_set_sha256",
-        "previous_version",
-        "primary_payload_sha256",
-        "routing_status",
-        "trust_status",
-        "version",
-    }
+_CAPTURE_TEXT_RECEIPT_FIELDS = (
+    "capture_id",
+    "event_id",
+    "version",
+    "primary_payload_sha256",
+    "payload_set_sha256",
+    "envelope_sha256",
+    "durability",
+    "routing_status",
+    "trust_status",
+    "gbrain_sync_status",
 )
 _RESERVED_SUCCESS_KEYS = frozenset({"ok", "saved", "commit_state", "warnings"})
 
@@ -133,20 +136,21 @@ _RESERVED_SUCCESS_KEYS = frozenset({"ok", "saved", "commit_state", "warnings"})
 def _freeze_receipt(value: Mapping[str, object]) -> Mapping[str, object]:
     """Validate the exact metadata-only success receipt shape."""
 
+    if any(type(key) is not str for key in value):
+        raise ValueError("receipt keys must be strings")
+    if set(value) != set(_CAPTURE_TEXT_RECEIPT_FIELDS):
+        raise ValueError("receipt must contain the exact capture_text success fields")
     frozen: dict[str, object] = {}
-    for key, item in value.items():
-        if type(key) is not str or key not in _RECEIPT_FIELDS:
-            raise ValueError(f"receipt contains unsupported field {key!r}")
+    for key in _CAPTURE_TEXT_RECEIPT_FIELDS:
+        item = value[key]
         if key == "capture_id":
             valid = type(item) is str and _CAPTURE_ID.fullmatch(item) is not None
         elif key == "event_id":
             valid = type(item) is str and _EVENT_ID.fullmatch(item) is not None
         elif key.endswith("_sha256"):
             valid = type(item) is str and _SHA256.fullmatch(item) is not None
-        elif key in {"version", "previous_version"}:
-            valid = (
-                item is None and key == "previous_version"
-            ) or (type(item) is int and item > 0)
+        elif key == "version":
+            valid = type(item) is int and item == 1
         elif key == "durability":
             valid = item == "durable"
         elif key == "routing_status":

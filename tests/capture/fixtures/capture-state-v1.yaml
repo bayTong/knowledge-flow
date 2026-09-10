@@ -1,0 +1,24 @@
+schema: "knowledgeflow.capture-state"
+schema_version: 1
+capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+current_version: 1
+current_envelope_sha256: "sha256:d060313160f00566464a47a23f37d530a8cd77a100a6efcda591a7224c17515a"
+durability:
+  status: "durable"
+  verified_at: "2026-09-02T01:02:03.006Z"
+routing:
+  status: "unassigned"
+  target_kb_ids: []
+trust:
+  status: "unreviewed-capture"
+gbrain:
+  sync_status: "not-requested"
+  source_id: null
+  page_slug: null
+  mirrored_version: null
+  mirrored_envelope_sha256: null
+backup:
+  git_status: "uncommitted"
+  commit: null
+  remote_status: "not-requested"
+updated_at: "2026-09-02T01:02:03.006Z"

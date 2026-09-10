@@ -21,11 +21,13 @@ from .models import (
     EnvelopeSeal,
     PayloadSetEntry,
     RequestFingerprint,
+    require_idempotency_key,
 )
 
 
 PAYLOAD_SET_DOMAIN = b"knowledgeflow.payload-set.v1\n"
 REQUEST_FINGERPRINT_DOMAIN = b"knowledgeflow.request-fingerprint.v1\n"
+IDEMPOTENCY_KEY_DOMAIN = b"knowledgeflow.idempotency-key.v1\n"
 DEFAULT_CHUNK_SIZE = 1024 * 1024
 
 
@@ -142,6 +144,13 @@ def request_fingerprint_sha256(request: RequestFingerprint) -> str:
     )
 
 
+def idempotency_key_sha256(value: str) -> str:
+    """Hash a validated raw key with the v1 purpose-separation domain."""
+
+    key = require_idempotency_key(value)
+    return _sha256(IDEMPOTENCY_KEY_DOMAIN + key.encode("utf-8"))
+
+
 def _envelope_payload_set_sha256(envelope: Mapping[str, object]) -> str:
     payloads = envelope["payloads"]
     entries = tuple(
@@ -223,12 +232,14 @@ def verify_envelope_bytes(source: bytes | bytearray | memoryview) -> bool:
 __all__ = [
     "ByteLimitExceeded",
     "DEFAULT_CHUNK_SIZE",
+    "IDEMPOTENCY_KEY_DOMAIN",
     "PAYLOAD_SET_DOMAIN",
     "REQUEST_FINGERPRINT_DOMAIN",
     "envelope_sha256",
     "hash_bytes",
     "hash_stream",
     "hash_utf8_text",
+    "idempotency_key_sha256",
     "payload_set_canonical_json",
     "payload_set_sha256",
     "request_fingerprint_canonical_json",

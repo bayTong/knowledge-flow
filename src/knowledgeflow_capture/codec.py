@@ -13,6 +13,11 @@ from yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
 from yaml.tokens import AliasToken, AnchorToken, DirectiveToken, TagToken
 
 from .ids import IdKind, validate_typed_id
+from .models import (
+    ChannelMetadata,
+    canonical_idempotency_scope,
+    require_canonical_utc_milliseconds,
+)
 
 
 class YamlSyntaxGateError(ValueError):
@@ -25,6 +30,10 @@ class SchemaValidationError(ValueError):
 
 class NonCanonicalYamlError(ValueError):
     """The data is valid but its source bytes are not canonical."""
+
+
+class CaptureEventReferenceError(SchemaValidationError):
+    """A valid capture.created document points at a different Envelope."""
 
 
 SchemaValidator = Callable[[object, str], None]
@@ -137,6 +146,7 @@ _NULLABLE_STRING = NullableSchema(_STRING)
 _POSITIVE_INTEGER = ScalarSchema(int, minimum=1)
 _NONNEGATIVE_INTEGER = ScalarSchema(int, minimum=0)
 _BOOLEAN = ScalarSchema(bool)
+_NULL = ScalarSchema(type(None), allowed_values=(None,))
 _SHA256 = ScalarSchema(
     str,
     pattern=re.compile(r"sha256:[0-9a-f]{64}\Z"),
@@ -161,10 +171,24 @@ def _field(name: str, schema: ValueSchema, *, required: bool = True) -> SchemaFi
 
 _ACTOR_SCHEMA = MappingSchema(
     (
-        _field("type", _STRING),
-        _field("actor_id", _STRING),
+        _field("type", ScalarSchema(str, allowed_values=("user",))),
+        _field("actor_id", ScalarSchema(str, allowed_values=("local-user",))),
     )
 )
+
+
+def _validate_channel(value: object, path: str) -> None:
+    channel = value
+    try:
+        ChannelMetadata(
+            type=channel["type"],
+            instance_id=channel["instance_id"],
+            external_ref=channel["external_ref"],
+            source_created_at=channel["source_created_at"],
+        )
+    except (TypeError, ValueError) as exc:
+        raise SchemaValidationError(f"{path} contains invalid channel metadata") from exc
+
 
 _CHANNEL_SCHEMA = MappingSchema(
     (
@@ -172,7 +196,8 @@ _CHANNEL_SCHEMA = MappingSchema(
         _field("instance_id", _STRING),
         _field("external_ref", _NULLABLE_STRING),
         _field("source_created_at", _NULLABLE_STRING),
-    )
+    ),
+    validator=_validate_channel,
 )
 
 _IDEMPOTENCY_SCHEMA = MappingSchema(
@@ -280,6 +305,15 @@ def _validate_envelope(value: object, path: str) -> None:
     except ValueError as exc:
         raise SchemaValidationError(f"{path} contains an invalid typed UUIDv7") from exc
 
+    for field_name in ("received_at", "captured_at"):
+        try:
+            require_canonical_utc_milliseconds(
+                envelope[field_name],
+                f"{path}.{field_name}",
+            )
+        except ValueError as exc:
+            raise SchemaValidationError(str(exc)) from exc
+
     version = envelope["version"]
     previous = envelope["previous_version"]
     if version == 1 and previous is not None:
@@ -295,6 +329,28 @@ def _validate_envelope(value: object, path: str) -> None:
     payload_ids = {payload["payload_id"] for payload in envelope["payloads"]}
     if evidence["payload_id"] not in payload_ids:
         raise SchemaValidationError(f"{path}.user_intent.evidence payload mismatch")
+
+    idempotency = envelope["idempotency"]
+    if idempotency is not None:
+        operation = idempotency["scope"].rsplit(":", 1)[-1]
+        try:
+            expected_scope = canonical_idempotency_scope(
+                ChannelMetadata(
+                    type=envelope["channel"]["type"],
+                    instance_id=envelope["channel"]["instance_id"],
+                    external_ref=envelope["channel"]["external_ref"],
+                    source_created_at=envelope["channel"]["source_created_at"],
+                ),
+                operation,
+            )
+        except (TypeError, ValueError) as exc:
+            raise SchemaValidationError(
+                f"{path}.idempotency.scope has an invalid canonical form"
+            ) from exc
+        if idempotency["scope"] != expected_scope:
+            raise SchemaValidationError(
+                f"{path}.idempotency.scope does not match channel"
+            )
 
 
 _ENVELOPE_BASE_FIELDS = (
@@ -328,8 +384,124 @@ ENVELOPE_SCHEMA_V1 = MappingSchema(
     validator=_validate_envelope,
 )
 
+
+def _validate_capture_event_schema(value: object, path: str) -> None:
+    event = value
+    try:
+        validate_typed_id(event["event_id"], IdKind.EVENT)
+        validate_typed_id(event["capture_id"], IdKind.CAPTURE)
+        require_canonical_utc_milliseconds(
+            event["occurred_at"],
+            f"{path}.occurred_at",
+        )
+    except ValueError as exc:
+        raise SchemaValidationError(
+            f"{path} contains an invalid capture.created identity or time"
+        ) from exc
+
+
+CAPTURE_EVENT_SCHEMA_V1 = MappingSchema(
+    (
+        _field(
+            "schema",
+            ScalarSchema(str, allowed_values=("knowledgeflow.capture-event",)),
+        ),
+        _field("schema_version", ScalarSchema(int, allowed_values=(1,))),
+        _field("event_id", _EVENT_ID),
+        _field("event_type", ScalarSchema(str, allowed_values=("capture.created",))),
+        _field("capture_id", _CAPTURE_ID),
+        _field("version", ScalarSchema(int, allowed_values=(1,))),
+        _field("envelope_sha256", _SHA256),
+        _field("occurred_at", _STRING),
+        _field("actor", _ACTOR_SCHEMA),
+    ),
+    validator=_validate_capture_event_schema,
+)
+
+_DURABILITY_SCHEMA = MappingSchema(
+    (
+        _field("status", ScalarSchema(str, allowed_values=("durable",))),
+        _field("verified_at", _STRING),
+    )
+)
+_ROUTING_SCHEMA = MappingSchema(
+    (
+        _field("status", ScalarSchema(str, allowed_values=("unassigned",))),
+        _field("target_kb_ids", SequenceSchema(_STRING, maximum_items=0)),
+    )
+)
+_TRUST_SCHEMA = MappingSchema(
+    (
+        _field(
+            "status",
+            ScalarSchema(str, allowed_values=("unreviewed-capture",)),
+        ),
+    )
+)
+_GBRAIN_SCHEMA = MappingSchema(
+    (
+        _field("sync_status", ScalarSchema(str, allowed_values=("not-requested",))),
+        _field("source_id", _NULL),
+        _field("page_slug", _NULL),
+        _field("mirrored_version", _NULL),
+        _field("mirrored_envelope_sha256", _NULL),
+    )
+)
+_BACKUP_SCHEMA = MappingSchema(
+    (
+        _field("git_status", ScalarSchema(str, allowed_values=("uncommitted",))),
+        _field("commit", _NULL),
+        _field("remote_status", ScalarSchema(str, allowed_values=("not-requested",))),
+    )
+)
+
+
+def _validate_capture_state_schema(value: object, path: str) -> None:
+    state = value
+    try:
+        validate_typed_id(state["capture_id"], IdKind.CAPTURE)
+        require_canonical_utc_milliseconds(
+            state["durability"]["verified_at"],
+            f"{path}.durability.verified_at",
+        )
+        require_canonical_utc_milliseconds(
+            state["updated_at"],
+            f"{path}.updated_at",
+        )
+    except ValueError as exc:
+        raise SchemaValidationError(
+            f"{path} contains an invalid projection identity or time"
+        ) from exc
+    if state["durability"]["verified_at"] != state["updated_at"]:
+        raise SchemaValidationError(
+            f"{path}.updated_at must equal durability.verified_at for initial state"
+        )
+
+
+CAPTURE_STATE_SCHEMA_V1 = MappingSchema(
+    (
+        _field(
+            "schema",
+            ScalarSchema(str, allowed_values=("knowledgeflow.capture-state",)),
+        ),
+        _field("schema_version", ScalarSchema(int, allowed_values=(1,))),
+        _field("capture_id", _CAPTURE_ID),
+        _field("current_version", ScalarSchema(int, allowed_values=(1,))),
+        _field("current_envelope_sha256", _SHA256),
+        _field("durability", _DURABILITY_SCHEMA),
+        _field("routing", _ROUTING_SCHEMA),
+        _field("trust", _TRUST_SCHEMA),
+        _field("gbrain", _GBRAIN_SCHEMA),
+        _field("backup", _BACKUP_SCHEMA),
+        _field("updated_at", _STRING),
+    ),
+    validator=_validate_capture_state_schema,
+)
+
 _SCHEMA_REGISTRY: Mapping[tuple[str, int], MappingSchema] = {
     ("knowledgeflow.capture-envelope", 1): ENVELOPE_SCHEMA_V1,
+    ("knowledgeflow.capture-event", 1): CAPTURE_EVENT_SCHEMA_V1,
+    ("knowledgeflow.capture-state", 1): CAPTURE_STATE_SCHEMA_V1,
 }
 
 _ALLOWED_SCALAR_TAGS = frozenset(
@@ -571,7 +743,119 @@ def load_envelope(
     )
 
 
+def _validated_reference_envelope(value: object) -> dict[str, object]:
+    try:
+        return validate_envelope(value)
+    except (TypeError, ValueError, SchemaValidationError) as exc:
+        raise SchemaValidationError("envelope reference is not a valid v1 Envelope") from exc
+
+
+def _validate_capture_event_references(
+    event: Mapping[str, object],
+    envelope: Mapping[str, object],
+) -> None:
+    fields = (
+        ("event_id", "event_id"),
+        ("capture_id", "capture_id"),
+        ("version", "version"),
+        ("envelope_sha256", "envelope_sha256"),
+        ("actor", "actor"),
+    )
+    for event_field, envelope_field in fields:
+        if event[event_field] != envelope[envelope_field]:
+            raise CaptureEventReferenceError(
+                f"$.{event_field} does not match the referenced Envelope"
+            )
+
+
+def validate_capture_event(
+    value: object,
+    *,
+    envelope: object,
+) -> dict[str, object]:
+    """Validate capture.created schema and all immutable Envelope references."""
+
+    normalized = validate_document(value, CAPTURE_EVENT_SCHEMA_V1)
+    normalized_envelope = _validated_reference_envelope(envelope)
+    _validate_capture_event_references(normalized, normalized_envelope)
+    return normalized
+
+
+def dump_capture_event(value: object, *, envelope: object) -> bytes:
+    normalized = validate_capture_event(value, envelope=envelope)
+    return dump_restricted_yaml(normalized, CAPTURE_EVENT_SCHEMA_V1)
+
+
+def load_capture_event(
+    source: str | bytes | bytearray | memoryview,
+    *,
+    envelope: object,
+    require_canonical: bool = True,
+) -> dict[str, object]:
+    normalized = load_restricted_yaml(
+        source,
+        CAPTURE_EVENT_SCHEMA_V1,
+        require_canonical=require_canonical,
+    )
+    normalized_envelope = _validated_reference_envelope(envelope)
+    _validate_capture_event_references(normalized, normalized_envelope)
+    return normalized
+
+
+def _validate_capture_state_references(
+    state: Mapping[str, object],
+    envelope: Mapping[str, object],
+) -> None:
+    fields = (
+        ("capture_id", "capture_id"),
+        ("current_version", "version"),
+        ("current_envelope_sha256", "envelope_sha256"),
+    )
+    for state_field, envelope_field in fields:
+        if state[state_field] != envelope[envelope_field]:
+            raise SchemaValidationError(
+                f"$.{state_field} does not match the referenced Envelope"
+            )
+
+
+def validate_capture_state(
+    value: object,
+    *,
+    envelope: object,
+) -> dict[str, object]:
+    """Validate the complete fixed C3 initial projection and its reference."""
+
+    normalized = validate_document(value, CAPTURE_STATE_SCHEMA_V1)
+    normalized_envelope = _validated_reference_envelope(envelope)
+    _validate_capture_state_references(normalized, normalized_envelope)
+    return normalized
+
+
+def dump_capture_state(value: object, *, envelope: object) -> bytes:
+    normalized = validate_capture_state(value, envelope=envelope)
+    return dump_restricted_yaml(normalized, CAPTURE_STATE_SCHEMA_V1)
+
+
+def load_capture_state(
+    source: str | bytes | bytearray | memoryview,
+    *,
+    envelope: object,
+    require_canonical: bool = True,
+) -> dict[str, object]:
+    normalized = load_restricted_yaml(
+        source,
+        CAPTURE_STATE_SCHEMA_V1,
+        require_canonical=require_canonical,
+    )
+    normalized_envelope = _validated_reference_envelope(envelope)
+    _validate_capture_state_references(normalized, normalized_envelope)
+    return normalized
+
+
 __all__ = [
+    "CAPTURE_EVENT_SCHEMA_V1",
+    "CAPTURE_STATE_SCHEMA_V1",
+    "CaptureEventReferenceError",
     "ENVELOPE_PREHASH_SCHEMA_V1",
     "ENVELOPE_SCHEMA_V1",
     "MappingSchema",
@@ -585,10 +869,16 @@ __all__ = [
     "YamlSyntaxGateError",
     "dump_envelope",
     "dump_envelope_for_hash",
+    "dump_capture_event",
+    "dump_capture_state",
     "dump_restricted_yaml",
     "load_envelope",
+    "load_capture_event",
+    "load_capture_state",
     "load_restricted_yaml",
     "parse_restricted_yaml",
     "validate_document",
+    "validate_capture_event",
+    "validate_capture_state",
     "validate_envelope",
 ]
