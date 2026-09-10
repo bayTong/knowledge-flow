@@ -15,7 +15,10 @@ _SOURCE_ROOT = _REPOSITORY_ROOT / "src"
 if str(_SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(_SOURCE_ROOT))
 
-from knowledgeflow_capture.locking import acquire_initialization_lock
+from knowledgeflow_capture.locking import (
+    _acquire_capture_write_lock,
+    acquire_initialization_lock,
+)
 from knowledgeflow_capture.paths import PathPolicy
 from knowledgeflow_capture.store import (
     _InitFaultPoint,
@@ -46,6 +49,23 @@ def _hold_lock(
 ) -> int:
     _write_marker(started_path)
     with acquire_initialization_lock(config_path):
+        _write_marker(acquired_path)
+        deadline = time.monotonic() + 30.0
+        while not release_path.exists():
+            if time.monotonic() >= deadline:
+                return 2
+            time.sleep(0.01)
+    return 0
+
+
+def _hold_capture_lock(
+    capture_root: Path,
+    started_path: Path,
+    acquired_path: Path,
+    release_path: Path,
+) -> int:
+    _write_marker(started_path)
+    with _acquire_capture_write_lock(capture_root):
         _write_marker(acquired_path)
         deadline = time.monotonic() + 30.0
         while not release_path.exists():
@@ -132,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
     holder.add_argument("started_path", type=Path)
     holder.add_argument("acquired_path", type=Path)
     holder.add_argument("release_path", type=Path)
+    capture_holder = subparsers.add_parser("hold-capture-lock")
+    capture_holder.add_argument("capture_root", type=Path)
+    capture_holder.add_argument("started_path", type=Path)
+    capture_holder.add_argument("acquired_path", type=Path)
+    capture_holder.add_argument("release_path", type=Path)
     initializer = subparsers.add_parser("init-store")
     initializer.add_argument("owned_root", type=Path)
     initializer.add_argument("config_path", type=Path)
@@ -153,6 +178,13 @@ def main(argv: list[str] | None = None) -> int:
     if arguments.command == "hold-lock":
         return _hold_lock(
             arguments.config_path,
+            arguments.started_path,
+            arguments.acquired_path,
+            arguments.release_path,
+        )
+    if arguments.command == "hold-capture-lock":
+        return _hold_capture_lock(
+            arguments.capture_root,
             arguments.started_path,
             arguments.acquired_path,
             arguments.release_path,

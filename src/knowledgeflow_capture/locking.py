@@ -39,6 +39,18 @@ class InitializationLockError(RuntimeError):
         return OperationError(code=self.code, retryable=self.retryable)
 
 
+class CaptureWriteLockError(RuntimeError):
+    """A safe, path-free failure to acquire or release the Capture write lock."""
+
+    def __init__(self, *, retryable: bool) -> None:
+        self.code = PublicErrorCode.CAPTURE_STORE_UNAVAILABLE
+        self.retryable = retryable
+        super().__init__("capture write lock is unavailable")
+
+    def to_operation_error(self) -> OperationError:
+        return OperationError(code=self.code, retryable=self.retryable)
+
+
 class InitializationLock:
     """One acquired byte-range lock; closing the handle releases it in the OS."""
 
@@ -93,6 +105,60 @@ class InitializationLock:
         return False
 
 
+class CaptureWriteLock:
+    """One acquired Store-level Capture writer lock."""
+
+    __slots__ = ("capture_root", "lock_path", "_stream")
+
+    def __init__(
+        self,
+        *,
+        capture_root: Path,
+        lock_path: Path,
+        stream: BinaryIO,
+    ) -> None:
+        self.capture_root = capture_root
+        self.lock_path = lock_path
+        self._stream: BinaryIO | None = stream
+
+    @property
+    def is_held(self) -> bool:
+        return self._stream is not None
+
+    def release(self) -> None:
+        stream = self._stream
+        if stream is None:
+            return
+        self._stream = None
+        release_failed = False
+        try:
+            stream.seek(0)
+            if msvcrt is None:  # pragma: no cover - guarded during acquisition
+                release_failed = True
+            else:
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            release_failed = True
+        finally:
+            try:
+                stream.close()
+            except OSError:
+                release_failed = True
+        if release_failed:
+            raise CaptureWriteLockError(retryable=False)
+
+    def __enter__(self) -> CaptureWriteLock:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+        try:
+            self.release()
+        except CaptureWriteLockError:
+            if exc_type is None:
+                raise
+        return False
+
+
 def _is_reparse_point(path_stat: os.stat_result) -> bool:
     attributes = getattr(path_stat, "st_file_attributes", 0)
     return bool(attributes & _REPARSE_POINT_ATTRIBUTE)
@@ -105,24 +171,34 @@ def _lstat_if_present(path: Path) -> os.stat_result | None:
         return None
 
 
-def _require_plain_directory(path: Path) -> None:
+def _require_plain_directory(
+    path: Path,
+    error_type: type[InitializationLockError | CaptureWriteLockError] = (
+        InitializationLockError
+    ),
+) -> None:
     try:
         path_stat = os.stat(path, follow_symlinks=False)
     except OSError as exc:
-        raise InitializationLockError(retryable=False) from exc
+        raise error_type(retryable=False) from exc
     if not stat.S_ISDIR(path_stat.st_mode) or _is_reparse_point(path_stat):
-        raise InitializationLockError(retryable=False)
+        raise error_type(retryable=False)
 
 
-def _require_optional_plain_file(path: Path) -> None:
+def _require_optional_plain_file(
+    path: Path,
+    error_type: type[InitializationLockError | CaptureWriteLockError] = (
+        InitializationLockError
+    ),
+) -> None:
     try:
         path_stat = _lstat_if_present(path)
     except OSError as exc:
-        raise InitializationLockError(retryable=False) from exc
+        raise error_type(retryable=False) from exc
     if path_stat is None:
         return
     if not stat.S_ISREG(path_stat.st_mode) or _is_reparse_point(path_stat):
-        raise InitializationLockError(retryable=False)
+        raise error_type(retryable=False)
 
 
 def _resolve_config_lock_domain(config_path: str | os.PathLike[str]) -> Path:
@@ -152,8 +228,44 @@ def initialization_lock_path(
     return Path(f"{resolved}.init.lock")
 
 
-def _open_lock_file(lock_path: Path) -> BinaryIO:
-    _require_optional_plain_file(lock_path)
+def _resolve_capture_lock_domain(
+    capture_root: str | os.PathLike[str],
+) -> Path:
+    try:
+        normalized = normalize_windows_local_absolute_path(capture_root)
+        _require_plain_directory(normalized, CaptureWriteLockError)
+        resolved = normalize_windows_local_absolute_path(
+            normalized.resolve(strict=True)
+        )
+        _require_plain_directory(resolved, CaptureWriteLockError)
+        _require_plain_directory(resolved / "journal", CaptureWriteLockError)
+        _require_optional_plain_file(
+            resolved / "journal" / "capture-write.lock",
+            CaptureWriteLockError,
+        )
+        return resolved
+    except CaptureWriteLockError:
+        raise
+    except PathPolicyError as exc:
+        raise CaptureWriteLockError(retryable=False) from exc
+    except (OSError, RuntimeError) as exc:
+        raise CaptureWriteLockError(retryable=False) from exc
+
+
+def _capture_write_lock_path(
+    capture_root: str | os.PathLike[str],
+) -> Path:
+    """Return the one fixed Store-level Capture writer lock path."""
+
+    resolved = _resolve_capture_lock_domain(capture_root)
+    return resolved / "journal" / "capture-write.lock"
+
+
+def _open_lock_file(
+    lock_path: Path,
+    error_type: type[InitializationLockError | CaptureWriteLockError],
+) -> BinaryIO:
+    _require_optional_plain_file(lock_path, error_type)
     flags = os.O_RDWR | os.O_CREAT
     flags |= getattr(os, "O_BINARY", 0)
     flags |= getattr(os, "O_NOINHERIT", 0)
@@ -171,7 +283,7 @@ def _open_lock_file(lock_path: Path) -> BinaryIO:
             or _is_reparse_point(path_stat)
             or not same_identity
         ):
-            raise InitializationLockError(retryable=False)
+            raise error_type(retryable=False)
         return os.fdopen(descriptor, "r+b", buffering=0)
     except BaseException:
         os.close(descriptor)
@@ -190,25 +302,18 @@ def _wait_or_timeout(
     poll_interval_seconds: float,
     clock: _Clock,
     sleeper: _Sleeper,
+    error_type: type[InitializationLockError | CaptureWriteLockError],
 ) -> None:
     remaining = deadline - clock()
     if remaining <= 0:
-        raise InitializationLockError(retryable=True)
+        raise error_type(retryable=True)
     sleeper(min(poll_interval_seconds, remaining))
 
 
-def _acquire_initialization_lock(
-    config_path: str | os.PathLike[str],
-    *,
-    timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
-    poll_interval_seconds: float = _DEFAULT_POLL_INTERVAL_SECONDS,
-    _clock: _Clock = time.monotonic,
-    _sleeper: _Sleeper = time.sleep,
-) -> InitializationLock:
-    """Internal acquisition entry point with deterministic test timing hooks."""
-
-    if msvcrt is None:
-        raise InitializationLockError(retryable=False)
+def _validate_wait_parameters(
+    timeout_seconds: float,
+    poll_interval_seconds: float,
+) -> None:
     if (
         isinstance(timeout_seconds, bool)
         or not isinstance(timeout_seconds, (int, float))
@@ -224,24 +329,38 @@ def _acquire_initialization_lock(
     ):
         raise ValueError("poll_interval_seconds must be a finite positive number")
 
-    resolved_config = _resolve_config_lock_domain(config_path)
-    lock_path = Path(f"{resolved_config}.init.lock")
-    deadline = _clock() + float(timeout_seconds)
+
+def _acquire_kernel_byte_lock(
+    lock_path: Path,
+    *,
+    error_type: type[InitializationLockError | CaptureWriteLockError],
+    timeout_seconds: float,
+    poll_interval_seconds: float,
+    clock: _Clock,
+    sleeper: _Sleeper,
+) -> BinaryIO:
+    """Acquire the shared Windows byte-lock protocol for one fixed lock path."""
+
+    if msvcrt is None:
+        raise error_type(retryable=False)
+    _validate_wait_parameters(timeout_seconds, poll_interval_seconds)
+    deadline = clock() + float(timeout_seconds)
     stream: BinaryIO | None = None
 
     while stream is None:
         try:
-            stream = _open_lock_file(lock_path)
-        except InitializationLockError:
+            stream = _open_lock_file(lock_path, error_type)
+        except (InitializationLockError, CaptureWriteLockError):
             raise
         except OSError as exc:
             if not _known_lock_contention(exc):
-                raise InitializationLockError(retryable=False) from exc
+                raise error_type(retryable=False) from exc
             _wait_or_timeout(
                 deadline=deadline,
                 poll_interval_seconds=float(poll_interval_seconds),
-                clock=_clock,
-                sleeper=_sleeper,
+                clock=clock,
+                sleeper=sleeper,
+                error_type=error_type,
             )
 
     try:
@@ -249,23 +368,77 @@ def _acquire_initialization_lock(
             try:
                 stream.seek(0)
                 msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
-                return InitializationLock(
-                    config_path=resolved_config,
-                    lock_path=lock_path,
-                    stream=stream,
-                )
+                return stream
             except OSError as exc:
                 if not _known_lock_contention(exc):
-                    raise InitializationLockError(retryable=False) from exc
+                    raise error_type(retryable=False) from exc
                 _wait_or_timeout(
                     deadline=deadline,
                     poll_interval_seconds=float(poll_interval_seconds),
-                    clock=_clock,
-                    sleeper=_sleeper,
+                    clock=clock,
+                    sleeper=sleeper,
+                    error_type=error_type,
                 )
     except BaseException:
         stream.close()
         raise
+
+
+def _acquire_initialization_lock(
+    config_path: str | os.PathLike[str],
+    *,
+    timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
+    poll_interval_seconds: float = _DEFAULT_POLL_INTERVAL_SECONDS,
+    _clock: _Clock = time.monotonic,
+    _sleeper: _Sleeper = time.sleep,
+) -> InitializationLock:
+    """Internal acquisition entry point with deterministic test timing hooks."""
+
+    if msvcrt is None:
+        raise InitializationLockError(retryable=False)
+    _validate_wait_parameters(timeout_seconds, poll_interval_seconds)
+    resolved_config = _resolve_config_lock_domain(config_path)
+    lock_path = Path(f"{resolved_config}.init.lock")
+    stream = _acquire_kernel_byte_lock(
+        lock_path,
+        error_type=InitializationLockError,
+        timeout_seconds=timeout_seconds,
+        poll_interval_seconds=poll_interval_seconds,
+        clock=_clock,
+        sleeper=_sleeper,
+    )
+    return InitializationLock(
+        config_path=resolved_config,
+        lock_path=lock_path,
+        stream=stream,
+    )
+
+
+def _acquire_capture_write_lock(
+    capture_root: str | os.PathLike[str],
+    *,
+    timeout_seconds: float = DEFAULT_LOCK_TIMEOUT_SECONDS,
+    poll_interval_seconds: float = _DEFAULT_POLL_INTERVAL_SECONDS,
+    _clock: _Clock = time.monotonic,
+    _sleeper: _Sleeper = time.sleep,
+) -> CaptureWriteLock:
+    """Acquire the internal Store-level Capture writer lock."""
+
+    resolved_root = _resolve_capture_lock_domain(capture_root)
+    lock_path = resolved_root / "journal" / "capture-write.lock"
+    stream = _acquire_kernel_byte_lock(
+        lock_path,
+        error_type=CaptureWriteLockError,
+        timeout_seconds=timeout_seconds,
+        poll_interval_seconds=poll_interval_seconds,
+        clock=_clock,
+        sleeper=_sleeper,
+    )
+    return CaptureWriteLock(
+        capture_root=resolved_root,
+        lock_path=lock_path,
+        stream=stream,
+    )
 
 
 def acquire_initialization_lock(

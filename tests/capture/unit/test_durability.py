@@ -17,8 +17,10 @@ from knowledgeflow_capture.durability import (
     DurabilityError,
     DurabilityStage,
     FileCommitDisposition,
+    InvalidTextInputError,
 )
 from knowledgeflow_capture.errors import PublicErrorCode
+from knowledgeflow_capture.hashing import ByteLimitExceeded
 from knowledgeflow_capture.manifest import load_capture_store_manifest
 from knowledgeflow_capture.paths import PathPolicy
 
@@ -53,6 +55,74 @@ class _TrackedFile:
     def close(self) -> None:
         self._stream.close()
         self._events.append("close")
+
+
+class _TrackedReadFile:
+    def __init__(self, path: Path, events: list[str], requests: list[int]) -> None:
+        self._stream = path.open("rb")
+        self._events = events
+        self._requests = requests
+
+    def __enter__(self) -> _TrackedReadFile:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+        self.close()
+        return False
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            raise AssertionError("readback must always be bounded")
+        self._requests.append(size)
+        self._events.append("readback")
+        return self._stream.read(size)
+
+    def close(self) -> None:
+        self._stream.close()
+        self._events.append("readback-close")
+
+
+class _NonSeekableStream:
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+        self._offset = 0
+        self.read_requests: list[int] = []
+        self.eof_reads = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            raise AssertionError("source must always be read with an explicit bound")
+        self.read_requests.append(size)
+        if self._offset == len(self._data):
+            self.eof_reads += 1
+            if self.eof_reads > 1:
+                raise AssertionError("the source stream must not be read twice")
+            return b""
+        start = self._offset
+        self._offset = min(len(self._data), self._offset + size)
+        return self._data[start : self._offset]
+
+    def seek(self, *_args: object) -> None:
+        raise AssertionError("the source stream must not be rewound")
+
+
+class _BytesReadFile:
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+        self._offset = 0
+
+    def __enter__(self) -> _BytesReadFile:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+        return False
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            raise AssertionError("readback must always be bounded")
+        start = self._offset
+        self._offset = min(len(self._data), self._offset + size)
+        return self._data[start : self._offset]
 
 
 class DurabilityBackendTest(unittest.TestCase):
@@ -449,6 +519,168 @@ class DurabilityBackendTest(unittest.TestCase):
                 "directory-flush",
             ],
         )
+
+    def test_ct_03_04_empty_is_rejected_but_whitespace_is_preserved(self) -> None:
+        backend = DurabilityBackend(_directory_flusher=lambda _path: True)
+        for name, source in (
+            ("empty-string", ""),
+            ("empty-stream", _NonSeekableStream(b"")),
+        ):
+            with self.subTest(name=name), self.assertRaises(InvalidTextInputError):
+                backend.write_new_utf8_file_durable(
+                    self.root / f"{name}.txt",
+                    source,
+                    maximum_bytes=32,
+                    chunk_size=4,
+                )
+
+        whitespace = " \r\n\t "
+        target = self.root / "whitespace.txt"
+        result = backend.write_new_utf8_file_durable(
+            target,
+            whitespace,
+            maximum_bytes=32,
+            chunk_size=4,
+        )
+        self.assertEqual(target.read_bytes(), whitespace.encode("utf-8"))
+        self.assertEqual(result.byte_size, len(whitespace.encode("utf-8")))
+
+    def test_ct_05_06_07_08_09_scaled_boundaries_are_exact(self) -> None:
+        backend = DurabilityBackend(_directory_flusher=lambda _path: True)
+        exact = _NonSeekableStream(b"a" * 16)
+        exact_result = backend.write_new_utf8_file_durable(
+            self.root / "exact.txt",
+            exact,
+            maximum_bytes=16,
+            chunk_size=5,
+        )
+        self.assertEqual(exact_result.byte_size, 16)
+        self.assertTrue(all(0 < size <= 5 for size in exact.read_requests))
+
+        over = _NonSeekableStream(b"b" * 17)
+        with self.assertRaises(ByteLimitExceeded) as raised:
+            backend.write_new_utf8_file_durable(
+                self.root / "over.txt",
+                over,
+                maximum_bytes=16,
+                chunk_size=5,
+            )
+        self.assertEqual(raised.exception.byte_size, 17)
+        self.assertEqual(raised.exception.maximum_bytes, 16)
+        self.assertEqual(over.read_requests[-1], 2)
+
+        raised_limit = _NonSeekableStream(b"b" * 17)
+        raised_result = backend.write_new_utf8_file_durable(
+            self.root / "raised-limit.txt",
+            raised_limit,
+            maximum_bytes=17,
+            chunk_size=5,
+        )
+        self.assertEqual(raised_result.byte_size, 17)
+        self.assertEqual((self.root / "raised-limit.txt").read_bytes(), b"b" * 17)
+
+    def test_ct_14_str_and_nonseekable_stream_share_exact_bounded_writer(self) -> None:
+        text = "  中文🙂\r\nEnglish\nno-final-newline"
+        expected = text.encode("utf-8")
+        backend = DurabilityBackend(_directory_flusher=lambda _path: True)
+        string_target = self.root / "string.txt"
+        stream_target = self.root / "stream.txt"
+
+        string_result = backend.write_new_utf8_file_durable(
+            string_target,
+            text,
+            maximum_bytes=128,
+            chunk_size=5,
+        )
+        source = _NonSeekableStream(expected)
+        stream_result = backend.write_new_utf8_file_durable(
+            stream_target,
+            source,
+            maximum_bytes=128,
+            chunk_size=5,
+        )
+
+        self.assertEqual(string_target.read_bytes(), expected)
+        self.assertEqual(stream_target.read_bytes(), expected)
+        self.assertEqual(string_result, stream_result)
+        self.assertEqual(len(source.read_requests), ((len(expected) + 4) // 5) + 1)
+        self.assertEqual(source.eof_reads, 1)
+        self.assertTrue(all(0 < size <= 5 for size in source.read_requests))
+
+    def test_ct_15_bom_and_invalid_utf8_are_rejected_without_replacement(self) -> None:
+        backend = DurabilityBackend(_directory_flusher=lambda _path: True)
+        cases = {
+            "string-bom": "\ufefftext",
+            "stream-bom": _NonSeekableStream(b"\xef\xbb\xbftext"),
+            "invalid": _NonSeekableStream(b"valid\xfftail"),
+            "incomplete": _NonSeekableStream(b"valid\xe2\x82"),
+        }
+        for name, source in cases.items():
+            with self.subTest(name=name), self.assertRaises(InvalidTextInputError):
+                backend.write_new_utf8_file_durable(
+                    self.root / f"{name}.txt",
+                    source,
+                    maximum_bytes=64,
+                    chunk_size=1,
+                )
+
+    def test_stream_writer_flushes_closes_then_rereads_in_bounded_chunks(self) -> None:
+        target = self.root / "ordered.txt"
+        events: list[str] = []
+        read_requests: list[int] = []
+
+        def open_new(path: Path) -> _TrackedFile:
+            events.append("open")
+            return _TrackedFile(path, events)
+
+        def open_read(path: Path) -> _TrackedReadFile:
+            events.append("readback-open")
+            return _TrackedReadFile(path, events, read_requests)
+
+        def fsync(descriptor: int) -> None:
+            events.append("fsync")
+            os.fsync(descriptor)
+
+        def flush_directory(_path: Path) -> bool:
+            events.append("directory-flush")
+            return True
+
+        backend = DurabilityBackend(
+            _fsync=fsync,
+            _open_new=open_new,
+            _open_read=open_read,
+            _directory_flusher=flush_directory,
+        )
+        result = backend.write_new_utf8_file_durable(
+            target,
+            _NonSeekableStream(b"bounded readback"),
+            maximum_bytes=64,
+            chunk_size=4,
+        )
+
+        self.assertEqual(result.byte_size, len(b"bounded readback"))
+        self.assertLess(events.index("flush"), events.index("fsync"))
+        self.assertLess(events.index("fsync"), events.index("close"))
+        self.assertLess(events.index("close"), events.index("readback-open"))
+        self.assertLess(events.index("readback-close"), events.index("directory-flush"))
+        self.assertTrue(all(size == 4 for size in read_requests))
+
+    def test_stream_writer_fails_closed_when_disk_readback_differs(self) -> None:
+        target = self.root / "corrupt.txt"
+        backend = DurabilityBackend(
+            _open_read=lambda _path: _BytesReadFile(b"different"),
+            _directory_flusher=lambda _path: True,
+        )
+
+        with self.assertRaises(DurabilityError) as raised:
+            backend.write_new_utf8_file_durable(
+                target,
+                "expected",
+                maximum_bytes=64,
+                chunk_size=3,
+            )
+
+        self.assertEqual(raised.exception.stage, DurabilityStage.FILE_READBACK)
 
 
 if __name__ == "__main__":

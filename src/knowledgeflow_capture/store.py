@@ -37,6 +37,7 @@ from .durability import (
     DestinationAlreadyExistsError,
     DurabilityBackend,
     DurabilityError,
+    DurabilityStage,
 )
 from .errors import FailureResult, OperationError, OperationWarning, PublicErrorCode
 from .ids import generate_store_id, generate_uuid7, validate_typed_id, IdKind
@@ -76,7 +77,13 @@ _INIT_TRANSACTION_PREFIX = ".knowledgeflow-init-"
 _CONFIG_TEMP_PREFIX = ".knowledgeflow-config-"
 _CONFIG_TEMP_SUFFIX = ".tmp"
 _INIT_REQUEST_DOMAIN = b"knowledgeflow.init-request.v1\n"
+_CAPTURE_TRANSACTION_SCHEMA_NAME = "knowledgeflow.capture-transaction"
+_CAPTURE_TRANSACTION_SCHEMA_VERSION = 1
+_CAPTURE_TRANSACTION_OPERATION = "capture_text"
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
+_EVENT_FILENAME_PATTERN = re.compile(
+    r"evt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.yaml\Z"
+)
 _REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 _LockFactory = Callable[[Path], InitializationLock]
@@ -171,6 +178,53 @@ class _InitTransaction:
             "transaction_id": self.transaction_id,
             "request_sha256": self.request_sha256,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class _CaptureTransaction:
+    transaction_id: str
+    operation: str = _CAPTURE_TRANSACTION_OPERATION
+
+    def as_mapping(self) -> dict[str, object]:
+        return {
+            "schema": _CAPTURE_TRANSACTION_SCHEMA_NAME,
+            "schema_version": _CAPTURE_TRANSACTION_SCHEMA_VERSION,
+            "transaction_id": self.transaction_id,
+            "operation": self.operation,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class _CaptureStaging:
+    capture_root: Path
+    transaction_id: str
+    transaction_path: Path
+    transaction_stat: os.stat_result = field(repr=False, compare=False)
+
+    @property
+    def marker_path(self) -> Path:
+        return self.transaction_path / "transaction.yaml"
+
+    @property
+    def item_path(self) -> Path:
+        return self.transaction_path / "item"
+
+    @property
+    def version_path(self) -> Path:
+        return self.item_path / "versions" / "000001"
+
+    @property
+    def payload_path(self) -> Path:
+        return self.version_path / "payloads" / "primary.txt"
+
+
+class _CaptureStagingCleanupStatus(StrEnum):
+    """Cleanup fact kept separate from any already-proven commit fact."""
+
+    REMOVED = "removed"
+    ALREADY_ABSENT = "already-absent"
+    REFUSED = "refused"
+    FAILED = "failed"
 
 
 def _default_utc_now() -> datetime:
@@ -290,6 +344,28 @@ _INIT_TRANSACTION_SCHEMA_V1 = MappingSchema(
     validator=_validate_transaction,
 )
 
+_CAPTURE_TRANSACTION_SCHEMA_V1 = MappingSchema(
+    (
+        _field(
+            "schema",
+            ScalarSchema(str, allowed_values=(_CAPTURE_TRANSACTION_SCHEMA_NAME,)),
+        ),
+        _field(
+            "schema_version",
+            ScalarSchema(
+                int,
+                allowed_values=(_CAPTURE_TRANSACTION_SCHEMA_VERSION,),
+            ),
+        ),
+        _field("transaction_id", ScalarSchema(str, nonempty=True)),
+        _field(
+            "operation",
+            ScalarSchema(str, allowed_values=(_CAPTURE_TRANSACTION_OPERATION,)),
+        ),
+    ),
+    validator=_validate_transaction,
+)
+
 
 def _dump_init_transaction(transaction: _InitTransaction) -> bytes:
     return dump_restricted_yaml(
@@ -311,6 +387,28 @@ def _load_init_transaction(source: bytes) -> _InitTransaction:
         return transaction
     except (YamlSyntaxGateError, SchemaValidationError, TypeError, ValueError) as exc:
         raise ValueError("transaction marker is invalid") from exc
+
+
+def _dump_capture_transaction(transaction: _CaptureTransaction) -> bytes:
+    return dump_restricted_yaml(
+        transaction.as_mapping(),
+        _CAPTURE_TRANSACTION_SCHEMA_V1,
+    )
+
+
+def _load_capture_transaction(source: bytes) -> _CaptureTransaction:
+    try:
+        parsed = parse_restricted_yaml(source)
+        normalized = validate_document(parsed, _CAPTURE_TRANSACTION_SCHEMA_V1)
+        transaction = _CaptureTransaction(
+            transaction_id=normalized["transaction_id"],
+            operation=normalized["operation"],
+        )
+        if _dump_capture_transaction(transaction) != source:
+            raise ValueError("capture transaction marker is not canonical")
+        return transaction
+    except (YamlSyntaxGateError, SchemaValidationError, TypeError, ValueError) as exc:
+        raise ValueError("capture transaction marker is invalid") from exc
 
 
 def _is_reparse_point(path_stat: os.stat_result) -> bool:
@@ -575,6 +673,316 @@ def _create_directory(path: Path, dependencies: _StoreDependencies) -> None:
             stage="directory-create",
         )
     dependencies.durability.flush_directory_metadata(path.parent)
+
+
+def _capture_lstat_if_present(path: Path) -> os.stat_result | None:
+    try:
+        return os.stat(path, follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+
+
+def _capture_plain_directory(
+    path: Path,
+    stage: DurabilityStage,
+) -> os.stat_result:
+    try:
+        path_stat = _capture_lstat_if_present(path)
+    except OSError as exc:
+        raise DurabilityError(stage) from exc
+    if path_stat is None or not stat.S_ISDIR(path_stat.st_mode) or (
+        _is_reparse_point(path_stat)
+    ):
+        raise DurabilityError(stage)
+    return path_stat
+
+
+def _capture_create_directory(path: Path, durability: DurabilityBackend) -> None:
+    try:
+        path.mkdir(parents=False, exist_ok=False)
+    except OSError as exc:
+        raise DurabilityError(DurabilityStage.FILE_WRITE) from exc
+    durability.flush_directory_metadata(path.parent)
+
+
+def _create_capture_staging(
+    capture_root: str | os.PathLike[str],
+    *,
+    durability: DurabilityBackend,
+    uuid_factory: _UuidFactory = generate_uuid7,
+) -> _CaptureStaging:
+    """Create one same-volume Capture staging tree and record T0 ownership."""
+
+    try:
+        root = Path(capture_root).resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise DurabilityError(DurabilityStage.FILE_WRITE) from exc
+    _capture_plain_directory(root, DurabilityStage.FILE_WRITE)
+    staging_root = root / ".staging"
+    items_root = root / "items"
+    staging_root_stat = _capture_plain_directory(
+        staging_root,
+        DurabilityStage.FILE_WRITE,
+    )
+    items_root_stat = _capture_plain_directory(items_root, DurabilityStage.FILE_WRITE)
+    if staging_root_stat.st_dev != items_root_stat.st_dev:
+        raise DurabilityError(DurabilityStage.FILE_WRITE)
+
+    staging: _CaptureStaging | None = None
+    for _attempt in range(8):
+        transaction_id = _canonical_uuid_from_factory(uuid_factory)
+        transaction_path = staging_root / transaction_id
+        try:
+            transaction_path.mkdir(parents=False, exist_ok=False)
+        except FileExistsError:
+            continue
+        except OSError as exc:
+            raise DurabilityError(DurabilityStage.FILE_WRITE) from exc
+        try:
+            current_staging_root = _capture_plain_directory(
+                staging_root,
+                DurabilityStage.FILE_WRITE,
+            )
+            if not _capture_same_identity(staging_root, staging_root_stat) or (
+                current_staging_root.st_dev != items_root_stat.st_dev
+            ):
+                raise DurabilityError(DurabilityStage.FILE_WRITE)
+            transaction_stat = _capture_plain_directory(
+                transaction_path,
+                DurabilityStage.FILE_WRITE,
+            )
+            durability.flush_directory_metadata(staging_root)
+            staging = _CaptureStaging(
+                capture_root=root,
+                transaction_id=transaction_id,
+                transaction_path=transaction_path,
+                transaction_stat=transaction_stat,
+            )
+            break
+        except Exception:
+            try:
+                transaction_path.rmdir()
+            except OSError:
+                pass
+            raise
+    if staging is None:
+        raise DurabilityError(DurabilityStage.FILE_WRITE)
+
+    try:
+        transaction = _CaptureTransaction(transaction_id=staging.transaction_id)
+        durability.write_new_file_durable(
+            staging.marker_path,
+            _dump_capture_transaction(transaction),
+            validator=_load_capture_transaction,
+        )
+        _capture_create_directory(staging.item_path, durability)
+        versions = staging.item_path / "versions"
+        _capture_create_directory(versions, durability)
+        _capture_create_directory(staging.version_path, durability)
+        _capture_create_directory(staging.version_path / "payloads", durability)
+        _capture_create_directory(staging.item_path / "events", durability)
+        return staging
+    except Exception:
+        _cleanup_capture_staging(staging, durability=durability)
+        raise
+
+
+def _capture_same_identity(path: Path, expected: os.stat_result) -> bool:
+    try:
+        current = _capture_lstat_if_present(path)
+    except OSError:
+        return False
+    return current is not None and (
+        current.st_dev == expected.st_dev
+        and current.st_ino == expected.st_ino
+        and current.st_mode == expected.st_mode
+        and not _is_reparse_point(current)
+    )
+
+
+def _read_small_owned_file(
+    path: Path,
+    expected_stat: os.stat_result,
+    *,
+    maximum_bytes: int = 4096,
+) -> bytes | None:
+    try:
+        with path.open("rb") as stream:
+            handle_stat = os.fstat(stream.fileno())
+            if not (
+                stat.S_ISREG(handle_stat.st_mode)
+                and handle_stat.st_dev == expected_stat.st_dev
+                and handle_stat.st_ino == expected_stat.st_ino
+                and handle_stat.st_mode == expected_stat.st_mode
+            ):
+                return None
+            value = stream.read(maximum_bytes + 1)
+    except OSError:
+        return None
+    if len(value) > maximum_bytes or not _capture_same_identity(path, expected_stat):
+        return None
+    return value
+
+
+def _safe_capture_staging_tree(
+    staging: _CaptureStaging,
+) -> tuple[tuple[Path, os.stat_result], tuple[tuple[Path, os.stat_result], ...]] | None:
+    expected_path = staging.capture_root / ".staging" / staging.transaction_id
+    if staging.transaction_path != expected_path:
+        return None
+    try:
+        _validate_uuid7_text(staging.transaction_id)
+    except ValueError:
+        return None
+    if not _capture_same_identity(staging.transaction_path, staging.transaction_stat):
+        return None
+
+    try:
+        marker_stat = _capture_lstat_if_present(staging.marker_path)
+    except OSError:
+        return None
+    if marker_stat is None or not stat.S_ISREG(marker_stat.st_mode) or (
+        _is_reparse_point(marker_stat)
+    ):
+        return None
+    marker_bytes = _read_small_owned_file(staging.marker_path, marker_stat)
+    if marker_bytes is None:
+        return None
+    try:
+        marker = _load_capture_transaction(marker_bytes)
+    except ValueError:
+        return None
+    if (
+        marker.transaction_id != staging.transaction_id
+        or marker.operation != _CAPTURE_TRANSACTION_OPERATION
+    ):
+        return None
+
+    allowed: dict[tuple[str, ...], dict[str, str]] = {
+        (): {"transaction.yaml": "file", "item": "directory"},
+        ("item",): {"versions": "directory", "events": "directory"},
+        ("item", "versions"): {"000001": "directory"},
+        ("item", "versions", "000001"): {
+            "envelope.yaml": "file",
+            "payloads": "directory",
+        },
+        ("item", "versions", "000001", "payloads"): {
+            "primary.txt": "file",
+        },
+        ("item", "events"): {},
+    }
+    files: list[tuple[Path, os.stat_result]] = [
+        (staging.marker_path, marker_stat)
+    ]
+    directories: list[tuple[Path, os.stat_result]] = []
+
+    def visit(relative: tuple[str, ...], directory: Path) -> bool:
+        try:
+            entries = tuple(directory.iterdir())
+        except OSError:
+            return False
+        event_files = 0
+        for entry in entries:
+            expected_kind = allowed[relative].get(entry.name)
+            if relative == ("item", "events") and (
+                _EVENT_FILENAME_PATTERN.fullmatch(entry.name) is not None
+            ):
+                expected_kind = "file"
+                event_files += 1
+                if event_files > 1:
+                    return False
+            if expected_kind is None:
+                return False
+            try:
+                entry_stat = _capture_lstat_if_present(entry)
+            except OSError:
+                return False
+            if entry_stat is None or _is_reparse_point(entry_stat):
+                return False
+            if expected_kind == "file":
+                if not stat.S_ISREG(entry_stat.st_mode):
+                    return False
+                if entry != staging.marker_path:
+                    files.append((entry, entry_stat))
+                continue
+            if not stat.S_ISDIR(entry_stat.st_mode):
+                return False
+            child_relative = relative + (entry.name,)
+            if child_relative not in allowed:
+                return False
+            directories.append((entry, entry_stat))
+            if not visit(child_relative, entry):
+                return False
+        return True
+
+    if not visit((), staging.transaction_path):
+        return None
+    directories.append((staging.transaction_path, staging.transaction_stat))
+    return tuple(files), tuple(directories)
+
+
+def _cleanup_capture_staging(
+    staging: _CaptureStaging,
+    *,
+    durability: DurabilityBackend,
+) -> _CaptureStagingCleanupStatus:
+    """Remove only this verified staging tree and report cleanup independently."""
+
+    if not isinstance(staging, _CaptureStaging):
+        raise TypeError("staging must be _CaptureStaging")
+    try:
+        current = _capture_lstat_if_present(staging.transaction_path)
+    except OSError:
+        return _CaptureStagingCleanupStatus.FAILED
+    if current is None:
+        return _CaptureStagingCleanupStatus.ALREADY_ABSENT
+    safe_tree = _safe_capture_staging_tree(staging)
+    if safe_tree is None:
+        return _CaptureStagingCleanupStatus.REFUSED
+    files, directories = safe_tree
+    if not all(_capture_same_identity(path, expected) for path, expected in files):
+        return _CaptureStagingCleanupStatus.REFUSED
+    if not all(
+        _capture_same_identity(path, expected) for path, expected in directories
+    ):
+        return _CaptureStagingCleanupStatus.REFUSED
+    marker_entry = next(
+        item for item in files if item[0] == staging.marker_path
+    )
+    content_files = tuple(
+        item for item in files if item[0] != staging.marker_path
+    )
+    transaction_entry = next(
+        item for item in directories if item[0] == staging.transaction_path
+    )
+    content_directories = tuple(
+        item for item in directories if item[0] != staging.transaction_path
+    )
+    try:
+        for path, expected in content_files:
+            if not _capture_same_identity(path, expected):
+                return _CaptureStagingCleanupStatus.REFUSED
+            path.unlink()
+        for path, expected in sorted(
+            content_directories,
+            key=lambda item: len(item[0].parts),
+            reverse=True,
+        ):
+            if not _capture_same_identity(path, expected):
+                return _CaptureStagingCleanupStatus.REFUSED
+            path.rmdir()
+        marker_path, marker_stat = marker_entry
+        if not _capture_same_identity(marker_path, marker_stat):
+            return _CaptureStagingCleanupStatus.REFUSED
+        marker_path.unlink()
+        transaction_path, transaction_stat = transaction_entry
+        if not _capture_same_identity(transaction_path, transaction_stat):
+            return _CaptureStagingCleanupStatus.REFUSED
+        transaction_path.rmdir()
+        durability.flush_directory_metadata(staging.transaction_path.parent)
+    except (DurabilityError, OSError):
+        return _CaptureStagingCleanupStatus.FAILED
+    return _CaptureStagingCleanupStatus.REMOVED
 
 
 def _transaction_path(

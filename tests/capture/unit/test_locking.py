@@ -10,9 +10,12 @@ import unittest
 
 from knowledgeflow_capture.errors import PublicErrorCode
 from knowledgeflow_capture.locking import (
+    CaptureWriteLockError,
     DEFAULT_LOCK_TIMEOUT_SECONDS,
     InitializationLockError,
+    _acquire_capture_write_lock,
     _acquire_initialization_lock,
+    _capture_write_lock_path,
     acquire_initialization_lock,
     initialization_lock_path,
 )
@@ -81,6 +84,38 @@ class InitializationLockTest(unittest.TestCase):
         )
         self._processes.append(process)
         return process, started, acquired, release
+
+    def _start_capture_holder(
+        self,
+        capture_root: Path,
+        label: str,
+    ) -> tuple[subprocess.Popen[str], Path, Path, Path]:
+        started = self.root / f"{label}.started"
+        acquired = self.root / f"{label}.acquired"
+        release = self.root / f"{label}.release"
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                str(_SUPPORT_SCRIPT),
+                "hold-capture-lock",
+                str(capture_root),
+                str(started),
+                str(acquired),
+                str(release),
+            ],
+            cwd=_REPOSITORY_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self._processes.append(process)
+        return process, started, acquired, release
+
+    def _capture_root(self, name: str) -> Path:
+        capture_root = self.root / name
+        capture_root.mkdir()
+        (capture_root / "journal").mkdir()
+        return capture_root
 
     def _wait_for_marker(
         self,
@@ -202,6 +237,92 @@ class InitializationLockTest(unittest.TestCase):
         with self.assertRaises(InitializationLockError) as raised:
             acquire_initialization_lock(config_path)
 
+        self.assertFalse(raised.exception.retryable)
+        self.assertTrue(lock_path.is_dir())
+
+    def test_ct_18_capture_write_lock_reuses_kernel_wait_and_fixed_path(self) -> None:
+        capture_root = self._capture_root("capture-store")
+        expected_path = capture_root / "journal" / "capture-write.lock"
+        self.assertEqual(_capture_write_lock_path(capture_root), expected_path)
+
+        holder, _, acquired, release = self._start_capture_holder(
+            capture_root,
+            "capture-holder",
+        )
+        self._wait_for_marker(acquired, holder)
+        fake_time = _FakeTime()
+
+        with self.assertRaises(CaptureWriteLockError) as raised:
+            _acquire_capture_write_lock(
+                capture_root,
+                timeout_seconds=0.2,
+                poll_interval_seconds=0.05,
+                _clock=fake_time.monotonic,
+                _sleeper=fake_time.sleep,
+            )
+
+        self.assertEqual(raised.exception.code, PublicErrorCode.CAPTURE_STORE_UNAVAILABLE)
+        self.assertTrue(raised.exception.retryable)
+        self.assertEqual(
+            raised.exception.to_operation_error().to_dict(),
+            {
+                "code": "capture_store_unavailable",
+                "cause_code": None,
+                "message": "capture store is unavailable",
+                "retryable": True,
+                "details": {},
+            },
+        )
+        self._release_holder(holder, release)
+
+    def test_capture_write_lock_domains_are_per_store_not_global(self) -> None:
+        first_root = self._capture_root("first-store")
+        second_root = self._capture_root("second-store")
+        first, _, first_acquired, first_release = self._start_capture_holder(
+            first_root,
+            "first-capture",
+        )
+        self._wait_for_marker(first_acquired, first)
+        second, _, second_acquired, second_release = self._start_capture_holder(
+            second_root,
+            "second-capture",
+        )
+        self._wait_for_marker(second_acquired, second)
+
+        self._release_holder(second, second_release)
+        self._release_holder(first, first_release)
+
+    def test_capture_write_lock_file_persists_after_process_termination(self) -> None:
+        capture_root = self._capture_root("crash-store")
+        process, _, acquired, _ = self._start_capture_holder(
+            capture_root,
+            "crash-holder",
+        )
+        self._wait_for_marker(acquired, process)
+        lock_path = _capture_write_lock_path(capture_root)
+
+        process.terminate()
+        process.communicate(timeout=5)
+
+        self.assertTrue(lock_path.is_file())
+        with _acquire_capture_write_lock(capture_root) as lock:
+            self.assertTrue(lock.is_held)
+            self.assertEqual(lock.capture_root, capture_root)
+            self.assertEqual(lock.lock_path, lock_path)
+
+    def test_capture_write_lock_rejects_missing_or_nonregular_journal(self) -> None:
+        missing_journal = self.root / "missing-journal"
+        missing_journal.mkdir()
+        with self.assertRaises(CaptureWriteLockError):
+            _acquire_capture_write_lock(missing_journal)
+
+        nonregular_root = self.root / "nonregular-lock"
+        nonregular_root.mkdir()
+        (nonregular_root / "journal").mkdir()
+        lock_path = nonregular_root / "journal" / "capture-write.lock"
+        lock_path.mkdir()
+        with self.assertRaises(CaptureWriteLockError) as raised:
+            _acquire_capture_write_lock(nonregular_root)
         self.assertFalse(raised.exception.retryable)
         self.assertTrue(lock_path.is_dir())
 
