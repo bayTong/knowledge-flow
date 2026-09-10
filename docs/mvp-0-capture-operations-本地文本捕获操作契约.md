@@ -1,8 +1,9 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；C0–C2 已完成，C3-0 行为已确认，四操作尚未实现<br>
+> 状态：Approved Design；C0–C2 已完成，C3-0 与编码前契约收口已确认，四操作尚未实现<br>
 > 确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
+> C3 编码前收口日期：2026-09-09<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
 > 边界：本文定义调用方可见的操作，不代表代码已经实现，也不创建任何本地目录
 
@@ -166,7 +167,8 @@ MVP-0 的可信操作者不由普通请求传入，核心固定为 `actor.type: 
 - `capture_text` 允许省略 `idempotency_key`；省略意味着每次调用都是新的主动保存。
 - 官方界面和 API 适配器应为每次用户保存动作生成稳定的 `idempotency_key`，以便处理超时重试。
 - `append_capture_version` 必须提供新的 `idempotency_key`，避免“提交成功但回执丢失”时重复追加版本。
-- 同一作用域、同一 key、相同请求指纹返回原回执；同一 key、不同指纹返回 `idempotency_conflict`。
+- 同一作用域、同一 key、相同请求指纹返回同一 Item/Version/Event 及相同核心哈希；同一 key、不同指纹返回 `idempotency_conflict`。
+- 幂等命中仍须验证最终不可变 Envelope、Payload 和 Event；成功回执的 `warnings` 按命中时的当前投影事实生成。`capture.yaml` 缺失、损坏或不一致时返回 `projection_needs_rebuild`，C3 不在该路径静默重建投影。
 - 内容哈希不是幂等键；相同内容可以被用户主动保存为两个不同 Capture Item。
 - 提供的 key 必须非空且不超过 512 UTF-8 bytes；原始 key 不落盘。规范 `scope`、带域前缀的 `key_sha256` 及二元组身份规则以 Capture Envelope v1 第 5.3 节为准。
 - C3 在 Store 级写锁内扫描不可变 Envelope，不引入新的幂等索引磁盘格式；索引只作为后续可重建的性能优化。
@@ -181,7 +183,7 @@ commit_state: "not-committed"
 error:
   code: "integrity_check_failed"
   cause_code: "payload_hash_mismatch"
-  message: "stored payload failed integrity verification"
+  message: "stored data failed integrity verification"
   retryable: false
   details: {}
 ```
@@ -244,9 +246,11 @@ user_intent:
 | `channel.external_ref` | 否 | 外部消息 ID 等来源引用；非空时最多 2048 UTF-8 bytes |
 | `channel.source_created_at` | 否 | 渠道给出的原消息规范 UTC 时间；省略时为 `null`，不能冒充本地捕获时间 |
 | `idempotency_key` | 否 | 官方客户端应生成；提供时非空且最多 512 UTF-8 bytes；核心允许主动重复保存 |
-| `user_intent` | 是 | 可以全部为 `null`，只能记录用户明确表达 |
+| `user_intent` | 否 | 省略等价于三个意图字段均为 `null`；非空值只能记录用户明确表达 |
 
 调用方不能传入 `capture_id`、版本号、服务端时间、actor、哈希、模型标题、摘要、标签或可信状态。
+
+为保证低摩擦输入和稳定幂等，调用边界先做唯一的机械规范化：省略 `channel.external_ref` 或 `channel.source_created_at` 时补为 `null`；省略整个 `user_intent` 时补成三个字段均为 `null` 的对象。省略形式与显式 `null` 形式生成同一 Request Fingerprint。最终 Envelope 仍必须写出完整 `channel`、`user_intent` 和 `user_intent.evidence`，不能把“调用输入可省略”误解成“Envelope 字段可省略”。
 
 ### 4.3 成功回执
 
@@ -268,6 +272,8 @@ warnings: []
 ```
 
 `ok: true` 要求完整新 Item 已原子提交到最终 `<capture-id>/`，其中不可变版本 1 和匹配的 `capture.created` Event 均已从最终路径回读校验成功。创建 Event 失败发生在提交前，不得报告成功；只有提交后的 `capture.yaml` 投影失败产生 repair warning。回执不等待模型、KB、Git、GBrain 或备份。
+
+同 key、同请求的重试必须返回相同的 `capture_id`、`event_id`、`version` 和三个 SHA256 字段。`warnings` 不是不可变回执身份：它按重试时观察到的 `capture.yaml` 状态生成；C3 不因幂等重试自动重建投影。
 
 ### 4.4 明确不做
 
@@ -448,8 +454,10 @@ warnings: []
 |---|---|---|---|
 | `config_not_found` | 全部 | 配置文件不存在 | 创建或选择配置后 |
 | `config_invalid` | 全部 | 配置语法、schema、字段或路径值不合法 | 修正配置后 |
-| `capture_store_not_initialized` | 全部 | 根目录尚未初始化为 Capture Store | 显式初始化后 |
-| `capture_store_unavailable` | 全部 | 根目录不存在、不可写或磁盘不可用 | 修复环境后 |
+| `unrecognized_existing_directory` | 全部 | 配置指向的既有目录不是可识别的 Capture Store | 检查路径，不得自动接管 |
+| `unsupported_store_version` | 全部 | Manifest schema/layout 版本不受支持 | 先执行未来的显式迁移 |
+| `capture_store_not_initialized` | 全部 | 配置根目录不存在，或合法 Manifest 的固定骨架不完整 | 显式初始化或修复后 |
+| `capture_store_unavailable` | 全部 | 配置、根目录、锁或磁盘当前无法安全访问/写入 | 修复环境后 |
 | `invalid_input` | 全部 | 字段缺失、空字符串或格式错误 | 修正请求后 |
 | `text_too_large` | 两个写操作 | UTF-8 字节数超过配置安全上限 | 保留原输入；调整本地上限或改用未来大文本文件入口 |
 | `capture_not_found` | 读取、追加 | `capture_id` 不存在 | 检查 ID |
@@ -475,7 +483,7 @@ warnings: []
 2. `append_capture_version` 成功意味着新版本已提交；旧版本字节完全不变。
 3. `get_capture` 和 `list_captures` 不修改原件、状态、路由或索引。
 4. 同一 Item 的并发追加最多一个请求能以相同 `expected_current_version` 成功。
-5. 回执丢失后的同幂等重试不能创建第二个 Item 或第二个新版本。
+5. 回执丢失后的同幂等重试不能创建第二个 Item 或第二个新版本；不可变身份、版本和哈希字段保持一致，警告按当前投影事实生成。
 6. 投影和索引丢失不得导致不可变版本丢失，也不得改变其哈希。
 7. GBrain、Git、模型或网络故障不能让本地已提交原件回滚或消失。
 
@@ -500,7 +508,7 @@ warnings: []
 
 ### 10.3 幂等和并发
 
-- 创建成功但回执丢失后，同 key 重试返回同一个 Item。
+- 创建成功但回执丢失后，同 key 重试返回同一个 Item/Version/Event 和相同核心哈希；投影异常时返回警告但不静默重建。
 - 追加成功但回执丢失后，同 key 重试返回同一个新版本。
 - 两个并发请求都声明 `expected_current_version = 1` 时，只允许一个生成版本 `2`，另一个返回 `version_conflict`。
 
@@ -532,4 +540,4 @@ warnings: []
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过；四操作仍不存在。下一步只有在另行明确授权 C3 编码后才实现 `capture_text`，仍只使用测试持有的 Store，不接 GBrain，也不实现路由。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过；四操作仍不存在。下一步只有在另行明确授权 C3 编码后才实现 `capture_text`，仍只使用测试持有的 Store，不接 GBrain，也不实现路由。

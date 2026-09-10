@@ -4,12 +4,13 @@
 > 整理日期：2026-09-08<br>
 > 确认日期：2026-09-08<br>
 > 原子 Event 补充确认日期：2026-09-08<br>
+> C3 编码前收口日期：2026-09-09<br>
 > 适用范围：C3 第一个本地文本捕获事务<br>
 > 授权边界：本次确认只批准设计并允许同步正式文档，不授权 C3 编码，不创建生产配置或生产 Capture Store
 
 ## 0. 结论先行
 
-C0–C2 已经提供配置、Store 骨架、受限 YAML、Envelope、哈希、Windows 内核锁、耐久化原语以及初始化崩溃恢复。C3 不需要继续扩建通用基础设施，但在实现 `capture_text` 前必须冻结六项会改变磁盘格式、成功边界、幂等结果或并发结果的行为：
+C0–C2 已经提供配置、Store 骨架、受限 YAML、Envelope、哈希、Windows 内核锁、耐久化原语以及初始化崩溃恢复。C3 不需要另设新的基础设施里程碑，但可以按本事务需要小幅扩展现有 codec、锁、durability 与 Store 内部原语；在实现 `capture_text` 前必须冻结六项会改变磁盘格式、成功边界、幂等结果或并发结果的行为：
 
 1. 文本输入和流式处理边界。
 2. 新 Capture Item 的原子提交单位。
@@ -132,6 +133,7 @@ items/YYYY/MM/<capture-id>/versions/000001/
 6. rename 前失败为 `not-committed`；rename 附近无法证明结果时为 `unknown`；不得用猜测返回失败或成功。
 7. `capture.created` 与不可变版本一起提交；Event 写入、校验或引用不一致发生在 rename 前时不得提交 Item。只有 `capture.yaml` 在 Item 提交后生成，投影失败时返回成功加 repair warning。
 8. 以后 `append_capture_version` 只原子提交新的版本目录；该规则留到 C5 冻结，不在 C3 实现。
+9. 若新分配的 `<capture-id>` 最终目录在 rename 前已经存在，不得覆盖、采用或把它冒认为本请求；由于当前 staging 尚未提交，固定返回可重试 `atomic_commit_failed + commit_state: not-committed`。
 
 ## 4. C3D-03：最小 State Event 与 State Projection v1
 
@@ -254,9 +256,10 @@ Envelope 事务旧文字要求至少按幂等身份加锁，并清理“陈旧�
    ```
 
 6. 幂等身份是二元组 `(scope, key_sha256)`，不再使用有歧义的裸字符串拼接公式。
-7. 同一幂等身份且请求指纹相同，返回原 `event_id + capture_id + version + envelope_sha256`；请求指纹不同则返回 `idempotency_conflict`。
-8. 不提供 key 时，每次调用都是新的主动保存；相同正文允许形成多个 Capture Item。
-9. C3 不冻结或写入新的幂等索引格式。在 Store 写锁内扫描不可变 Envelope 得到事实；索引仅作为以后可重建的性能优化。
+7. 同一幂等身份且请求指纹相同，必须先从最终路径回读并验证不可变 Envelope、Payload 与 `capture.created` Event，然后返回原 `event_id + capture_id + version + primary_payload_sha256 + payload_set_sha256 + envelope_sha256`；任一不可变原件不能通过验证时不得返回成功。
+8. `warnings` 不属于上述不可变回执身份。幂等命中时只读检查当前 `capture.yaml`：投影存在、规范且与不可变记录一致时返回空警告；投影缺失、损坏或不一致时返回 `projection_needs_rebuild`。C3 不在幂等命中路径静默重建投影，重建能力留到 C6/M0-E11。
+9. 请求指纹不同则返回 `idempotency_conflict`。不提供 key 时，每次调用都是新的主动保存；相同正文允许形成多个 Capture Item。
+10. C3 不冻结或写入新的幂等索引格式。在 Store 写锁内扫描不可变 Envelope 得到事实；索引仅作为以后可重建的性能优化。
 
 ### 成本取舍
 
@@ -294,7 +297,7 @@ T0  校验机械元数据，建立本事务独占 staging
 T1  单次流式写入正文，严格校验 UTF-8、大小并计算候选哈希
 T2  生成 Payload Set 与 Request Fingerprint
 T3  获取 Store 级 Windows 内核写锁
-T4  扫描不可变 Envelope，执行幂等命中或冲突判断
+T4  扫描不可变 Envelope；命中时验证不可变原件并只读检查投影，返回稳定身份/哈希字段和当前警告
 T5  分配 capture_id/event_id，构造包含创建 Event 的完整 staging Item
 T6  写入并封存 Envelope 与 capture.created，flush、回读和复算全部哈希/引用
 T7  将完整 Item 原子 rename 到最终 <capture-id> 目录，最终回读版本与 Event
@@ -312,9 +315,9 @@ T9  释放内核锁，返回结构化回执
 - 空正文、非法 UTF-8、BOM、4 MiB/64 MiB 边界行为。
 - 字符串与非 seekable 字节流进入同一事务实现。
 - 每次无 key 主动保存产生新 Item。
-- 同 key、同指纹返回同一回执；同 key、不同指纹明确冲突。
+- 同 key、同指纹返回同一 Item/Version/Event 和相同核心哈希；`warnings` 按重试时的投影事实生成，同 key、不同指纹明确冲突。
 - 两个进程并发使用同一 key 时最多产生一个 Item。
-- 最终目录已存在时不覆盖。
+- 新分配 ID 的最终目录已存在时不覆盖、不冒认，返回可重试 `atomic_commit_failed + not-committed`。
 - `saved: true` 必须对应最终路径中可回读、哈希正确的不可变版本和匹配的 `capture.created` Event。
 - 创建 Event 写入或校验失败时不提交 Item；只有提交后的 `capture.yaml` 投影失败返回成功加 repair warning。
 - GBrain、网络、KB、SOP、模型和生产 Capture Store 均不参与测试。
@@ -353,3 +356,5 @@ T9  释放内核锁，返回结构化回执
 3. 只有用户另行明确授权“继续 C3 编码”后，才实现 `capture_text`，且只写测试持有的临时 Store。
 
 补充确认记录：2026-09-08 进一步确认 `capture.created` 必须与 Item 原子提交，避免提交后 Event 写入失败时无法精确恢复原始 `occurred_at`；该修正不改变 C3 编码与生产初始化仍需另行授权的门禁。
+
+编码前收口记录：2026-09-09 统一成功回执字段和固定错误消息，明确“同一回执”只要求不可变身份、版本和哈希字段稳定，`warnings` 反映重试时观察到的投影事实；幂等命中不得静默重建投影。该收口仍不授权 C3 编码或生产初始化。

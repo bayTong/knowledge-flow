@@ -1,6 +1,7 @@
 # KnowledgeFlow 捕获与路由规范
 
 > 状态：Approved Design；C0–C2 已实现，C3-0 行为已确认但捕获操作与路由流程尚未实现<br>
+> C3 编码前收口日期：2026-09-09<br>
 > 整理日期：2026-08-31<br>
 > 确认日期：2026-09-01<br>
 > 作用：定义内容从任意入口被立即保存，到确定知识库归属和后续处理方式的最小闭环<br>
@@ -187,11 +188,12 @@ routing: archived    -> 移出日常待处理视图，但保留历史和原件
 
 入口只需提交原始载荷，并可选提交：用户标题、目标 KB、处理意图、来源 URL 和敏感级别。缺少这些可选项不影响保存。
 
-### 步骤 C1：分配身份并处理重试
+### 步骤 C1：建立请求与重试身份
 
-1. 生成稳定 `capture_id`。
-2. 接收入口提供的 `idempotency_key`；同一重试键不得产生第二份捕获。
-3. 对同一捕获的后续编辑生成新版本，不静默覆盖旧版本。
+1. 接收并机械校验入口提供的可选 `idempotency_key`；同一重试键不得产生第二份捕获。
+2. 此时只建立请求上下文，不提前分配 `capture_id`、`event_id`，也不创建最终 Item。
+3. Payload staging、请求指纹、Store 写锁内幂等查询及未命中后的 ID 分配，按 Capture Envelope v1 第 10 节作为一个捕获事务完成；命中时复用已经提交的身份。
+4. 对同一捕获的后续编辑生成新版本，不静默覆盖旧版本。
 
 ### 步骤 C2：持久化原始载荷
 
@@ -203,34 +205,14 @@ routing: archived    -> 移出日常待处理视图，但保留历史和原件
 
 ### 步骤 C3：写入最小机器元数据
 
-`capture.yaml` 是本地可重建的当前状态投影；不可变字段和完整示例以 Capture Envelope v1 为准。以下片段只说明本规范使用的路由字段，不另立数据契约：
+`capture.yaml` 是本地可重建的当前状态投影；精确 schema、完整字段、顺序和值域只以 Capture Envelope v1 第 9 节和 C3-0 为准。本规范只引用其中的路由与信任含义，不再维护第二份机器格式示例：
 
 ```yaml
-format_version: 1
-capture_id: "<uuid>"
-version: 1
-captured_at: "<ISO-8601 timestamp>"
-captured_by: "<user-or-entry-id>"
-channel: "app|qq|browser|api|file|conversation|voice"
-
-payload:
-  kind: "text|url|file|audio|conversation"
-  path: "payload.md"
-  sha256: "<sha256>"
-  source_url: null
-
-user_intent:
-  target_kb_id: null
-  processing_mode: null
-
-state:
-  durability: durable
-  routing: unassigned
-  trust: unreviewed
-
-gbrain:
-  sync_status: pending
-  page_id: null
+routing:
+  status: "unassigned"
+  target_kb_ids: []
+trust:
+  status: "unreviewed-capture"
 ```
 
 `user_intent` 只能记录用户明确表达的内容，不能把模型推断伪装成用户意图。模型建议必须进入独立 Route Proposal。

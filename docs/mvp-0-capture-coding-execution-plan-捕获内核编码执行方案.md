@@ -1,6 +1,6 @@
 # MVP-0 捕获内核编码执行方案
 
-> 状态：Approved Design；C0–C2 已完成，C3-0 已确认，停在 C3 编码前<br>
+> 状态：Approved Design；C0–C2 已完成，C3-0 与编码前收口已确认，停在 C3 编码前<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -9,10 +9,11 @@
 > C2B-2 完成日期：2026-09-03<br>
 > C2B-3 完成日期：2026-09-04<br>
 > C3-0 行为确认日期：2026-09-08<br>
+> C3 编码前收口日期：2026-09-09<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
 > 执行进度：C0 与 C1 已于 2026-09-02 完成；C2A、C2B-1、C2B-2 已于 2026-09-03 完成并通过验收；C2B-3 已于 2026-09-04 完成并通过验收，C2 整体闭合，当前停在 C3 编码前<br>
-> 当前授权：A0、A1 与 A2（C1、C2A、C2B-1、C2B-2、C2B-3）已通过，C3-0 仅完成设计确认；尚未授权 C3 `capture_text`、C4–C5 其余三个捕获操作、真实 Capture Store 或外部系统接入
+> 当前授权：A0、A1 与 A2（C1、C2A、C2B-1、C2B-2、C2B-3）已通过，C3-0 与编码前契约收口仅完成设计确认；尚未授权 C3 `capture_text`、C4–C5 其余三个捕获操作、真实 Capture Store 或外部系统接入
 
 ## 0. 结论先行
 
@@ -350,9 +351,11 @@ C2B-3 已在此停点完成，C2 全部闭合。只有用户明确说“继续 C
 主要文件：
 
 - `operations.py`
-- 必要的 `codec.py`、`models.py`、`store.py`、`durability.py` 增量
+- 必要的 `codec.py`、`models.py`、`store.py`、`locking.py`、`durability.py` 增量
 - `tests/capture/integration/test_capture_text.py`
 - 必要的单元、并发与故障边界测试
+
+现有 `locking.py` 的公开入口只负责 `<config-path>.init.lock`；C3 应复用其已经验证的 Windows 字节锁与等待机制，在内部增加固定指向 `<capture-root>/journal/capture-write.lock` 的 Capture 写锁入口，不能把初始化锁路径拼接规则误用于 Store 写锁，也不能另造 PID/时间戳锁协议。流式 Payload 则在现有 durability/hashing 边界上做有界增量，不能为调用 `write_new_file_durable(bytes)` 而先把最多 64 MiB 的流重新聚合进内存。
 
 必须覆盖实现拆解文档的 CT-01–CT-24：
 
@@ -360,11 +363,11 @@ C2B-3 已在此停点完成，C2 全部闭合。只有用户明确说“继续 C
 - `str` 与不可 seek 二进制流共享有界写入事务；空字符串、BOM 和非法 UTF-8 拒绝，但仅空白文本允许保存。
 - `<= 4 MiB` 内联；`> 4 MiB` 到 `<= 64 MiB` 流式写入一个完整 Payload；不重复读取入口流。
 - `> 64 MiB` 默认拒绝且零部分成功；调高配置后可重试。
-- 每次主动保存产生新 Item；同一幂等键重试返回同一回执，同 key 不同指纹冲突；并发同 key 最多创建一个 Item。
+- 每次主动保存产生新 Item；同一幂等键重试返回同一 Item/Version/Event 和相同核心哈希，警告按当前投影事实生成且不静默重建；同 key 不同指纹冲突；并发同 key 最多创建一个 Item。
 - 复用 Store 级 Windows 内核锁，10 秒超时返回可重试的 `not-committed`；不得按锁文件存在、PID 或年龄清理锁。
 - 完整 Item、版本 1 与 `capture.created` 必须原子可见且从最终路径回读正确；Event 提交前失败不能留下可见 Item。
 - `capture.yaml` 是提交后可重建投影；投影失败返回成功加 `projection_needs_rebuild`，不撤销不可变 Item/Event。
-- 目标冲突不得覆盖；rename 边界无法证明结果时返回 `unknown`；只清理本事务拥有的未提交 staging。
+- 新分配 ID 的目标冲突不得覆盖或冒认，返回可重试 `atomic_commit_failed + not-committed`；rename 边界无法证明结果时返回 `unknown`；只清理本事务拥有的未提交 staging。
 - 渠道、幂等键和来源时间严格校验；actor 固定为 `user/local-user`，核心时间使用带 `Z` 的 UTC 毫秒格式。
 - GBrain 和网络完全不存在时仍可保存。
 
@@ -578,4 +581,4 @@ git status --short
 7. 当前 Git 脏工作树全部保留，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认。C3 及以后编码仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口。C3 及以后编码仍需逐批明确授权。

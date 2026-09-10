@@ -4,6 +4,7 @@
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
+> C3 编码前收口日期：2026-09-09<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：本文件不声称任何业务能力已经实现，也不替代后续 SOP 的具体执行规范
 
@@ -37,7 +38,7 @@
 | 临时 KB 创建与 `provisional` 生命周期 | [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) | Approved Design | 旧 SOP-000 在冷启动、领域前置和 SCHEMA 前置方面被取代 |
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
-| C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 已同步到 Envelope、操作契约、实现拆解和编码执行方案；设计确认不等于 C3 编码授权 |
+| C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口并同步到 Envelope、操作契约、捕获规范、实现拆解和编码执行方案；设计确认不等于 C3 编码授权 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4 MiB 内联阈值和 64 MiB 默认安全上限 |
 | MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | 9 项技术选择及 C3-0 已确认；C0–C2 里程碑为 85 项测试，稳定化后全量 93 项通过，C3 尚未授权 |
 | MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C0–C2 已完成并停在 C3 门禁前 |
@@ -213,6 +214,13 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-015 | UUIDv7 是否要求同毫秒单调、时钟回拨如何处理未定义 | 固定 48 位毫秒 + 74 位安全随机；只承诺唯一和合法，不承诺同毫秒绝对单调，不伪造/钳制回拨时间 | 2026-09-02 解决 |
 | C-016 | “安全 YAML 加载”与“文件字段正确”被混为一个校验步骤 | 拆成语法门禁、逐文件 schema 校验和确定性发射；两关失败分别测试 | 2026-09-02 解决 |
 | C-017 | C2 初始化的错误码、成功回执、配置/Manifest 规范、已有 Store 判定及并发恢复边界未闭合 | 增加三项初始化专用错误码和独立 `InitStoreResult`；配置允许安全但非规范的输入并规范写出，Manifest 必须是规范字节；只有完整骨架与完整配置匹配才视为幂等；配置目标锁、并发竞争和六个初始化故障点都纳入 C2 | 2026-09-03 解决 |
+| C-018 | Envelope 回执示例包含 `payload_count`，但公共操作契约与成功回执代码白名单不接受该字段 | C3 成功回执以操作契约第 4.3 节为公共权威；删除冗余 `payload_count`，补齐 `ok`、`commit_state` 和 `trust_status` | 2026-09-09 解决 |
+| C-019 | “同一幂等键返回同一回执”没有区分不可变身份/哈希与当前投影警告 | 同一请求必须返回相同 Item/Version/Event 与核心哈希；`warnings` 按命中时投影事实生成，C3 不在幂等命中路径静默重建投影 | 2026-09-09 解决 |
+| C-020 | 捕获与路由规范保留了另一套旧 `capture.yaml` 伪格式，可能与 `knowledgeflow.capture-state` v1 混淆 | 删除第二套机器格式，只保留路由/信任概念片段；精确 schema 唯一引用 Envelope 第 9 节与 C3-0 | 2026-09-09 解决 |
+| C-021 | 操作契约的完整性错误示例写 `stored payload...`，代码与测试固定为 `stored data...` | 公共固定消息统一为 `stored data failed integrity verification`，同时覆盖 Payload 与 Envelope 完整性失败 | 2026-09-09 解决 |
+| C-022 | Envelope/C3-0 把调用方 `user_intent` 定义为可选，操作请求表却写成必填 | `capture_text` 可省略 `user_intent`；省略与三个字段显式为 `null` 机械归一化为同一请求指纹，Envelope 仍写完整对象与 evidence | 2026-09-09 解决 |
+| C-023 | 捕获与路由步骤一度把 Payload staging 写在“持久化原始载荷”步骤之前 | 路由规范只在 C1 校验重试上下文；staging、指纹、锁内查询和未命中后分配 ID 统一引用 Envelope 第 10 节事务顺序 | 2026-09-09 解决 |
+| C-024 | 新分配 ID 的最终目录已存在时只写“身份冲突”，但没有公共错误码和提交状态 | 不覆盖、不冒认；固定返回可重试 `atomic_commit_failed + commit_state: not-committed`，与 rename 结果未知严格区分 | 2026-09-09 解决 |
 
 ## 10. 功能门禁
 
@@ -246,6 +254,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过。下一步仍需明确授权 C3，才可在测试持有的 Store 中实现 `capture_text`。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过，C3 编码前契约收口已于 2026-09-09 完成。下一步仍需明确授权 C3，才可在测试持有的 Store 中实现 `capture_text`。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。

@@ -5,6 +5,7 @@
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
+> C3 编码前收口日期：2026-09-09<br>
 > 原子 Event 补充确认日期：2026-09-08<br>
 > 适用范围：MVP-0 的文本捕获，以及未来 URL、文件 Payload 必须保持的身份与事务语义<br>
 > 本文只定义数据和事务边界，不代表已经实现
@@ -214,11 +215,13 @@ idempotency_identity = (scope, key_sha256)
 
 - `channel.type` 和 `channel.instance_id` 必须分别为 1–64 个小写 ASCII 字母、数字、点、下划线或连字符，不允许冒号、斜杠、反斜杠、空白或换行；`operation` 来自固定枚举，因此 scope 分段无歧义。
 - `idempotency_key` 可以省略；提供时必须是非空字符串，UTF-8 编码不超过 512 bytes。
-- 同一作用域、同一幂等身份且请求指纹相同，返回原 `event_id + capture_id + version`。
+- 同一作用域、同一幂等身份且请求指纹相同，必须验证最终不可变 Envelope、Payload 与 Event 后，返回原 `event_id + capture_id + version` 以及相同的 Payload/Envelope 哈希字段。
 - 同一幂等键若对应不同请求指纹，即使 Payload 字节相同但明确用户意图不同，也返回 `idempotency_conflict`，不能静默采用任一请求。
 - 原始幂等键默认不落盘，只保存哈希；外部消息 ID 如需审计，单独存放在来源字段中。
 - 入口不提供幂等键时，每次请求按新的主动保存处理。
 - 内容哈希不是幂等键，不能单独用来吞掉 Capture Event。
+
+成功回执中的 `warnings` 是当前派生状态，不属于幂等身份。幂等命中时只读检查 `capture.yaml`：投影有效则返回空警告，投影缺失、损坏或不一致则返回 `projection_needs_rebuild`；C3 不在该路径自动重建投影。不可变原件验证失败时必须返回完整性错误，不能仅凭幂等字段返回成功。
 
 `idempotency.key_sha256` 是按上述带域前缀规则生成的单向键摘要，目的只是避免落盘原始幂等键。幂等身份由 `scope + key_sha256` 二元组表达；它不描述 Payload、整包输入、请求内容或 Envelope，因此不计入第 8.6 节的四类核心哈希。
 
@@ -484,7 +487,7 @@ UTF8("knowledgeflow.request-fingerprint.v1\n")
 + compact_json_bytes
 ```
 
-因此，同一幂等键配合同一请求会命中原回执；正文、附件、来源元数据、明确用户意图或追加基线任一变化都会形成不同指纹并返回 `idempotency_conflict`。
+因此，同一幂等键配合同一请求会命中原 Item/Version/Event 和相同核心哈希；正文、附件、来源元数据、明确用户意图或追加基线任一变化都会形成不同指纹并返回 `idempotency_conflict`。回执警告仍按命中时的当前投影事实生成。
 
 #### D. Envelope SHA256
 
@@ -644,7 +647,7 @@ T0 校验机械元数据，建立本事务独占 staging
 #### T4：幂等查询
 
 - C3 在写锁内扫描不可变 Envelope；不创建新的幂等索引磁盘格式。
-- 同一幂等身份和请求指纹命中已提交版本时，安全清理本事务拥有的未提交 staging，并返回原回执。
+- 同一幂等身份和请求指纹命中已提交版本时，从最终路径验证 Envelope、Payload 与创建 Event，随后只读检查 `capture.yaml`，安全清理本事务拥有的未提交 staging，并返回原稳定身份/哈希字段及当前投影警告；不得在 C3 幂等命中路径静默重建投影。
 - 同一幂等身份但请求指纹不同，返回 `idempotency_conflict`；不得覆盖或产生第二个 Item。
 - 没有幂等键时，每次调用都是新的主动保存。
 
@@ -660,6 +663,7 @@ T0 校验机械元数据，建立本事务独占 staging
 
 - `items/YYYY/MM/` 可以机械创建；年月目录不是 Capture Item，只有最终 `<capture-id>/` 表示可见 Item。
 - 使用同盘、目标不得已存在的原子 rename，把完整 staging `item/` 移动到 `items/YYYY/MM/<capture-id>/`，不提前在最终区域创建 `<capture-id>/versions/` 半成品。
+- 新分配 ID 的最终 `<capture-id>` 已存在时不得覆盖、采用或冒认为本请求；可以证明 staging 未提交时返回可重试 `atomic_commit_failed + commit_state: not-committed`。
 - rename 后 `versions/000001/` 与已提交 Event 均不可变；在平台允许时 flush 最终父目录元数据，并从最终路径回读 Envelope、Payload 与 Event。
 - 只有可以证明最终版本和匹配的创建 Event 同时存在且通过校验时才进入 `committed`；rename 前失败为 `not-committed`，rename 附近无法判断时为 `unknown`。
 
@@ -673,24 +677,26 @@ T0 校验机械元数据，建立本事务独占 staging
 
 只有 T7 成功且最终版本、Envelope、Payload 与创建 Event 回读校验通过，才能返回 `saved: true`。实现只能清理由本事务明确拥有且尚未提交的 staging，不能按模糊名称或文件年龄删除其他进程的目录。
 
-回执至少包含：
+调用方可见的 C3 成功回执固定为：
 
 ```yaml
+ok: true
 saved: true
+commit_state: "committed"
 capture_id: "cap_..."
 event_id: "evt_..."
 version: 1
-payload_count: 1
 primary_payload_sha256: "sha256:..."
 payload_set_sha256: "sha256:..."
 envelope_sha256: "sha256:..."
 durability: "durable"
 routing_status: "unassigned"
+trust_status: "unreviewed-capture"
 gbrain_sync_status: "not-requested"
 warnings: []
 ```
 
-回执不得等待模型、GBrain、Git commit、push 或 embedding。
+该形状以 MVP-0 操作契约第 4.3 节为公共接口权威，不增加固定为 `1` 的冗余 `payload_count`。幂等重试保持身份、版本和哈希字段不变；`warnings` 按重试时的当前投影事实生成。回执不得等待模型、GBrain、Git commit、push 或 embedding。
 
 ## 11. 追加新版本的原子事务
 
@@ -727,8 +733,8 @@ warnings: []
 | staging 写入中崩溃 | 只有不完整临时目录 | 启动时隔离/清理，不返回成功 |
 | 回读校验失败 | 不提交 | 保留诊断后重试 |
 | rename 前崩溃 | 最终版本不存在 | 同幂等键重试 |
-| rename 后、回执前崩溃 | 已耐久，但调用方不知道 | 同幂等键找到原 Event 并返回同一回执 |
-| 投影更新失败 | 原件已耐久 | 扫描版本与事件重建投影 |
+| rename 后、回执前崩溃 | 已耐久，但调用方不知道 | 同幂等键找到并验证原 Event/Version，返回相同身份与哈希字段；警告按当前投影事实生成 |
+| 投影更新失败 | 原件已耐久 | 当前调用及同 key 重试返回 `projection_needs_rebuild`；正式重建留到恢复批次 |
 | outbox 索引失败 | 原件已耐久，尚未镜像 | 从 Envelope 的 Delivery Request 重建任务 |
 | GBrain 写入失败 | 原件已耐久 | 标记 failed，按同一投递幂等键重试 |
 | GBrain 成功但本地未记成功 | 远端状态不确定 | 按明确 slug、版本和哈希探测后 reconcile，不盲目新建 |
@@ -894,7 +900,7 @@ Git 不属于捕获成功的同步前置条件，否则每次随手记都会被 
 
 ### 18.2 幂等与重复
 
-- [ ] 相同幂等键、相同请求指纹重试返回同一 Event/Item/Version。
+- [ ] 相同幂等键、相同请求指纹重试返回同一 Event/Item/Version 和相同核心哈希；警告按当前投影事实生成。
 - [ ] 相同幂等键、不同请求指纹返回冲突，包括“Payload 相同但明确用户意图不同”的情况。
 - [ ] 不同幂等键保存相同内容产生两个 Capture Event。
 - [ ] idempotency 索引删除后仍可从不可变记录恢复原映射。
@@ -902,7 +908,7 @@ Git 不属于捕获成功的同步前置条件，否则每次随手记都会被 
 ### 18.3 崩溃恢复
 
 - [ ] 在 T4 至 T10 每个阶段注入进程崩溃，均不会产生虚假成功。
-- [ ] rename 后、回执前崩溃，重试返回原回执而非新建 Item。
+- [ ] rename 后、回执前崩溃，重试返回原稳定身份/哈希字段而非新建 Item，并按当前投影事实返回警告。
 - [ ] staging 残留能被安全识别，不会被当作已完成版本。
 - [ ] `capture.yaml` 删除后可以重建。
 - [ ] outbox 删除后可以从 Delivery Request 重建。
@@ -980,7 +986,7 @@ v1 推荐暂不引入新的业务数据库：
 
 1. C0–C2 里程碑的 85 项测试与稳定化新增的 8 项回归测试共 93 项通过；Envelope 的 schema、受限 YAML codec、自哈希，以及配置、路径、Manifest、Store 初始化和初始化崩溃恢复基础均已通过测试。
 2. 当前实现不包含 Capture Item/版本事务、State Event、幂等索引或四个操作，因此本文整体仍不是 `Effective`。
-3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批并同步进本文；C3 编码仍需用户另行明确授权，且只可在测试持有的 Store 中实现 `capture_text`，不得创建生产 Store。
+3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息和幂等命中警告语义已于 2026-09-09 完成编码前收口并同步进本文；C3 编码仍需用户另行明确授权，且只可在测试持有的 Store 中实现 `capture_text`，不得创建生产 Store。
 4. 后续按 C4–C6 逐批验收读取、追加、4 MiB 阈值两侧、64 MiB 上限、迁移和业务事务崩溃恢复；此阶段不接 GBrain。
 5. 本地链路验收后，再把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. 最后分别设计 URL 和文件 Payload 的入口门禁。
