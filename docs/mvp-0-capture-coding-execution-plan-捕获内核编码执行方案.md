@@ -1,6 +1,6 @@
 # MVP-0 捕获内核编码执行方案
 
-> 状态：Approved Design；C0–C2 已完成，C3-0 与编码前收口已确认，停在 C3 编码前<br>
+> 状态：Approved Design；C0–C2 已完成，C3-0、编码前收口与 C3A/C3B/C3C/C3V 执行停点已确认，停在 C3A 编码前<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -10,10 +10,11 @@
 > C2B-3 完成日期：2026-09-04<br>
 > C3-0 行为确认日期：2026-09-08<br>
 > C3 编码前收口日期：2026-09-09<br>
+> C3 分批确认日期：2026-09-10<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2A、C2B-1、C2B-2 已于 2026-09-03 完成并通过验收；C2B-3 已于 2026-09-04 完成并通过验收，C2 整体闭合，当前停在 C3 编码前<br>
-> 当前授权：A0、A1 与 A2（C1、C2A、C2B-1、C2B-2、C2B-3）已通过，C3-0 与编码前契约收口仅完成设计确认；尚未授权 C3 `capture_text`、C4–C5 其余三个捕获操作、真实 Capture Store 或外部系统接入
+> 执行进度：C0 与 C1 已于 2026-09-02 完成；C2A、C2B-1、C2B-2 已于 2026-09-03 完成并通过验收；C2B-3 已于 2026-09-04 完成并通过验收，C2 整体闭合，当前停在 C3A 编码前<br>
+> 当前授权：A0、A1 与 A2（C1、C2A、C2B-1、C2B-2、C2B-3）已通过；C3-0、编码前契约收口与 C3A/C3B/C3C/C3V 执行拆分仅完成设计确认，尚未授权 C3A 或任何后续编码、真实 Capture Store 或外部系统接入
 
 ## 0. 结论先行
 
@@ -21,7 +22,7 @@
 
 第一步 C0 已完成：已经建立隔离 Python 包和可自动发现的测试骨架。第二步 C1 也已完成：错误模型、UUIDv7、四类哈希和受限 YAML codec 均已有实现、golden fixture 与单元测试。C2A 亦已完成：本地配置、Windows 路径策略和 Store Manifest v1 已实现并通过测试。
 
-C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。C3-0 已冻结 `capture_text` 的输入、原子 Item/Event、投影、写锁、幂等与 actor/时间边界，但未实现代码。四个捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须另行明确说出“继续 C3”或等价的明确编码指令，才可开始实现 `capture_text`；其余三个操作继续留在 C4–C5。
+C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。C3-0 已冻结 `capture_text` 的输入、原子 Item/Event、投影、写锁、幂等与 actor/时间边界，但未实现代码。四个捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。后续必须另行明确说出“继续 C3A”或等价的精确编码指令，才可开始第一小批；C3B、C3C 与 C3V 仍分别需要后续授权，笼统的“继续 C3”不能自动跨越任一停点。其余三个操作继续留在 C4–C5。
 
 ## 1. 本方案解决什么问题
 
@@ -332,7 +333,7 @@ C2B-3 实际验收结果（2026-09-04）：
 - 加入 no-op 故障钩子后，同请求并发与异 root 竞争分别连续复跑 100 次和 50 次再次通过。新增 9 项测试（6 项 FI、1 项 durability 回调顺序、2 项公开接口与 no-op 边界），自动发现累计 85 项全部通过；全量测试在 `ResourceWarning` 严格模式通过，`compileall`、依赖完整性和 `git diff --check` 同时通过。
 - 全部磁盘行为只发生在测试持有的系统临时目录；真实 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 与 `E:\KnowledgeFlowData\capture-store` 测试前后元数据快照一致（当前均不存在，测试未创建），也没有产生 Capture、State Event、outbox job、网络请求或 GBrain 调用。`os._exit()` 模拟的是应用进程崩溃，仍不承诺突然断电安全。
 
-C2B-3 已在此停点完成，C2 全部闭合。只有用户明确说“继续 C3”才进入 `capture_text` 编码；真实生产初始化仍属于独立门禁 P0。
+C2B-3 已在此停点完成，C2 全部闭合。只有用户明确说“继续 C3A”才进入 `capture_text` 的第一小批；C3B、C3C、C3V 分别保留独立停点，真实生产初始化仍属于独立门禁 P0。
 
 必须覆盖 LOCK-01–04、DUR-01–04、INIT-01–16 和全部六个初始化故障点，包括完整骨架、已有 Store 幂等重开、配置完整匹配、初始化锁、同请求并发、不同 root 竞争、同盘 staging/rename、flush/回读、无覆盖配置连接、事务残片归属，以及每个故障点后的新进程重开。不得顺带实现 Item 扫描、投影重建、四个捕获操作、CLI、UI、Harness、GBrain 或 SOP。
 
@@ -346,32 +347,103 @@ C2B-3 已在此停点完成，C2 全部闭合。只有用户明确说“继续 C
 
 ### C3：`capture_text`
 
-目标：闭合第一个真正可用的本地保存事务。
+目标：闭合第一个真正可用的本地保存事务。C3 仍是一个产品阶段，但按 C3A、C3B、C3C、C3V 四个独立授权、复核和提交停点执行；任何一批通过都不自动授权下一批。最终批使用 `C3V`，避免与 C3-0 已存在的 `C3D-01`–`C3D-06` 设计决策编号混淆。
+
+C3 四批共同遵守以下边界：
+
+- 每批先列出权威条款、目标文件和不可触碰范围，再编写本批失败测试；运行本批测试后必须以普通模式和 `ResourceWarning` 严格模式重跑此前全部测试，并执行 `compileall`、依赖完整性、diff 与精确工作树检查。93 项只是进入 C3 前的基线，累计数量随新测试增长，不把固定测试数量当作验收目标。
+- C3A 与 C3B 不得提前暴露或声称 `capture_text` 已可用；只有 C3C 完整闭合 T0–T9 后才存在业务操作，C3V 负责最终验收而不新增产品能力。
+- 所有磁盘测试只允许使用测试框架创建并持有的临时 Store；每批前后确认真实默认配置与生产 Store 未出现，不访问网络、GBrain、KB、模型、SOP 或 UI。
+- C3 不引入新外部依赖、不修改 `requires-python`、Manifest schema 或已有 golden fixture 字节，不迁移测试框架，不创建数据库、幂等索引或细粒度锁，也不为代码行数重构已经稳定的 C2 初始化流程。
+- `.eval-tmp/`、`tmp-eval/`、空 `assets/`、README 测试说明和全局换行策略均是独立 housekeeping，不进入任一 C3 提交。
+- 如果实现要求改变 Envelope、Event/Projection 磁盘格式、公共输入输出、哈希、版本或提交状态语义，立即停止并登记真实冲突；不能在某个代码批次内顺手改写上游契约。
+
+进入相应生产实现前，必须先用文档断言或失败测试锁定以下局部边界：
+
+| 冻结点 | 所属批次 | 必须先明确的结果 |
+|---|---|---|
+| Python 调用面 | C3A | `str`/二进制 `read(size)` 联合输入、channel 与可选 intent/key 的类型、配置解析入口，以及测试依赖只能通过私有入口注入 |
+| Event/回执错误层 | C3A | `capture.created` 缺失、schema 非法或交叉引用不一致的稳定公共映射与 `cause_code`；`capture_text` 成功回执的精确必填字段集合 |
+| 投影时间 | C3A | `durability.verified_at` 与 `updated_at` 的采样时点、是否共用一次注入时钟值，以及规范 UTC 毫秒字节 |
+| staging 归属与清理 | C3B | T0 即可建立的 capture 专用所有权标记、允许树形和验证方式；Request Fingerprint 在 T2 前尚不存在，不能把它当作唯一 T0 归属证据；提交后或幂等命中后的清理失败不得倒置已证明的提交事实 |
+| 扫描与 rename 核验 | C3C | 扫描到不可读/损坏的已识别不可变记录时失败关闭；rename 异常后按源、目标和候选内容的磁盘事实区分 committed/not-committed/unknown |
+
+#### C3A：契约能力
+
+只允许增量修改：
+
+- `src/knowledgeflow_capture/models.py`
+- `src/knowledgeflow_capture/codec.py`
+- `src/knowledgeflow_capture/errors.py`
+- `src/knowledgeflow_capture/hashing.py`
+- 对应的 `tests/capture/unit/` 测试，以及 `tests/capture/fixtures/` 下新增的小型 Event/Projection golden
+
+本批完成：
+
+- 实现严格 `knowledgeflow.capture-event` v1 与 `knowledgeflow.capture-state` v1 schema、规范加载/发射、字段顺序、Event/Envelope 交叉引用和初始固定状态。
+- 把 channel token、2048-byte external ref、规范来源 UTC、512-byte 幂等键、固定 `user/local-user` actor 和调用方不可覆盖字段落实为单一验证边界。
+- 实现规范 scope、带域前缀的 key 摘要，以及省略可选 channel 字段/`user_intent` 与显式 `null` 生成同一 Request Fingerprint 的归一化。
+- 为 `capture_text` 定义精确成功回执必填字段；通用字段白名单不能继续允许空回执或任意合法子集冒充本操作成功。
+- 冻结上表中的 Event 完整性原因与投影时间语义。固定错误消息用精确字典断言；golden 只用于稳定的 Event/Projection 规范字节，除非以后另行冻结公共回执线协议。
+
+C3A 必须覆盖 CT-16 及支撑 CT-11、CT-20–CT-22 的纯契约边界，并重跑进入本批前的全部测试。本批不得创建 `operations.py`、获取 Capture 写锁、创建 staging 或提交任何 Item。
+
+#### C3B：写入基础
+
+只允许增量修改：
+
+- `src/knowledgeflow_capture/locking.py`
+- `src/knowledgeflow_capture/durability.py`
+- 为 capture staging 所需的最小 `src/knowledgeflow_capture/store.py` 内部增量
+- 对应的锁、durability、staging 单元/子进程测试与测试支持代码
+
+本批完成：
+
+- 从现有实现中复用已经验证的 Windows 字节锁与等待机制，保留 `acquire_initialization_lock()` 行为不变，新增固定指向 `<capture-root>/journal/capture-write.lock` 的内部 Capture 写锁入口；不另造 PID、时间戳或删除“陈旧锁文件”的协议。
+- 新增真正有界的 UTF-8 流式写入原语：所有入口读取均显式传入上限内的 `size`，严格增量校验 UTF-8/BOM，边写边计数和哈希，flush/`fsync`/关闭后再从磁盘分块回读复算；不得把完整 64 MiB 输入或回读副本重新聚合进内存。
+- 建立 capture 专用 staging 所有权与固定允许树；失败时只清理当前调用创建、身份和结构均可验证且尚未提交的对象，不枚举删除其他事务或 C2 初始化残片。
+- 对提交后、幂等命中后及清理自身 staging 失败的行为先按冻结点形成精确测试；任何结果都不能把已证明提交的不可变 Item 改报为未提交。
+
+C3B 必须在原语层覆盖 CT-03–CT-09、CT-14–CT-15、CT-18、CT-24 所需能力，包括工具化的非 seekable 流对最大请求块和读取次数的断言；真实 4/64 MiB 端到端验收仍留到 C3V。本批不得新增公开 `capture_text`、扫描正式 Item 或写 `capture.yaml`。
+
+#### C3C：完整事务
 
 主要文件：
 
-- `operations.py`
-- 必要的 `codec.py`、`models.py`、`store.py`、`locking.py`、`durability.py` 增量
+- 新增 `src/knowledgeflow_capture/operations.py`
+- 必要的 `src/knowledgeflow_capture/__init__.py`、`store.py` 与 C3A/C3B 文件小幅集成增量
 - `tests/capture/integration/test_capture_text.py`
-- 必要的单元、并发与故障边界测试
+- 必要的 capture 并发、提交边界、故障和子进程测试支持文件
 
-现有 `locking.py` 的公开入口只负责 `<config-path>.init.lock`；C3 应复用其已经验证的 Windows 字节锁与等待机制，在内部增加固定指向 `<capture-root>/journal/capture-write.lock` 的 Capture 写锁入口，不能把初始化锁路径拼接规则误用于 Store 写锁，也不能另造 PID/时间戳锁协议。流式 Payload 则在现有 durability/hashing 边界上做有界增量，不能为调用 `write_new_file_durable(bytes)` 而先把最多 64 MiB 的流重新聚合进内存。
+本批按 Capture Envelope v1 的 T0–T9 完整实现：机械校验与 staging、单遍 Payload 写入、Payload Set/Request Fingerprint、Store 写锁、幂等扫描、ID 分配、Envelope/Event 封存、完整 Item 无覆盖 rename、最终路径回读、投影尝试和结构化回执。不得发布只写 Payload、只写版本目录或提交后再补创建 Event 的半事务。
 
-必须覆盖实现拆解文档的 CT-01–CT-24：
+幂等扫描必须失败关闭：无法安全读取、规范解析或验证的已识别不可变 Envelope/Event 不能被当作“key 不存在”而继续新建。命中同请求后验证最终 Envelope、Payload 与创建 Event，只读检查投影并返回原稳定身份/哈希和当前警告；不在命中路径修复投影。
 
-- 中文、英文、emoji、CRLF/LF、首尾空白和无末尾换行字节往返一致。
-- `str` 与不可 seek 二进制流共享有界写入事务；空字符串、BOM 和非法 UTF-8 拒绝，但仅空白文本允许保存。
-- `<= 4 MiB` 内联；`> 4 MiB` 到 `<= 64 MiB` 流式写入一个完整 Payload；不重复读取入口流。
-- `> 64 MiB` 默认拒绝且零部分成功；调高配置后可重试。
-- 每次主动保存产生新 Item；同一幂等键重试返回同一 Item/Version/Event 和相同核心哈希，警告按当前投影事实生成且不静默重建；同 key 不同指纹冲突；并发同 key 最多创建一个 Item。
-- 复用 Store 级 Windows 内核锁，10 秒超时返回可重试的 `not-committed`；不得按锁文件存在、PID 或年龄清理锁。
-- 完整 Item、版本 1 与 `capture.created` 必须原子可见且从最终路径回读正确；Event 提交前失败不能留下可见 Item。
-- `capture.yaml` 是提交后可重建投影；投影失败返回成功加 `projection_needs_rebuild`，不撤销不可变 Item/Event。
-- 新分配 ID 的目标冲突不得覆盖或冒认，返回可重试 `atomic_commit_failed + not-committed`；rename 边界无法证明结果时返回 `unknown`；只清理本事务拥有的未提交 staging。
-- 渠道、幂等键和来源时间严格校验；actor 固定为 `user/local-user`，核心时间使用带 `Z` 的 UTC 毫秒格式。
-- GBrain 和网络完全不存在时仍可保存。
+rename 异常后的最小证据矩阵固定为：
 
-测试分两层：日常快速测试注入更小阈值以验证分支；本批验收另跑真实 4 MiB、4 MiB + 1 byte、64 MiB 和 64 MiB + 1 byte 边界，避免只证明缩小后的替身阈值。
+| 可证明的磁盘事实 | 结果 |
+|---|---|
+| staging 源仍在且最终目标不存在 | `atomic_commit_failed + not-committed` |
+| staging 源仍在且目标被证明为预先存在的冲突对象 | 不覆盖、不冒认，`atomic_commit_failed + not-committed` |
+| staging 源消失且目标完整验证为本次候选 Item | `committed`，继续最终回读与投影 |
+| 源/目标无法安全探测、事实矛盾或无法证明上述任一分支 | `atomic_commit_failed + unknown` |
+| 源已消失、目标可读但本次候选的 schema、哈希或交叉引用验证失败 | `integrity_check_failed + unknown`；不得返回成功或把目标冒认为既有冲突 |
+
+C3C 使用缩小阈值完成端到端 CT-01–CT-24 功能分支，尤其必须在本批已有同 key 双进程、目标冲突、Event 提交前失败、投影提交后失败和 rename unknown 的核心测试；C3V 再以真实大小、加强竞态和固定验收命令复核。本批不实现 C4 读取 API、C5 追加、C6 自动恢复/重建或生产初始化。
+
+#### C3V：验收
+
+C3V 默认只增加或强化测试、测试支持和批次验收记录；若验收暴露缺陷，可以做与既有 C3 契约一致的最小修复，但若需要改变公共或磁盘契约必须停止，不能借“验收”引入新能力。
+
+必须完成：
+
+- CT-01–CT-24 每个编号对应明确测试方法或 `subTest`，不以新增测试数量代替场景追溯。
+- 运行时生成真实 4 MiB、4 MiB + 1 byte、64 MiB、64 MiB + 1 byte 数据，不提交巨大 fixture；64 MiB 使用可观测的非 seekable 生成流，证明没有无界 `read()` 或入口二次读取。
+- 用进程同步屏障制造两个进程同 key 的真实竞争，并验证最多一个 Item、两份结果具有相同稳定身份/版本/哈希。
+- 注入新 ID 目标冲突、创建 Event 提交前失败、投影提交后失败、rename 结果未知和自有/未知 staging 并存，逐项核对提交状态、不可变磁盘事实与清理边界。
+- 运行普通全量测试、`ResourceWarning` 严格全量测试、`compileall`、依赖完整性、`git diff --check`、精确工作树清单和变更文档链接检查；验收前后确认真实配置、生产 Store、网络与 GBrain 均未被触碰。
+
+C3V 通过后只能记录“C3 `capture_text` 已实现并通过本阶段验收”，不能把整个 MVP-0 或所有 Capture Envelope 能力升级为 `Effective`；C4–C8 仍按后续独立门禁推进。
 
 ### C4：`get_capture` 与 `list_captures`
 
@@ -501,7 +573,9 @@ C2B-3 已在此停点完成，C2 全部闭合。只有用户明确说“继续 C
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
+.\.venv\Scripts\python.exe -W "error::ResourceWarning" -m unittest discover -s tests -p "test_*.py" -v
 .\.venv\Scripts\python.exe -m compileall -q src tests
+.\.venv\Scripts\python.exe -m pip check
 git diff --check
 git status --short
 ```
@@ -561,7 +635,7 @@ git status --short
 |---|---|---|---|
 | A0 方案批准 | “同意编码方案” | 把本文升级为 Approved Design | 修改代码、建环境、装依赖 |
 | A1 C0 编码 | “开始编码”或“开始 C0” | 只执行 C0；创建代码骨架、`.venv` 并运行测试 | C1 以后业务实现、真实 Store |
-| A2 后续批次 | 明确“继续 C1/C2A/C2B-1……”或一次写明批次范围 | 执行所列批次并在每批边界报告；C2B-1/2/3 分别停点 | 未授权批次和范围扩张 |
+| A2 后续批次 | 明确“继续 C1/C2A/C2B-1/…/C3A/C3B/C3C/C3V”中的当前批次 | 只执行本次点名批次并在边界报告；C3A/B/C/V 不能一次授权自动跨越 | 未授权批次和范围扩张 |
 | A3 外部下载 | 工具在安装依赖时请求的联网/权限批准 | 下载并安装已核验且精确锁定的依赖 | 其他软件或全局安装 |
 | A4 生产初始化 | “初始化生产 Capture Store”并确认目标 | 创建真实配置和 `capture-root` | 接入 GBrain 或 KB |
 | A5 Git 操作 | 明确要求 commit/push/建分支 | 仅执行指定 Git 操作 | 自动提交或发布 |
@@ -578,7 +652,7 @@ git status --short
 4. 默认候选 YAML 库为 PyYAML，编码时核验后精确锁定版本；不使用偶然全局依赖。
 5. CLI 使用“单行 JSON 头 + 精确长度原始字节”的 stdin/stdout 帧，不传正文命令行参数。
 6. 所有开发测试只写测试持有的临时目录，不创建真实用户配置或生产 Capture Store。
-7. 当前 Git 脏工作树全部保留，不自动清理、提交或恢复。
+7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口。C3 及以后编码仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。当前停在 C3A 编码前，后续仍需逐批明确授权。
