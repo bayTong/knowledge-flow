@@ -6,7 +6,7 @@
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-09):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C2 are complete, and the C3-0 behavior decisions plus the pre-coding contract closure are approved but not implemented. The current suite has 93 passing tests (86 capture-kernel tests and 7 maintenance-script regressions). Deterministic primitives, configuration, path policy, Manifest identity, Windows initialization locking and durability, safe test-Store initialization, concurrency, and process-crash recovery are implemented. The four capture operations and the production Store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-11):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C2, the C3A contract capabilities, and the C3B write foundations are complete; work is stopped before the C3C complete transaction. The current suite has 122 passing tests (115 capture-kernel tests and 7 maintenance-script regressions). In addition to safe test-Store initialization, the implementation now includes Event/Projection contracts, exact receipts and input boundaries, a Store-level Capture write lock, bounded UTF-8 streaming writes, and safely owned staging cleanup. Public `capture_text`, the other three capture operations, and the production Store do not exist yet. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -164,23 +164,23 @@ knowledge-flow/
 ├── src/
 │   └── knowledgeflow_capture/
 │       ├── __init__.py               C0 package identity
-│       ├── errors.py                 C1 public errors, internal causes, commit states
-│       ├── models.py                 C1 hash and request value objects
+│       ├── errors.py                 C1/C3A public errors, exact receipts, commit states
+│       ├── models.py                 C1/C3A hash, request, and capture-input values
 │       ├── ids.py                    C1 UUIDv7 and typed prefixes
-│       ├── hashing.py                C1 four-hash primitives
-│       ├── codec.py                  C1 restricted YAML and Envelope v1 schema
+│       ├── hashing.py                C1/C3A four-hash and idempotency-digest primitives
+│       ├── codec.py                  C1/C3A restricted YAML and Envelope/Event/Projection schemas
 │       ├── config.py                 C2A local-config contract and canonical emission
 │       ├── paths.py                  C2A Windows path-safety policy
 │       ├── manifest.py               C2A Capture Store identity contract
-│       ├── locking.py                C2B Windows initialization lock
-│       ├── durability.py             C2B durable file and no-replace commit primitives
-│       └── store.py                  C2B safe initialization, reopen, and recovery
+│       ├── locking.py                C2B/C3B Windows initialization and Store write locks
+│       ├── durability.py             C2B/C3B durable commit and bounded UTF-8 streaming
+│       └── store.py                  C2B/C3B initialization recovery and Capture staging
 ├── tests/
 │   ├── capture/
-│   │   ├── fixtures/                 Five C1–C2A JSON/YAML golden files
-│   │   ├── unit/                     C0–C2 unit and platform tests
+│   │   ├── fixtures/                 Seven C1–C3A JSON/YAML golden files
+│   │   ├── unit/                     C0–C3B unit and platform tests
 │   │   ├── integration/              C2B initialization and concurrency tests
-│   │   └── fault/                    C2B process-crash recovery tests (86 capture tests total)
+│   │   └── fault/                    C2B process-crash recovery tests (115 capture tests total)
 │   └── scripts/
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
 ├── docs/
@@ -233,11 +233,11 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Its deterministic primitives and safe Store-initialization foundation are tested, but `capture_text` does not exist, so there is still no honest “ready-to-run” save path for the governed architecture. The implementation order is:
+The complete capture MVP is not implemented yet. The C3A contract capabilities and C3B write foundations are tested, but public `capture_text` does not exist, so there is still no honest “ready-to-run” save path for the governed architecture. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved, and C0–C2 are complete. Explicitly authorize C3 before implementing `capture_text` in test-owned Stores.
-3. Complete the local text-capture path batch by batch from C3 through C8, then add manual routing, SOP-000A, and the unreviewed GBrain mirror.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C2, C3A, and C3B are complete; explicitly authorize C3C before implementing the complete `capture_text` transaction in test-owned Stores.
+3. Finish C3C and C3V, then complete reads, append, recovery, and the restricted adapter through C4–C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful for studying curation-map extraction and coverage auditing, but outputs now belong under `proposals/curation-maps/` and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
