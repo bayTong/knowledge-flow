@@ -581,6 +581,42 @@ class InitFaultRecoveryTest(unittest.TestCase):
         self._assert_unknown_fragments(unknown_transaction, unknown_before, unknown_temp)
         self.assertEqual(self._production_snapshot(), production_before)
 
+    def test_fi_07_cleanup_crash_keeps_marker_for_new_process_recovery(
+        self,
+    ) -> None:
+        production_before = self._production_snapshot()
+        unknown_transaction, unknown_temp = self._seed_unknown_fragments()
+        unknown_before = self._snapshot(unknown_transaction)
+        self._run_fault_child("after_manifest_flushed")
+        crashed = self._crashed_transaction(unknown_transaction)
+        self._assert_owned_marker(crashed)
+        self._assert_complete_store(crashed / "store")
+
+        self._run_fault_child("after_owned_transaction_content_removed")
+
+        self.assertFalse(self.capture_root.exists())
+        self.assertFalse(self.config_path.exists())
+        self._assert_owned_marker(crashed)
+        self.assertEqual(
+            sorted(path.name for path in crashed.iterdir()),
+            ["transaction.yaml"],
+        )
+
+        result = self._run_recovery_child()
+        self._assert_common_recovery(
+            result,
+            created=True,
+            expected_store_id=None,
+        )
+        self.assertFalse(crashed.exists())
+        self.assertEqual(self._transaction_candidates(), (unknown_transaction,))
+        self._assert_unknown_fragments(
+            unknown_transaction,
+            unknown_before,
+            unknown_temp,
+        )
+        self.assertEqual(self._production_snapshot(), production_before)
+
 
 if __name__ == "__main__":
     unittest.main()

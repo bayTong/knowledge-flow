@@ -8,6 +8,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 from knowledgeflow_capture.config import (
     create_local_config,
@@ -605,6 +606,63 @@ class InitCaptureStoreTest(unittest.TestCase):
             unexpected_before,
         )
         self.assertEqual(unknown_temp.read_bytes(), b"unknown")
+        self._assert_complete_store(self.capture_root)
+
+    def test_init_17_content_cleanup_failure_preserves_marker_for_retry(
+        self,
+    ) -> None:
+        self.config_path.parent.mkdir()
+        local_config = create_local_config(
+            root=self.capture_root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+            path_policy=self.policy,
+        )
+        request_sha256 = _initialization_request_sha256(
+            config_path=self.policy.validate_config_path(self.config_path),
+            capture_root=local_config.capture.root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+        )
+        owned_transaction = self.owned_root / (
+            f".knowledgeflow-init-{_UUIDS[0]}"
+        )
+        owned_transaction.mkdir()
+        marker = owned_transaction / "transaction.yaml"
+        marker.write_bytes(
+            _dump_init_transaction(
+                _InitTransaction(
+                    transaction_id=_UUIDS[0],
+                    request_sha256=request_sha256,
+                )
+            )
+        )
+        staged_store = owned_transaction / "store"
+        staged_store.mkdir()
+        content_file = staged_store / CAPTURE_STORE_MANIFEST_FILENAME
+        content_file.write_bytes(b"owned incomplete manifest")
+
+        original_unlink = Path.unlink
+
+        def fail_owned_content(path: Path, missing_ok: bool = False) -> None:
+            if path == content_file:
+                raise PermissionError("injected content cleanup failure")
+            original_unlink(path, missing_ok=missing_ok)
+
+        with mock.patch.object(Path, "unlink", new=fail_owned_content):
+            failure = self._assert_failure(
+                self._init(),
+                PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            )
+
+        self.assertEqual(failure.error.details, {"stage": "transaction-cleanup"})
+        self.assertTrue(marker.is_file())
+        self.assertEqual(content_file.read_bytes(), b"owned incomplete manifest")
+
+        recovered = self._assert_success(self._init())
+
+        self.assertTrue(recovered.created)
+        self.assertFalse(owned_transaction.exists())
         self._assert_complete_store(self.capture_root)
 
 

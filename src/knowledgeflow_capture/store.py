@@ -104,6 +104,9 @@ class _InitFaultPoint(StrEnum):
     AFTER_INIT_TEMP_CREATED = "after_init_temp_created"
     AFTER_MANIFEST_WRITTEN = "after_manifest_written"
     AFTER_MANIFEST_FLUSHED = "after_manifest_flushed"
+    AFTER_OWNED_TRANSACTION_CONTENT_REMOVED = (
+        "after_owned_transaction_content_removed"
+    )
     AFTER_ROOT_RENAMED = "after_root_renamed"
     BEFORE_CONFIG_REPLACED = "before_config_replaced"
     AFTER_CONFIG_REPLACED = "after_config_replaced"
@@ -178,6 +181,14 @@ class _InitTransaction:
             "transaction_id": self.transaction_id,
             "request_sha256": self.request_sha256,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class _SafeInitTransactionTree:
+    content_files: tuple[tuple[Path, os.stat_result], ...]
+    content_directories: tuple[tuple[Path, os.stat_result], ...]
+    marker: tuple[Path, os.stat_result]
+    root: tuple[Path, os.stat_result]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1063,7 +1074,7 @@ def _safe_transaction_tree(
     transaction_path: Path,
     *,
     expected_request_sha256: str,
-) -> tuple[tuple[Path, os.stat_result], tuple[tuple[Path, os.stat_result], ...]] | None:
+) -> _SafeInitTransactionTree | None:
     transaction_stat = _lstat_if_present(transaction_path)
     if transaction_stat is None or not stat.S_ISDIR(transaction_stat.st_mode) or (
         _is_reparse_point(transaction_stat)
@@ -1120,8 +1131,8 @@ def _safe_transaction_tree(
         ("store", ".staging"): {},
         ("store", "journal"): {},
     }
-    files: list[tuple[Path, os.stat_result]] = [(marker_path, marker_stat)]
-    directories: list[tuple[Path, os.stat_result]] = []
+    content_files: list[tuple[Path, os.stat_result]] = []
+    content_directories: list[tuple[Path, os.stat_result]] = []
 
     def visit(relative: tuple[str, ...], directory: Path) -> bool:
         try:
@@ -1141,19 +1152,23 @@ def _safe_transaction_tree(
                 if not stat.S_ISREG(entry_stat.st_mode):
                     return False
                 if entry != marker_path:
-                    files.append((entry, entry_stat))
+                    content_files.append((entry, entry_stat))
             else:
                 if not stat.S_ISDIR(entry_stat.st_mode):
                     return False
-                directories.append((entry, entry_stat))
+                content_directories.append((entry, entry_stat))
                 if not visit(child_relative, entry):
                     return False
         return True
 
     if not visit((), transaction_path):
         return None
-    directories.append((transaction_path, transaction_stat))
-    return tuple(files), tuple(directories)
+    return _SafeInitTransactionTree(
+        content_files=tuple(content_files),
+        content_directories=tuple(content_directories),
+        marker=(marker_path, marker_stat),
+        root=(transaction_path, transaction_stat),
+    )
 
 
 def _same_identity(path: Path, expected: os.stat_result) -> bool:
@@ -1178,26 +1193,49 @@ def _remove_owned_transaction(
     )
     if safe_tree is None:
         return False
-    files, directories = safe_tree
+    marker_path, marker_stat = safe_tree.marker
+    root_path, root_stat = safe_tree.root
     try:
-        if not all(_same_identity(path, path_stat) for path, path_stat in files):
-            return False
         if not all(
-            _same_identity(path, path_stat) for path, path_stat in directories
+            _same_identity(path, path_stat)
+            for path, path_stat in safe_tree.content_files
         ):
             return False
-        for path, expected_stat in files:
+        if not all(
+            _same_identity(path, path_stat)
+            for path, path_stat in safe_tree.content_directories
+        ):
+            return False
+        if not _same_identity(marker_path, marker_stat):
+            return False
+        if not _same_identity(root_path, root_stat):
+            return False
+
+        for path, expected_stat in safe_tree.content_files:
             if not _same_identity(path, expected_stat):
                 return False
             path.unlink()
         for path, expected_stat in sorted(
-            directories,
+            safe_tree.content_directories,
             key=lambda item: len(item[0].parts),
             reverse=True,
         ):
             if not _same_identity(path, expected_stat):
                 return False
             path.rmdir()
+
+        _trigger_fault(
+            _InitFaultPoint.AFTER_OWNED_TRANSACTION_CONTENT_REMOVED,
+            dependencies,
+        )
+        if tuple(root_path.iterdir()) != (marker_path,):
+            return False
+        if not _same_identity(marker_path, marker_stat):
+            return False
+        marker_path.unlink()
+        if not _same_identity(root_path, root_stat):
+            return False
+        root_path.rmdir()
     except OSError:
         _fail(
             PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
