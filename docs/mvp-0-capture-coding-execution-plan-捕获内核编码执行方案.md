@@ -1,6 +1,6 @@
 # MVP-0 捕获内核编码执行方案
 
-> 状态：Approved Design；C0–C2 与 C3A–C3C 已完成，停在 C3V 验收前<br>
+> 状态：Approved Design；C0–C3 已完成，停在 C4 授权前<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -13,11 +13,12 @@
 > C3 分批确认日期：2026-09-10<br>
 > C3A/C3B 完成日期：2026-09-10<br>
 > C3C 完成日期：2026-09-11<br>
+> C3V 完成日期：2026-09-11<br>
 > 当前状态同步日期：2026-09-11<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 已在本批完成并在 140 项全量测试下复核；当前停在 C3V 验收前<br>
-> 当前授权：A0、A1、A2 与 C3A–C3C 已通过；C3V、真实 Capture Store 和外部系统接入均未授权
+> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；当前停在 C4 授权前<br>
+> 当前授权：A0、A1、A2 与 C3A–C3V 已通过；C4、真实 Capture Store 和外部系统接入均未授权
 
 ## 0. 结论先行
 
@@ -27,9 +28,9 @@
 
 C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。
 
-C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支；普通与严格 `ResourceWarning` 全量测试均为 140 项，`compileall`、依赖完整性、C3C 新源文件静态检查和 diff 检查通过。
+C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收；普通与严格 `ResourceWarning` 全量测试均为 144 项。
 
-公开 `capture_text` 已存在，但只在测试持有的临时 Store 中验证；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。当前必须另行明确授权 C3V，才执行真实 4/64 MiB 与加强版 Windows 竞态/故障验收。其余三个操作继续留在 C4–C5。
+公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。当前必须另行明确授权 C4，才实现 `get_capture` 与 `list_captures`；追加仍留在 C5。
 
 ## 1. 本方案解决什么问题
 
@@ -456,7 +457,38 @@ C3V 默认只增加或强化测试、测试支持和批次验收记录；若验�
 - 注入新 ID 目标冲突、创建 Event 提交前失败、投影提交后失败、rename 结果未知和自有/未知 staging 并存，逐项核对提交状态、不可变磁盘事实与清理边界。
 - 运行普通全量测试、`ResourceWarning` 严格全量测试、`compileall`、依赖完整性、`git diff --check`、精确工作树清单和变更文档链接检查；验收前后确认真实配置、生产 Store、网络与 GBrain 均未被触碰。
 
+C3V 的 CT-01–CT-24 追溯如下；同一测试方法覆盖多个编号时，方法名或 `case_id` 明确保留对应编号：
+
+| ID | 明确测试方法或 `subTest` |
+|---|---|
+| CT-01 | `CaptureTextIntegrationTest.test_ct_01_02_04_13_20_preserves_text_and_commits_complete_items` / `case_id=CT-01` |
+| CT-02 | 同上 / `case_id=CT-02-mixed-lines`、`case_id=CT-02-no-final-newline` |
+| CT-03 | `CaptureTextIntegrationTest.test_ct_03_08_15_rejects_empty_oversize_bom_and_invalid_utf8` / `case_id=CT-03` |
+| CT-04 | `CaptureTextIntegrationTest.test_ct_01_02_04_13_20_preserves_text_and_commits_complete_items` / `case_id=CT-04` |
+| CT-05 | `CaptureTextAcceptanceTest.test_ct_05_06_real_4_mib_boundary_uses_one_bounded_input_pass` / `case_id=CT-05` |
+| CT-06 | 同上 / `case_id=CT-06` |
+| CT-07 | `CaptureTextAcceptanceTest.test_ct_07_08_09_real_64_mib_limit_and_raised_retry` 的 64 MiB 成功段 |
+| CT-08 | 同上 / 64 MiB + 1 byte 拒绝段；缩小阈值回归另见 `case_id=CT-08-scaled` |
+| CT-09 | 同上 / 调高本地上限后的同 key 重试段 |
+| CT-10 | `CaptureTextIntegrationTest.test_ct_10_without_key_same_content_creates_distinct_items` |
+| CT-11 | `CaptureTextIntegrationTest.test_ct_11_12_14_idempotent_retry_unifies_string_and_stream` 的同请求重试段 |
+| CT-12 | 同上 / 不同请求冲突段 |
+| CT-13 | `CaptureTextIntegrationTest.test_ct_01_02_04_13_20_preserves_text_and_commits_complete_items` 的纯本地提交及空 outbox 断言 |
+| CT-14 | `CaptureTextIntegrationTest.test_ct_11_12_14_idempotent_retry_unifies_string_and_stream` 的 `str`/非 seekable 流重试段 |
+| CT-15 | `CaptureTextIntegrationTest.test_ct_03_08_15_rejects_empty_oversize_bom_and_invalid_utf8` / `case_id=CT-15-bom`、`case_id=CT-15-invalid-utf8` |
+| CT-16 | `CaptureContractTest.test_ct_16_channel_token_reference_and_time_boundaries`、`test_ct_16_envelope_channel_actor_and_times_are_validated` 及 `CaptureTextIntegrationTest.test_ct_16_core_owns_actor_and_canonical_times` |
+| CT-17 | `CaptureTextAcceptanceTest.test_ct_17_processes_race_from_the_lock_boundary` |
+| CT-18 | `CaptureTextAcceptanceTest.test_ct_18_default_lock_wait_expires_after_ten_seconds` |
+| CT-19 | `CaptureTextIntegrationTest.test_ct_19_new_id_target_conflict_is_not_adopted_or_overwritten` |
+| CT-20 | `CaptureTextIntegrationTest.test_ct_01_02_04_13_20_preserves_text_and_commits_complete_items` 与 `CaptureContractTest.test_ct_20_contract_event_and_projection_match_golden_bytes` |
+| CT-21 | `CaptureTextIntegrationTest.test_ct_21_event_failure_does_not_commit_an_item` 与 `CaptureContractTest.test_ct_20_21_contract_event_schema_and_references_are_strict` |
+| CT-22 | `CaptureTextIntegrationTest.test_ct_22_projection_failure_is_committed_and_retry_does_not_rebuild` |
+| CT-23 | `CaptureTextIntegrationTest.test_ct_23_unprovable_rename_result_returns_unknown` |
+| CT-24 | `CaptureTextIntegrationTest.test_ct_24_failure_cleans_only_owned_staging` 与 `CaptureStagingTest.test_ct_24_cleanup_removes_only_the_exact_owned_staging` |
+
 C3V 通过后只能记录“C3 `capture_text` 已实现并通过本阶段验收”，不能把整个 MVP-0 或所有 Capture Envelope 能力升级为 `Effective`；C4–C8 仍按后续独立门禁推进。
+
+完成记录（2026-09-11）：C3V 经独立停点指令实施，默认只强化测试、测试支持与验收记录，没有修改生产源代码、公共契约或磁盘契约。新增 4 项真实验收测试后，全量增至 144 项：运行时生成 4 MiB、4 MiB + 1 byte、64 MiB、64 MiB + 1 byte，不提交巨大 fixture；可观测非 seekable 生成流证明所有输入读取均有界于 1 MiB，成功入口只读至一次 EOF；两个子进程在标准 Store 锁调用的精确边界同步后以同 key 竞争，最终只有一个 Item 且稳定回执字段一致；默认写锁实际等待满 10 秒后返回可重试的 `not-committed`。目标冲突、Event 提交前失败、投影提交后失败、rename unknown 和自有/未知 staging 并存测试进一步核对了不可变内容、保留证据和清理边界。普通与严格 `ResourceWarning` 全量测试、`compileall`、依赖完整性、diff、精确工作树及变更文档链接检查均通过；验收前后默认配置与 `E:\KnowledgeFlowData\capture-store` 均不存在，本批未触碰网络或 GBrain。结论仅为“C3 `capture_text` 已实现并通过本阶段验收”；下一门禁是 C4。
 
 ### C4：`get_capture` 与 `list_captures`
 
@@ -668,4 +700,4 @@ git status --short
 7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 已于 2026-09-11 完成；当前停在 C3V 验收前，C3V 与后续批次仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；当前停在 C4 授权前，C4 与后续批次仍需逐批明确授权。

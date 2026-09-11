@@ -5,7 +5,7 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-11）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C0–C2 与 C3A–C3C 已完成，当前停在独立 C3V 验收批次前；全量测试为 140 项（捕获内核 133 项、维护脚本回归 7 项），全部通过。公开 `capture_text` 已在测试持有的临时 Store 中闭合 T0–T9，包括有界 UTF-8 保存、失败关闭的幂等扫描、不可变 Item/Event 原子提交、最终回读、投影警告与三态提交证据。真实 4/64 MiB 边界及加强版 Windows 竞态/故障验收仍留给 C3V。其余三个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-11）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C0–C3 已完成，C3 `capture_text` 已实现并通过本阶段验收；全量测试为 144 项（捕获内核 137 项、维护脚本回归 7 项），全部通过。验收覆盖真实 4 MiB/64 MiB 边界、有界非 seekable 输入、锁边界双进程同 key 竞争、默认 10 秒写锁超时，以及目标冲突、Event/投影失败、rename unknown 与 staging 清理证据。下一独立门禁是 C4 `get_capture` + `list_captures`；其余三个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -163,7 +163,7 @@ knowledge-flow/
 ├── pyproject.toml                    捕获内核包与精确锁定的运行时依赖
 ├── src/
 │   └── knowledgeflow_capture/
-│       ├── __init__.py               C0/C3C 包身份与公开捕获接口
+│       ├── __init__.py               C0/C3 包身份与公开捕获接口
 │       ├── errors.py                 C1/C3A 公共错误、精确回执与提交状态模型
 │       ├── models.py                 C1/C3A 哈希、请求与捕获输入值对象
 │       ├── ids.py                    C1 UUIDv7 与类型前缀
@@ -175,13 +175,13 @@ knowledge-flow/
 │       ├── locking.py                C2B/C3B Windows 初始化锁与 Store 写锁
 │       ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
 │       ├── store.py                  C2B/C3B 初始化恢复与 Capture staging
-│       └── operations.py             C3C 完整 capture_text 事务
+│       └── operations.py             C3 完整 capture_text 事务
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C3A 的 7 份 JSON/YAML golden 文件
 │   │   ├── unit/                     C0–C3B 单元与平台测试
-│   │   ├── integration/              C2B/C3C 事务与并发测试
-│   │   └── fault/                    C2B 进程崩溃恢复测试（捕获测试共 133 项）
+│   │   ├── integration/              C2B/C3 事务、真实边界与并发测试
+│   │   └── fault/                    C2B 进程崩溃恢复测试（捕获测试共 137 项）
 │   └── scripts/
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
 ├── docs/
@@ -234,11 +234,11 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text` 已存在，完整事务目前只在测试持有的临时 Store 中通过验证；C3V 与其余操作仍待完成，因此还不能宣称存在生产可用的保存链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text` 已在测试持有的临时 Store 中通过完整 C3 阶段验收，但读取、列表、追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的保存链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C2 与 C3A–C3C 已完成，当前仍需明确授权 C3V，才可执行真实大小和加强版验收。
-3. 完成 C3V 后，再按 C4–C8 闭合读取、追加、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C3 已完成，当前需另行明确授权 C4，才可实现 `get_capture` 与 `list_captures`。
+3. 再按 C5–C8 闭合追加、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。

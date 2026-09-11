@@ -1,15 +1,16 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-> 状态：Approved Design；C0–C2 与 C3A–C3C 已完成；当前 140 项测试通过，`capture_text` 完整事务已实现，停在 C3V 验收授权前<br>
+> 状态：Approved Design；C0–C3 已完成；当前 144 项测试通过，C3 `capture_text` 已实现并通过本阶段验收，停在 C4 授权前<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
 > C3 编码前收口日期：2026-09-09<br>
 > C3A/C3B 完成日期：2026-09-10<br>
 > C3C 完成日期：2026-09-11<br>
+> C3V 完成日期：2026-09-11<br>
 > 当前状态同步日期：2026-09-11<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件只把 C3C 记为已实现并通过缩小阈值事务测试；C3V 真实大小和加强版竞态/故障验收尚未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
+> 边界：本文件只把 C3 `capture_text` 记为已实现并通过本阶段验收；C4–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
 
 ## 1. 为什么需要本文件
 
@@ -41,10 +42,10 @@
 | 临时 KB 创建与 `provisional` 生命周期 | [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) | Approved Design | 旧 SOP-000 在冷启动、领域前置和 SCHEMA 前置方面被取代 |
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
-| C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务于 2026-09-11 实现，仍服从 C3V 独立验收门禁 |
+| C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4 MiB 内联阈值和 64 MiB 默认安全上限 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项通过；真实边界验收留在 C3V |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C3A–C3C 已分别完成，当前停在 C3V 授权前 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C3A–C3V 已分别完成，当前停在 C4 授权前 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
 | 可信知识写入、精确批准和回滚 | 尚待重构的 SOP-002 | Blocking Draft | 旧 SOP-002 不得作为自动语义写入授权 |
@@ -257,6 +258,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3A 已以 `346164d` 完成，C3B 已以 `8050d88` 完成，C3C 已在本批闭合完整 `capture_text` 事务，普通与严格 `ResourceWarning` 全量测试均增至 140 项。下一步仍需明确授权 C3V，才执行真实 4/64 MiB 与加强版 Windows 竞态/故障验收。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3A 已以 `346164d` 完成，C3B 已以 `8050d88` 完成，C3C 闭合完整 `capture_text` 事务，C3V 又完成真实 4/64 MiB、锁边界双进程和加强版故障验收；普通与严格 `ResourceWarning` 全量测试均为 144 项。下一步需另行明确授权 C4，才实现 `get_capture` 与 `list_captures`。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。

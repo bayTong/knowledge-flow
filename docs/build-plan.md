@@ -65,7 +65,7 @@
 | 项目文档 | `README.md`, `README-zh.md`, `CHANGELOG.md` | 中英双语 |
 | 战略愿景 | `docs/second-brain-vision.md` | 核心原则 + 架构总览 + LLM 局限分析 |
 | 开源基础 | `LICENSE`, `.gitignore` | MIT 许可 |
-| 捕获内核 C0–C3C | `src/knowledgeflow_capture/`, `tests/capture/` | C0–C2 初始化底座及 C3A–C3C 已完成；公开 `capture_text` 的完整事务在测试 Store 中通过，全量 140 项测试通过，C3V 与其余三个公开操作尚未完成 |
+| 捕获内核 C0–C3 | `src/knowledgeflow_capture/`, `tests/capture/` | C0–C3 已完成；公开 `capture_text` 的完整事务在测试 Store 中通过真实大小、加强版竞态与故障验收，全量 144 项测试通过，其余三个公开操作尚未完成 |
 
 ### 当前缺失的
 
@@ -723,7 +723,7 @@ SCHEMA.md 新增：
 ## 十三、实施建议
 
 1. 旧 P0/P1 交付了 prompt、参考脚本和一次长文样例验证；它们是可复用资产，不代表新捕获、路由、批准和回滚链路已经实现。
-2. 新治理链路已完成 C0–C2 与 C3A–C3C，公开 `capture_text` 的完整事务已在测试持有的临时 Store 中通过，全量 140 项测试通过。当前下一步是经用户明确授权后进行 C3V 真实大小和加强版验收；不是 C4、MC-001、GBrain 集成、人工路由或 UI。
+2. 新治理链路已完成 C0–C3，公开 `capture_text` 的完整事务已在测试持有的临时 Store 中通过本阶段验收，全量 144 项测试通过。当前下一步是经用户明确授权后进行 C4 `get_capture` 与 `list_captures`；不是 C5、MC-001、GBrain 集成、人工路由或 UI。
 3. 四种提取模式（Mode A/A-fast/B/C）已存在于 `prompts/`，但当前只作为待重构的策展地图生成方法，不得自动触发旧 SOP-002。
 4. MC-001 保留为远期候选；应在捕获、人工路由、SOP-000A/000B 和可信写入协议稳定后，再用独立提案确定范围与运行时。
 5. 命名变更（阅读地图→策展地图）已在 v2.1 阶段一次性完成。

@@ -219,13 +219,13 @@ class CaptureTextIntegrationTest(unittest.TestCase):
 
     def test_ct_01_02_04_13_20_preserves_text_and_commits_complete_items(self) -> None:
         values = (
-            "中文 English 🙂",
-            "  first\r\nsecond\nlast  ",
-            " \n ",
-            "no-final-newline",
+            ("CT-01", "中文 English 🙂"),
+            ("CT-02-mixed-lines", "  first\r\nsecond\nlast  "),
+            ("CT-04", " \n "),
+            ("CT-02-no-final-newline", "no-final-newline"),
         )
-        for value in values:
-            with self.subTest(value=value):
+        for case_id, value in values:
+            with self.subTest(case_id=case_id):
                 success = self._assert_success(self._capture(self._request(value)))
                 self.assertEqual(success.warnings, ())
                 self._assert_item_integrity(success, value.encode("utf-8"))
@@ -238,13 +238,21 @@ class CaptureTextIntegrationTest(unittest.TestCase):
 
     def test_ct_03_08_15_rejects_empty_oversize_bom_and_invalid_utf8(self) -> None:
         invalid_sources = (
-            (io.BytesIO(b""), PublicErrorCode.INVALID_INPUT),
-            (io.BytesIO(b"x" * (_MAXIMUM + 1)), PublicErrorCode.TEXT_TOO_LARGE),
-            (io.BytesIO(b"\xef\xbb\xbfprivate"), PublicErrorCode.INVALID_INPUT),
-            (io.BytesIO(b"\xff"), PublicErrorCode.INVALID_INPUT),
+            ("CT-03", io.BytesIO(b""), PublicErrorCode.INVALID_INPUT),
+            (
+                "CT-08-scaled",
+                io.BytesIO(b"x" * (_MAXIMUM + 1)),
+                PublicErrorCode.TEXT_TOO_LARGE,
+            ),
+            (
+                "CT-15-bom",
+                io.BytesIO(b"\xef\xbb\xbfprivate"),
+                PublicErrorCode.INVALID_INPUT,
+            ),
+            ("CT-15-invalid-utf8", io.BytesIO(b"\xff"), PublicErrorCode.INVALID_INPUT),
         )
-        for source, code in invalid_sources:
-            with self.subTest(code=code):
+        for case_id, source, code in invalid_sources:
+            with self.subTest(case_id=case_id):
                 self._assert_failure(
                     self._capture(self._request(source)),
                     code,
@@ -254,9 +262,14 @@ class CaptureTextIntegrationTest(unittest.TestCase):
         self.assertEqual(tuple((self.capture_root / ".staging").iterdir()), ())
 
     def test_ct_05_06_07_scaled_thresholds_use_one_bounded_payload(self) -> None:
-        for size in (_INLINE_THRESHOLD, _INLINE_THRESHOLD + 1, _MAXIMUM):
+        cases = (
+            ("CT-05-scaled", _INLINE_THRESHOLD),
+            ("CT-06-scaled", _INLINE_THRESHOLD + 1),
+            ("CT-07-scaled", _MAXIMUM),
+        )
+        for case_id, size in cases:
             source = _NonSeekableStream(b"x" * size)
-            with self.subTest(size=size):
+            with self.subTest(case_id=case_id, size=size):
                 success = self._assert_success(self._capture(self._request(source)))
                 self._assert_item_integrity(success, b"x" * size)
                 self.assertTrue(source.read_sizes)
@@ -433,6 +446,8 @@ class CaptureTextIntegrationTest(unittest.TestCase):
         self.assertTrue(failure.error.retryable)
         self.assertEqual(sentinel.read_bytes(), b"pre-existing")
         self.assertFalse((target / "versions").exists())
+        self.assertEqual(tuple(target.iterdir()), (sentinel,))
+        self.assertEqual(tuple((self.capture_root / ".staging").iterdir()), ())
 
     def test_ct_21_event_failure_does_not_commit_an_item(self) -> None:
         def fail_event() -> None:
@@ -449,6 +464,7 @@ class CaptureTextIntegrationTest(unittest.TestCase):
             CommitState.NOT_COMMITTED,
         )
         self.assertEqual(self._item_paths(), ())
+        self.assertEqual(tuple((self.capture_root / ".staging").iterdir()), ())
 
     def test_ct_22_projection_failure_is_committed_and_retry_does_not_rebuild(self) -> None:
         def fail_projection() -> None:
@@ -471,6 +487,11 @@ class CaptureTextIntegrationTest(unittest.TestCase):
         )
         item = self._item_for(first)
         self.assertFalse((item / "capture.yaml").exists())
+        immutable_before = {
+            path.relative_to(item).as_posix(): path.read_bytes()
+            for path in item.rglob("*")
+            if path.is_file()
+        }
 
         retried = self._assert_success(
             self._capture(self._request("projection failure", key="projection-key"))
@@ -480,6 +501,12 @@ class CaptureTextIntegrationTest(unittest.TestCase):
             (WarningCode.PROJECTION_NEEDS_REBUILD,),
         )
         self.assertFalse((item / "capture.yaml").exists())
+        immutable_after = {
+            path.relative_to(item).as_posix(): path.read_bytes()
+            for path in item.rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(immutable_after, immutable_before)
         for field in _STABLE_RECEIPT_FIELDS:
             self.assertEqual(first.to_dict()[field], retried.to_dict()[field])
 
@@ -499,6 +526,10 @@ class CaptureTextIntegrationTest(unittest.TestCase):
             CommitState.UNKNOWN,
         )
         self.assertEqual(self._item_paths(), ())
+        staging = tuple((self.capture_root / ".staging").iterdir())
+        self.assertEqual(len(staging), 1)
+        self.assertTrue((staging[0] / "transaction.yaml").is_file())
+        self.assertTrue((staging[0] / "lost-item").is_dir())
 
     def test_rename_rejection_with_original_source_is_not_committed(self) -> None:
         def reject_item(source: Path, destination: Path) -> None:
