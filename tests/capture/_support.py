@@ -19,6 +19,8 @@ from knowledgeflow_capture.locking import (
     _acquire_capture_write_lock,
     acquire_initialization_lock,
 )
+from knowledgeflow_capture.models import CaptureTextRequest, ChannelMetadata
+from knowledgeflow_capture.operations import capture_text
 from knowledgeflow_capture.paths import PathPolicy
 from knowledgeflow_capture.store import (
     _InitFaultPoint,
@@ -131,6 +133,30 @@ def _init_store_fault(
     return _write_result(result, result_path)
 
 
+def _capture_text(
+    owned_root: Path,
+    config_path: Path,
+    text: str,
+    idempotency_key: str,
+    started_path: Path,
+    gate_path: Path,
+    result_path: Path,
+) -> int:
+    _write_marker(started_path)
+    if not _wait_for_gate(gate_path):
+        return 2
+    result = capture_text(
+        CaptureTextRequest(
+            text=text,
+            channel=ChannelMetadata(type="app", instance_id="local-desktop"),
+            idempotency_key=idempotency_key,
+        ),
+        config_path=config_path,
+        path_policy=PathPolicy.test_owned(owned_root),
+    )
+    return _write_result(result, result_path)
+
+
 def _write_result(result: object, result_path: Path) -> int:
     encoded = json.dumps(
         result.to_dict(),
@@ -174,6 +200,14 @@ def main(argv: list[str] | None = None) -> int:
     fault_initializer.add_argument("maximum", type=int)
     fault_initializer.add_argument("fault_point", type=str)
     fault_initializer.add_argument("result_path", type=Path)
+    capturer = subparsers.add_parser("capture-text")
+    capturer.add_argument("owned_root", type=Path)
+    capturer.add_argument("config_path", type=Path)
+    capturer.add_argument("text", type=str)
+    capturer.add_argument("idempotency_key", type=str)
+    capturer.add_argument("started_path", type=Path)
+    capturer.add_argument("gate_path", type=Path)
+    capturer.add_argument("result_path", type=Path)
     arguments = parser.parse_args(argv)
     if arguments.command == "hold-lock":
         return _hold_lock(
@@ -208,6 +242,16 @@ def main(argv: list[str] | None = None) -> int:
             arguments.inline_threshold,
             arguments.maximum,
             arguments.fault_point,
+            arguments.result_path,
+        )
+    if arguments.command == "capture-text":
+        return _capture_text(
+            arguments.owned_root,
+            arguments.config_path,
+            arguments.text,
+            arguments.idempotency_key,
+            arguments.started_path,
+            arguments.gate_path,
             arguments.result_path,
         )
     return 2

@@ -16,6 +16,16 @@ class PackageSmokeTest(unittest.TestCase):
         self.assertEqual(
             version("knowledgeflow-capture"), knowledgeflow_capture.__version__
         )
+        self.assertTrue(callable(knowledgeflow_capture.capture_text))
+        self.assertTrue(
+            {
+                "CaptureTextOperationResult",
+                "CaptureTextRequest",
+                "ChannelMetadata",
+                "UserIntent",
+                "capture_text",
+            }.issubset(knowledgeflow_capture.__all__)
+        )
 
 
 if __name__ == "__main__":

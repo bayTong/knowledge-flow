@@ -4,7 +4,7 @@
 
 ## Unreleased
 
-### 治理式捕获架构与 C3B 写入基础
+### 治理式捕获架构与 C3C 完整事务
 
 - **建立主题级设计权威**：新增需求与治理基线、设计权威与冲突登记、SOP-000A、捕获与路由规范、Capture Envelope v1、MVP-0 四操作契约、实现拆解与编码执行方案。
 - **冻结语义写入边界**：捕获允许先保存后审核；模型只生成路由或策展提案；旧 SOP-002 及其写入提示词暂停执行，策展地图迁移到 `proposals/curation-maps/`。
@@ -12,14 +12,15 @@
 - **闭合初始化恢复边界**：实现幂等重开、无覆盖配置连接、同请求/异 root 多进程竞争、保守事务残片归属，以及六个仅内部可选的初始化故障点和跨进程崩溃恢复验证；不宣称突然断电安全。
 - **建立可复现验证**：C0–C2 里程碑形成 85 项自动化测试和五份 JSON/YAML golden fixture；严格 `ResourceWarning`、`compileall`、依赖完整性和 diff 检查均通过。golden 文件固定使用 LF，避免 Windows checkout 改变契约字节。
 - **清理仓库临时产物**：删除误提交的 `.eval-tmp` 合成数据，补充本地环境、构建产物和实验目录忽略规则。
-- **明确尚未交付范围**：四个文本操作、Capture Item/版本事务、State Event 业务持久化、幂等索引、生产 Store、人工路由、GBrain、Harness、UI 和可信知识写入均未实现。
+- **明确进入 C3 前的未交付范围**：该时点四个文本操作、Capture Item/版本事务、State Event 业务持久化、幂等索引、生产 Store、人工路由、GBrain、Harness、UI 和可信知识写入均未实现；后续条目逐批记录其中 `capture_text` 的实现进展。
 - **冻结 C3-0 行为边界**：确认文本/流输入、完整 Item + `capture.created` 原子提交、初始投影、Store 级写锁、幂等身份及 actor/UTC 规则；该设计确认当时未授权或实现 C3。
 - **完成 C3 前稳定化**：公共错误诊断和成功回执改为类型化字段白名单；三个维护脚本对无效 KB 与重复 basename 失败关闭，`index-generator --write` 不再在失败时覆盖 index，Wikilink 验证排除行内代码；新增 1 项错误模型和 7 项脚本回归测试，全量测试增至 93 项。
 - **完成 C3 编码前契约收口**：统一 C3 成功回执并移除冗余 `payload_count`，固定完整性错误消息，明确幂等重试保持不可变身份/版本/哈希而警告反映当前投影事实，统一可选意图的省略归一化和新 ID 目标碰撞结果，移除捕获规范中的旧 `capture.yaml` 伪格式；该收口完成时尚未授权或实现 `capture_text`。
 - **固化 C3 分批停点**：将 `capture_text` 拆为独立授权、复核和提交的 C3A 契约能力、C3B 写入基础、C3C 完整事务与 C3V 验收四批；测试随批次增量交付，最终按 CT-01–CT-24、真实 4/64 MiB 和 Windows 多进程边界验收；拆分确认时尚未授权任何 C3 编码。
 - **完成 C3A 契约能力**：提交 `346164d` 实现严格 Event/Projection v1、渠道与时间边界、规范幂等 scope/key 摘要、精确成功回执及 golden fixture；普通与严格 `ResourceWarning` 全量测试均为 105 项，未创建 staging 或公开 `capture_text`。
 - **完成 C3B 写入基础**：提交 `8050d88` 复用 Windows 内核字节锁形成固定 Store 写锁，实现单遍有界 UTF-8 写入、落盘回读复算、T0 staging 所有权与固定树安全清理；普通与严格 `ResourceWarning` 全量测试均为 122 项，仍未扫描正式 Item、写 `capture.yaml` 或公开 `capture_text`。
-- **同步 C3 当前停点**：C3A 与 C3B 已完成，当前停在 C3C 完整事务授权前；C3C/C3V、生产 Store 与外部系统接入均未授权。
+- **完成 C3C 完整事务**：公开 `capture_text`，闭合 T0–T9 的配置/Store 检查、有界 Payload、幂等扫描、Store 锁、Envelope/Event 封存、完整 Item 无覆盖提交、最终回读、初始投影与结构化回执；缩小阈值下覆盖 CT-01–CT-24 核心分支及 Windows 双进程同 key、目标冲突、提交前 Event 故障、提交后投影故障和 rename 三态证据，普通与严格 `ResourceWarning` 全量测试均增至 140 项。
+- **同步 C3 当前停点**：C3A–C3C 已完成，当前停在 C3V 独立验收授权前；真实 4/64 MiB、加强版竞态/故障验收、其余三个操作、生产 Store 与外部系统接入均未授权。
 - **收口当前文档口径**：当前活跃调用数统一为 A=2、A-fast=1、B=3、C=4；Mode B 保留并填写第 7/8 节但明确不重读源文；历史样例补充不可复原的第 10 节声明并移除旧 SOP-002 执行指令；实践数据改为可审计口径。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
