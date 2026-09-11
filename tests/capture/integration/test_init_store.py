@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest import mock
@@ -26,8 +28,12 @@ from knowledgeflow_capture.store import (
     CAPTURE_STORE_MANIFEST_FILENAME,
     CAPTURE_STORE_REQUIRED_DIRECTORIES,
     InitStoreResult,
+    _InitFaultPoint,
     _InitTransaction,
+    _StoreDependencies,
+    _config_temp_name,
     _dump_init_transaction,
+    _init_capture_store_with_dependencies,
     _initialization_request_sha256,
     init_capture_store,
 )
@@ -45,6 +51,8 @@ _UUIDS = (
     "01991a7e-7b20-7a31-8d14-0b8ab6b35423",
     "01991a7e-7b20-7a31-8d14-0b8ab6b35424",
     "01991a7e-7b20-7a31-8d14-0b8ab6b35425",
+    "01991a7e-7b20-7a31-8d14-0b8ab6b35426",
+    "01991a7e-7b20-7a31-8d14-0b8ab6b35427",
 )
 
 
@@ -586,26 +594,40 @@ class InitCaptureStoreTest(unittest.TestCase):
         (unexpected_transaction / "unexpected.txt").write_bytes(b"preserve")
         unexpected_before = self._snapshot(unexpected_transaction)
 
-        exact_temp = self.config_path.parent / (
-            f".knowledgeflow-config-{_UUIDS[3]}.tmp"
+        exact_temp = self.config_path.parent / _config_temp_name(
+            request_sha256,
+            _UUIDS[3],
         )
         exact_temp.write_bytes(config_bytes)
-        unknown_temp = self.config_path.parent / (
-            f".knowledgeflow-config-{_UUIDS[4]}.tmp"
+        foreign_config_path = self.config_path.parent / "foreign.yaml"
+        foreign_request_sha256 = _initialization_request_sha256(
+            config_path=self.policy.validate_config_path(foreign_config_path),
+            capture_root=local_config.capture.root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
         )
-        unknown_temp.write_bytes(b"unknown")
+        foreign_temp = self.config_path.parent / _config_temp_name(
+            foreign_request_sha256,
+            _UUIDS[4],
+        )
+        foreign_temp.write_bytes(config_bytes)
+        legacy_temp = self.config_path.parent / (
+            f".knowledgeflow-config-{_UUIDS[5]}.tmp"
+        )
+        legacy_temp.write_bytes(config_bytes)
 
         success = self._assert_success(self._init())
 
         self.assertTrue(success.created)
         self.assertFalse(owned_transaction.exists())
         self.assertFalse(exact_temp.exists())
+        self.assertEqual(foreign_temp.read_bytes(), config_bytes)
+        self.assertEqual(legacy_temp.read_bytes(), config_bytes)
         self.assertEqual(self._snapshot(other_transaction), other_before)
         self.assertEqual(
             self._snapshot(unexpected_transaction),
             unexpected_before,
         )
-        self.assertEqual(unknown_temp.read_bytes(), b"unknown")
         self._assert_complete_store(self.capture_root)
 
     def test_init_17_content_cleanup_failure_preserves_marker_for_retry(
@@ -664,6 +686,122 @@ class InitCaptureStoreTest(unittest.TestCase):
         self.assertTrue(recovered.created)
         self.assertFalse(owned_transaction.exists())
         self._assert_complete_store(self.capture_root)
+
+    def test_init_18_distinct_config_targets_do_not_delete_inflight_temp(
+        self,
+    ) -> None:
+        first_config = self.owned_root / "config" / "first.yaml"
+        second_config = self.owned_root / "config" / "second.yaml"
+        local_config = create_local_config(
+            root=self.capture_root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+            path_policy=self.policy,
+        )
+        first_request_sha256 = _initialization_request_sha256(
+            config_path=self.policy.validate_config_path(first_config),
+            capture_root=local_config.capture.root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+        )
+        paused = threading.Event()
+        release = threading.Event()
+
+        def pause_before_config_commit() -> None:
+            paused.set()
+            if not release.wait(timeout=15):
+                raise TimeoutError("timed out waiting to release config commit")
+
+        first_dependencies = _StoreDependencies(
+            fault_point=_InitFaultPoint.BEFORE_CONFIG_REPLACED,
+            fault_hook=pause_before_config_commit,
+        )
+
+        def initialize_first() -> InitStoreResult | FailureResult:
+            return _init_capture_store_with_dependencies(
+                config_path=first_config,
+                capture_root=self.capture_root,
+                inline_text_threshold_bytes=_INLINE_THRESHOLD,
+                max_text_version_bytes=_MAXIMUM,
+                path_policy=self.policy,
+                dependencies=first_dependencies,
+            )
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            first_future = executor.submit(initialize_first)
+            if not paused.wait(timeout=10):
+                release.set()
+                self.fail("first initializer did not reach config commit barrier")
+            try:
+                inflight_candidates = tuple(
+                    path
+                    for path in first_config.parent.iterdir()
+                    if path.name.startswith(".knowledgeflow-config-")
+                )
+                self.assertEqual(len(inflight_candidates), 1)
+                first_temp = inflight_candidates[0]
+                self.assertTrue(
+                    first_temp.name.startswith(
+                        ".knowledgeflow-config-"
+                        f"{first_request_sha256.removeprefix('sha256:')}-"
+                    )
+                )
+                first_temp_bytes = first_temp.read_bytes()
+                second = self._assert_success(
+                    self._init(
+                        config_path=second_config,
+                        capture_root=self.capture_root,
+                    )
+                )
+                self.assertTrue(first_temp.is_file())
+                self.assertEqual(first_temp.read_bytes(), first_temp_bytes)
+            finally:
+                release.set()
+            first = self._assert_success(first_future.result(timeout=15))
+
+        self.assertTrue(first.created)
+        self.assertFalse(second.created)
+        self.assertEqual(first.store_id, second.store_id)
+        self.assertTrue(first_config.is_file())
+        self.assertTrue(second_config.is_file())
+        self.assertEqual(
+            tuple(
+                path
+                for path in first_config.parent.iterdir()
+                if path.name.startswith(".knowledgeflow-config-")
+            ),
+            (),
+        )
+
+    def test_init_19_matching_identity_with_wrong_bytes_is_preserved(
+        self,
+    ) -> None:
+        manifest = self._make_valid_store(self.capture_root)
+        self.config_path.parent.mkdir()
+        local_config = create_local_config(
+            root=self.capture_root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+            path_policy=self.policy,
+        )
+        request_sha256 = _initialization_request_sha256(
+            config_path=self.policy.validate_config_path(self.config_path),
+            capture_root=local_config.capture.root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+        )
+        unknown_temp = self.config_path.parent / _config_temp_name(
+            request_sha256,
+            _UUIDS[6],
+        )
+        unknown_temp.write_bytes(b"unknown config fragment")
+
+        success = self._assert_success(self._init())
+
+        self.assertFalse(success.created)
+        self.assertEqual(success.store_id, manifest.store_id)
+        self.assertEqual(unknown_temp.read_bytes(), b"unknown config fragment")
+        self.assertTrue(self.config_path.is_file())
 
 
 if __name__ == "__main__":

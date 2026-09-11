@@ -1277,23 +1277,44 @@ def _cleanup_transaction_candidates(
         )
 
 
-def _config_temp_id(name: str) -> str | None:
+def _config_temp_name(request_sha256: str, transaction_id: str) -> str:
+    if _SHA256_PATTERN.fullmatch(request_sha256) is None:
+        raise ValueError("request_sha256 must be a canonical SHA-256 value")
+    _validate_uuid7_text(transaction_id)
+    request_hex = request_sha256.removeprefix("sha256:")
+    return (
+        f"{_CONFIG_TEMP_PREFIX}{request_hex}-{transaction_id}"
+        f"{_CONFIG_TEMP_SUFFIX}"
+    )
+
+
+def _config_temp_identity(name: str) -> tuple[str, str] | None:
     if not name.startswith(_CONFIG_TEMP_PREFIX) or not name.endswith(
         _CONFIG_TEMP_SUFFIX
     ):
         return None
     value = name[len(_CONFIG_TEMP_PREFIX) : -len(_CONFIG_TEMP_SUFFIX)]
-    if not _valid_uuid_name(value):
+    if len(value) != 101 or value[64] != "-":
         return None
-    return value
+    request_sha256 = "sha256:" + value[:64]
+    transaction_id = value[65:]
+    if _SHA256_PATTERN.fullmatch(request_sha256) is None or not _valid_uuid_name(
+        transaction_id
+    ):
+        return None
+    return request_sha256, transaction_id
 
 
 def _remove_exact_config_temp(
     path: Path,
     *,
+    expected_request_sha256: str,
     expected_bytes: bytes,
     dependencies: _StoreDependencies,
 ) -> bool:
+    identity = _config_temp_identity(path.name)
+    if identity is None or identity[0] != expected_request_sha256:
+        return False
     path_stat = _lstat_if_present(path)
     if path_stat is None or not stat.S_ISREG(path_stat.st_mode) or (
         _is_reparse_point(path_stat)
@@ -1332,10 +1353,12 @@ def _cleanup_config_temp_candidates(
             stage="config-temp-scan",
         )
     for candidate in candidates:
-        if _config_temp_id(candidate.name) is None:
+        identity = _config_temp_identity(candidate.name)
+        if identity is None or identity[0] != request.request_sha256:
             continue
         _remove_exact_config_temp(
             candidate,
+            expected_request_sha256=request.request_sha256,
             expected_bytes=expected_bytes,
             dependencies=dependencies,
         )
@@ -1369,6 +1392,7 @@ def _cleanup_current_transaction(
 def _cleanup_current_config_temp(
     path: Path,
     *,
+    expected_request_sha256: str,
     expected_bytes: bytes,
     dependencies: _StoreDependencies,
 ) -> None:
@@ -1376,6 +1400,7 @@ def _cleanup_current_config_temp(
         return
     removed = _remove_exact_config_temp(
         path,
+        expected_request_sha256=expected_request_sha256,
         expected_bytes=expected_bytes,
         dependencies=dependencies,
     )
@@ -1444,7 +1469,7 @@ def _new_config_temp_path(
     for _attempt in range(8):
         transaction_id = _canonical_uuid_from_factory(dependencies.uuid_factory)
         path = request.config_path.parent / (
-            f"{_CONFIG_TEMP_PREFIX}{transaction_id}{_CONFIG_TEMP_SUFFIX}"
+            _config_temp_name(request.request_sha256, transaction_id)
         )
         try:
             dependencies.durability.write_new_file_durable(
@@ -1492,6 +1517,7 @@ def _connect_config(
             existing = _read_config(request.config_path, path_policy=path_policy)
             _cleanup_current_config_temp(
                 config_temp,
+                expected_request_sha256=request.request_sha256,
                 expected_bytes=expected_bytes,
                 dependencies=dependencies,
             )
@@ -1508,6 +1534,7 @@ def _connect_config(
     except Exception:
         _cleanup_current_config_temp(
             config_temp,
+            expected_request_sha256=request.request_sha256,
             expected_bytes=expected_bytes,
             dependencies=dependencies,
         )
