@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=R0.3D -->
+<!-- knowledgeflow-doc-status tests=159 capture_tests=144 script_tests=15 next_gate=R0.3F -->
 
-> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F、D0G 与 C4-0 已完成；当前停在 R0.3D 授权门禁<br>
+> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F、D0G、C4-0 与 R0.3D 已完成；R0.3D 已通过独立本地提交闭合且未 push，随后停在 R0.3F 授权门禁<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -21,11 +21,12 @@
 > D0-F 版本化收口日期：2026-09-12（本地提交；未 push）<br>
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（本地提交；未 push）<br>
 > C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）<br>
+> R0.3D 诊断与裁决完成日期：2026-09-13（已通过独立本地提交闭合；未 push）<br>
 > 当前状态同步日期：2026-09-13<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0-F 与 D0G 已闭合，D0G 新增 8 项文档护栏回归后当前全量为 156 项<br>
-> 当前授权：A0、A1、A2、C3A–C3V、R0.1、R0.2、D0、D0-F、D0G 与 C4-0 已完成；R0.3D、C4 实现、真实 Capture Store 和外部系统接入均未授权
+> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0-F、D0G、C4-0 与 R0.3D 已闭合；R0.3D 新增 3 项特征测试后当前全量为 159 项<br>
+> 当前授权：A0、A1、A2、C3A–C3V、R0.1、R0.2、D0、D0-F、D0G、C4-0 与 R0.3D 已完成；R0.3F、C4 实现、真实 Capture Store 和外部系统接入均未授权
 
 ## 0. 结论先行
 
@@ -35,9 +36,9 @@
 
 C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。
 
-C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 新增 8 项文档护栏回归后当前为 156 项。
+C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 新增 8 项文档护栏回归后为 156 项；R0.3D 再新增 3 项特征测试，当前为 159 项。
 
-公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。D0-F、D0G 与 C4-0 均已闭合；C4-0 已冻结读取可见性、正文传输、完整性、分页和 warning 边界。下一步先另行授权 R0.3D，再根据证据决定是否授权 R0.3F，之后才可另行授权 C4A。追加仍留在 C5。
+公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。D0-F、D0G、C4-0 与 R0.3D 均已闭合；C4-0 已冻结读取可见性、正文传输、完整性、分页和 warning 边界。R0.3D 已证明并版本化 C-032–C-034 的条件式修复要求；下一步必须另行授权 R0.3F，完成后才可授权 C4A。追加仍留在 C5。
 
 ## 1. 本方案解决什么问题
 
@@ -514,6 +515,31 @@ C4-0 固定结论：
 
 完成记录（2026-09-13）：操作契约、Envelope、设计权威、实现矩阵、编码方案及状态入口已同步上述裁决；未修改 `src/`、测试、fixture 或提示词，未创建配置/生产 Store。文档护栏、普通与严格 `ResourceWarning` 全量 156 项测试、`compileall`、`pip check` 和 diff 检查均通过；本批由独立本地提交完成版本化闭环，未执行 push。
 
+### R0.3D：初始化错误语义诊断与裁决（已完成）
+
+目标：不修改生产代码，只用确定性特征测试验证 M1、M3、M4 的当前公共行为，并把目标语义写入冲突登记；不得把诊断授权扩大为 R0.3F。
+
+诊断结论：
+
+- M1 的清理 `except OSError` 可由 `unlink`/`rmdir` 到达，不能删除或通过全局放宽 `_lstat_if_present`“复活”；真实差距是尚未证明归属的未知候选发生 `stat` 错误时会阻断合法 Store 的幂等重开。R0.3F 只允许局部跳过不可证明候选，已证明自有后的失败仍保留 marker 并 fail-closed。
+- M3 已复现：原始 `file-readback` 失败会被二次 `transaction-cleanup-identity` 覆盖。R0.3F 必须保持原错误的公共 `code/cause_code/retryable/stage`，只以安全 `details.cleanup_stage` 保存次级清理阶段；初始化失败仍没有 `saved`/`commit_state`。
+- M4 已复现：当前 durability 对 WinError 32、33、5 与仅 `errno.EACCES` 都返回不可重试；目标表只把 32/33 改为 `retryable=true`，5、仅 EACCES、未知/无原因和校验失败保持 `false`。锁等待的上下文分类不能直接外推。
+
+测试映射：
+
+| 证据 | 测试 |
+|---|---|
+| M1 未知候选 stat 会阻断幂等重开；去掉注入后重开成功且未知对象保留 | `InitCaptureStoreTest.test_r03d_m1_unknown_candidate_stat_failure_currently_blocks_reopen` |
+| M1 unlink 原生错误到达清理 handler、保留 marker 并可重试 | 既有 `InitCaptureStoreTest.test_init_17_content_cleanup_failure_preserves_marker_for_retry` |
+| M3 二次清理身份错误遮蔽原始阶段 | `InitCaptureStoreTest.test_r03d_m3_cleanup_identity_failure_currently_masks_primary_stage` |
+| M4 当前分类与目标表只在 WinError 32/33 不一致 | `DurabilityBackendTest.test_r03d_m4_characterizes_windows_retryability_gap` |
+
+完成记录（2026-09-13）：新增 3 项特征测试并把 C-032–C-034 写入设计权威；普通与严格 `ResourceWarning` 全量均为 159 项，`compileall`、`pip check`、文档护栏和 diff 检查通过。未修改 `src/`、公开接口、磁盘格式、配置、fixture 或提示词，所有新磁盘行为只发生在测试持有的临时目录，默认配置和生产 Store 未创建。本批已通过独立本地提交闭合且未 push；下一步另行授权 R0.3F。
+
+### R0.3F：初始化错误语义条件式修复（未授权）
+
+只允许按 C-032–C-034 实现三项局部修复，把上述 3 项特征测试转换为目标行为回归，并补充 `details.cleanup_stage` 的类型化白名单/敏感信息拒绝测试。不得全局改变未知路径、锁等待或 Capture 写入语义，不得创建生产配置/Store。R0.3F 独立验收和提交后，才可请求 C4A 授权。
+
 ### C4A：读取侧契约能力
 
 目标：在不公开读取操作的前提下，把 C4-0 裁决落实为可单测的严格 schema、模型和纯读取原语。
@@ -742,4 +768,4 @@ git status --short
 7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合且未 push。D0G 与 C4-0 均于 2026-09-13 通过各自独立本地提交闭合且未 push；R0.3D、C4A/C4B/C4C/C4V 与后续批次仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合且未 push。D0G、C4-0 与 R0.3D 均于 2026-09-13 通过各自独立本地提交闭合且未 push；R0.3F、C4A/C4B/C4C/C4V 与后续批次仍需逐批明确授权。

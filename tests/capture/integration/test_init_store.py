@@ -17,6 +17,7 @@ from knowledgeflow_capture.config import (
     dump_local_config,
     parse_local_config,
 )
+from knowledgeflow_capture.durability import DurabilityError, DurabilityStage
 from knowledgeflow_capture.errors import FailureResult, PublicErrorCode
 from knowledgeflow_capture.manifest import (
     CaptureStoreManifest,
@@ -802,6 +803,98 @@ class InitCaptureStoreTest(unittest.TestCase):
         self.assertEqual(success.store_id, manifest.store_id)
         self.assertEqual(unknown_temp.read_bytes(), b"unknown config fragment")
         self.assertTrue(self.config_path.is_file())
+
+    def test_r03d_m1_unknown_candidate_stat_failure_currently_blocks_reopen(
+        self,
+    ) -> None:
+        first = self._assert_success(self._init())
+        unknown_transaction = self.owned_root / (
+            f".knowledgeflow-init-{_UUIDS[0]}"
+        )
+        unknown_transaction.mkdir()
+        original_stat = os.stat
+        observed_stat_failures = 0
+
+        def fail_unknown_transaction_stat(
+            path: object,
+            *args: object,
+            **kwargs: object,
+        ) -> os.stat_result:
+            nonlocal observed_stat_failures
+            if (
+                isinstance(path, (str, os.PathLike))
+                and Path(path) == unknown_transaction
+            ):
+                observed_stat_failures += 1
+                raise PermissionError("injected unknown transaction stat failure")
+            return original_stat(path, *args, **kwargs)
+
+        with mock.patch.object(os, "stat", new=fail_unknown_transaction_stat):
+            failure = self._assert_failure(
+                self._init(),
+                PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            )
+
+        self.assertEqual(observed_stat_failures, 1)
+        self.assertFalse(failure.error.retryable)
+        self.assertEqual(failure.error.details, {"stage": "path-stat"})
+        self.assertTrue(unknown_transaction.is_dir())
+
+        reopened = self._assert_success(self._init())
+        self.assertFalse(reopened.created)
+        self.assertEqual(reopened.store_id, first.store_id)
+        self.assertTrue(unknown_transaction.is_dir())
+
+    def test_r03d_m3_cleanup_identity_failure_currently_masks_primary_stage(
+        self,
+    ) -> None:
+        primary = DurabilityError(DurabilityStage.FILE_READBACK)
+        residue: list[Path] = []
+
+        def fail_after_manifest_flush() -> None:
+            candidates = tuple(
+                path
+                for path in self.owned_root.iterdir()
+                if path.name.startswith(".knowledgeflow-init-")
+            )
+            self.assertEqual(len(candidates), 1)
+            residue.append(candidates[0])
+            (candidates[0] / "unexpected.txt").write_bytes(b"foreign evidence")
+            raise primary
+
+        dependencies = _StoreDependencies(
+            fault_point=_InitFaultPoint.AFTER_MANIFEST_FLUSHED,
+            fault_hook=fail_after_manifest_flush,
+        )
+        failure = self._assert_failure(
+            _init_capture_store_with_dependencies(
+                config_path=self.config_path,
+                capture_root=self.capture_root,
+                inline_text_threshold_bytes=_INLINE_THRESHOLD,
+                max_text_version_bytes=_MAXIMUM,
+                path_policy=self.policy,
+                dependencies=dependencies,
+            ),
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+        )
+
+        self.assertEqual(
+            primary.to_operation_error().details,
+            {"stage": "file-readback"},
+        )
+        self.assertEqual(
+            failure.error.details,
+            {"stage": "transaction-cleanup-identity"},
+        )
+        self.assertEqual(len(residue), 1)
+        self.assertEqual(
+            (residue[0] / "unexpected.txt").read_bytes(),
+            b"foreign evidence",
+        )
+
+        recovered = self._assert_success(self._init())
+        self.assertTrue(recovered.created)
+        self.assertTrue(residue[0].is_dir())
 
 
 if __name__ == "__main__":

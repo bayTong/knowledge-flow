@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import os
 from pathlib import Path
 import tempfile
@@ -465,6 +466,53 @@ class DurabilityBackendTest(unittest.TestCase):
                 "details": {"stage": "directory-metadata"},
             },
         )
+
+    def test_r03d_m4_characterizes_windows_retryability_gap(self) -> None:
+        cases = (
+            ("winerror-32", 32, True),
+            ("winerror-33", 33, True),
+            ("winerror-5", 5, False),
+            ("errno-eacces", None, False),
+        )
+        mismatches: list[str] = []
+
+        for label, winerror, expected_retryable in cases:
+            with self.subTest(label=label):
+                source = self.root / f"{label}-source"
+                source.mkdir()
+                destination = self.root / f"{label}-destination"
+                if winerror is None:
+                    cause = PermissionError(errno.EACCES, "injected access denial")
+                else:
+                    cause = OSError(
+                        errno.EACCES,
+                        "injected Windows I/O failure",
+                        None,
+                        winerror,
+                    )
+
+                def fail_rename(
+                    _source: Path,
+                    _destination: Path,
+                    injected: OSError = cause,
+                ) -> None:
+                    raise injected
+
+                backend = DurabilityBackend(
+                    _rename=fail_rename,
+                    _directory_flusher=lambda _path: True,
+                )
+                with self.assertRaises(DurabilityError) as raised:
+                    backend.commit_directory_no_replace(source, destination)
+
+                error = raised.exception
+                self.assertEqual(error.stage, DurabilityStage.RENAME)
+                self.assertIs(error.__cause__, cause)
+                self.assertEqual(getattr(cause, "winerror", None), winerror)
+                if error.retryable != expected_retryable:
+                    mismatches.append(label)
+
+        self.assertEqual(mismatches, ["winerror-32", "winerror-33"])
 
     def test_dur_05_before_flush_callback_runs_after_write_before_flush(self) -> None:
         expected = b"durable payload with fault hook"
