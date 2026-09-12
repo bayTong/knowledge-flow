@@ -1,6 +1,6 @@
 # Capture Envelope v1：捕获信封数据契约与原子保存事务
 
-> 状态：Approved Design；C0–C3 已完成，`capture_text` Item 事务已实现并通过本阶段验收<br>
+> 状态：Approved Design；C0–C3 与 C4-0 已完成，`capture_text` Item 事务已实现并通过本阶段验收；读取与追加实现尚未完成<br>
 > 整理日期：2026-09-01<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-02<br>
@@ -10,6 +10,7 @@
 > C3C 完成日期：2026-09-11<br>
 > C3V 完成日期：2026-09-11<br>
 > 原子 Event 补充确认日期：2026-09-08<br>
+> C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）<br>
 > 适用范围：MVP-0 的文本捕获，以及未来 URL、文件 Payload 必须保持的身份与事务语义<br>
 > 边界：本文定义完整数据和事务契约；C3 只实现并验收新建文本 Capture 的事务，追加、业务崩溃恢复和本文其余远期能力尚未完成
 
@@ -107,6 +108,7 @@ capture_id + version + envelope_sha256
 
 - `version` 从 1 开始单调递增。
 - 版本目录一旦原子提交，不得原地修改。
+- 版本目录存在不单独证明版本已逻辑提交：版本 1 还必须有唯一匹配的 `capture.created`，版本 N>1 还必须有唯一匹配的 `capture.version-appended`；读取只承认由这些 Event 证明的连续前缀。
 - 任何正文、附件、用户标题或用户意图的修改都产生新版本。
 - 纯粹的 GBrain 同步状态、路由状态和备份状态变化不产生 Payload 新版本，而是追加状态事件。
 
@@ -567,13 +569,14 @@ updated_at: "2026-09-01T02:10:12.456Z"
 - 每次更新使用“写临时文件—flush—原子替换”。
 - 投影中的版本和哈希必须能在不可变版本目录中找到。
 - 投影与事件不一致时，以不可变版本和追加事件为准，投影标记 `needs-rebuild` 后重建。
+- `current_version` 与 `current_envelope_sha256` 只能指向最高连续已提交版本；不得因为发现更高版本目录而提前推进。`updated_at` 取该版本唯一匹配版本建立 Event 的 `occurred_at`。
 - GBrain page ID、Git commit 和错误次数等异步信息只能进入投影或事件，不能回写旧 Envelope。
 - C3 初始投影固定使用第 9.1 节的完整字段和值域：`durable`、`unassigned`、`unreviewed-capture`、`not-requested` 与 `uncommitted`；此时不执行路由、GBrain 或 Git。
 - `capture.yaml` 使用受限 YAML、严格 `knowledgeflow.capture-state` v1 schema 和 schema-defined 字段顺序。缺失或损坏只产生重建需求，不代表不可变原件丢失。
 
 ### 9.3 `capture.created` State Event v1
 
-C3 只冻结创建事件，不提前设计追加版本、路由、GBrain 或归档事件的字段：
+C3 冻结创建事件；C4-0 仍保持其字节和字段不变：
 
 ```yaml
 schema: "knowledgeflow.capture-event"
@@ -597,6 +600,36 @@ actor:
 - `occurred_at` 在最终 flush 与 rename 前写入；Event 与版本一起提交。Event 写入、schema 或交叉引用失败时不得提交 Item，不能在提交后再猜测原始时间。
 - 同一事件文件重试时，规范字节完全一致才视为幂等；内容不同则报告完整性或身份冲突，不能覆盖。
 - Event 是持久业务历史；运行日志可以引用其 `event_id`，但不能替代、重建或删除 Event。
+
+### 9.4 `capture.version-appended` State Event v1
+
+C4-0 为读取侧和未来 C5 冻结最小追加事件；不在本批实现 writer：
+
+```yaml
+schema: "knowledgeflow.capture-event"
+schema_version: 1
+event_id: "evt_01991a7e-7b21-72ae-9ef5-4f45249ad332"
+event_type: "capture.version-appended"
+capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+version: 2
+previous_version: 1
+previous_envelope_sha256: "sha256:<版本 1 Envelope 哈希>"
+envelope_sha256: "sha256:<版本 2 Envelope 哈希>"
+occurred_at: "2026-09-13T00:00:00.000Z"
+actor:
+  type: "user"
+  actor_id: "local-user"
+```
+
+固定规则：
+
+- 使用同一 `knowledgeflow.capture-event` v1 schema；`event_type` 决定严格字段集合和 schema-defined 键序，创建事件不得混入追加字段，追加事件不得省略上述字段。
+- `version` 必须是 `2..999999`，`previous_version` 必须严格等于 `version - 1`；两者都是整数，boolean 无效。
+- `event_id` 与新 Envelope 一致；`capture_id`、actor、`version`、`previous_version` 必须分别与新 Envelope 的对应字段一致。
+- `previous_envelope_sha256` 必须等于前一已提交版本 Envelope 的自哈希；`envelope_sha256` 必须等于新版本 Envelope 的自哈希。这样 Event 同时封住版本链两端，而 Envelope v1 的 `previous_version` 继续只保存整数 N-1，不增加未定义字段。
+- 每个版本恰好一个版本建立 Event。同一 Item 中重复、孤立或交叉引用矛盾的创建/追加 Event 均是完整性失败，不按“最新文件获胜”。
+- 追加 Event 必须以目标不存在的无覆盖提交进入 `events/<event-id>.yaml`；它的最终提交是版本 N>1 的逻辑提交点。Event 进入最终路径之前，即使版本目录已经存在，也不得被读取、投影或列表视为新版本。
+- 读取遇到不支持的 Event schema/schema version 返回 `unsupported_store_version`；已知 schema 的非法字段、非规范字节或引用矛盾返回 `integrity_check_failed`。
 
 ## 10. 创建捕获的原子事务
 
@@ -710,16 +743,26 @@ warnings: []
 - 新 Payload
 - 新的 `idempotency_key` 或明确版本请求 ID
 
-流程：
+MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒度 Item 锁。正文可在锁外有界写入本事务 staging；从当前版本判定开始，锁必须持有到 Event 提交后的最终回读与投影更新尝试结束。
 
-1. 获取该 Item 的版本锁。
-2. 验证当前版本等于 `expected_current_version`。
-3. 分配新 `event_id`，版本号加一。
-4. staging 写入完整新版本，不依赖旧目录中的可变文件。
-5. 新 Envelope 写入 `previous_version.version + envelope_sha256`。
-6. 回读校验后原子提交到新版本目录。
-7. 追加 `capture.version-appended` 事件。
-8. 更新状态投影；只有显式启用异步投递目标时才登记对应新版本请求，MVP-0 不请求 GBrain 镜像。
+逻辑提交顺序固定为：
+
+1. 在写锁内按第 9.3、9.4 节扫描并验证连续已提交前缀，确认当前版本严格等于 `expected_current_version`；投影不能代替该判定。
+2. 分配新 `event_id`，令新版本为 N+1。新 Envelope 的 `previous_version` 只写整数 N；第 9.4 节 Event 写入 `previous_version: N`、前一 Envelope 哈希和新 Envelope 哈希。
+3. 在 staging 中写完整新版本和规范追加 Event；flush 并回读验证全部 Payload、Payload Set、Envelope 自哈希、Event schema 及前后版本交叉引用。
+4. 以目标不存在的同盘原子 rename 提交 `versions/<N+1>/`，并在平台允许时 flush `versions/`。此刻只是不可变候选，尚未对读者可见。
+5. 再以目标不存在的原子提交把 Event 放入 `events/<event-id>.yaml`，并在平台允许时 flush `events/`。这是唯一逻辑提交点；不能先更新 `capture.yaml`，也不能把版本目录 rename 当作成功回执边界。
+6. 从最终路径回读版本、前一版本和 Event。只有连续链、全部哈希及交叉引用都通过，才能返回 `saved: true + commit_state: committed`。
+7. 最后原子更新投影到 N+1。该步失败只返回 `projection_needs_rebuild` 警告，不撤销已经提交的 Event/Version；只有显式启用异步投递目标时才登记对应新版本请求，MVP-0 不请求 GBrain 镜像。
+
+故障与读取责任固定为：
+
+- 版本目录提交前失败：`not-committed`，没有新可见版本。
+- 版本目录已经提交但 Event 可以证明未提交：仍为 `not-committed`；留下的唯一 N+1 目录是未完成事务残留。C4 latest/list 忽略它并警告，显式读取 N+1 返回 `version_not_found`；C4 不删除或补全它。
+- Event rename 附近无法证明是否提交：返回 `unknown`；不得生成新幂等键。后续同 key 重试先按最终 Event/Version 事实判定，不能盲目创建 N+2。
+- Event 已提交但最终回读无法证明内容有效：不能报告成功；返回 `unknown` 或稳定完整性错误取决于是否已取得确定磁盘证据。读取侧看到 Event/Version 矛盾时一律 fail-closed。
+- Event 和版本最终回读有效而投影失败：提交已成立，返回成功加 `projection_needs_rebuild`。
+- C5 只实现其精确幂等回执与写入事务；通用启动恢复、残留隔离/清理和投影重建仍属于 C6。
 
 约束：
 
@@ -737,6 +780,8 @@ warnings: []
 | 回读校验失败 | 不提交 | 保留诊断后重试 |
 | rename 前崩溃 | 最终版本不存在 | 同幂等键重试 |
 | rename 后、回执前崩溃 | 已耐久，但调用方不知道 | 同幂等键找到并验证原 Event/Version，返回相同身份与哈希字段；警告按当前投影事实生成 |
+| 追加版本目录 rename 后、Event 前崩溃 | 只有不可见 N+1 残留 | C4 继续读取 N 并警告；C6 恢复或隔离，任何读取操作不自行修复 |
+| 追加 Event rename 附近崩溃 | 逻辑提交状态未知 | 返回/保持 `unknown`；同幂等键按最终 Event 与版本事实探测，不盲目追加 |
 | 投影更新失败 | 原件已耐久 | 当前调用及同 key 重试返回 `projection_needs_rebuild`；正式重建留到恢复批次 |
 | outbox 索引失败 | 原件已耐久，尚未镜像 | 从 Envelope 的 Delivery Request 重建任务 |
 | GBrain 写入失败 | 原件已耐久 | 标记 failed，按同一投递幂等键重试 |
@@ -872,6 +917,8 @@ Git 不属于捕获成功的同步前置条件，否则每次随手记都会被 
 8. GBrain 删除或损坏不能删除唯一原件。
 9. 未审核捕获不能进入 `trusted` 查询范围。
 10. 模型输出不能进入 Immutable Envelope 的 Payload 文件。
+11. 可读版本只能构成从 1 开始的连续前缀，且每版恰有一个匹配的版本建立 Event；投影和目录名不能扩大可见范围。
+12. 有效前缀后的唯一无 Event N+1 目录只是可隔离残留；Event 已存在但版本/引用不成立则是完整性失败，不能降级忽略。
 
 ## 17. 公共错误、内部原因与提交后警告
 
@@ -882,6 +929,8 @@ Git 不属于捕获成功的同步前置条件，否则每次随手记都会被 
 | `payload_hash_mismatch`、`payload_set_hash_mismatch`、`envelope_hash_mismatch`、`byte_size_mismatch` | `error.code: integrity_check_failed`，具体名称放 `cause_code` | 读取操作不返回正文；写操作按现场证据返回 `not-committed` 或 `unknown` |
 | `payload_read_failed`、`payload_write_failed` | 作为 `cause_code`，由发生阶段映射到稳定公共 I/O/输入错误 | 提交前发生时不得报告成功 |
 | `projection_update_failed` | `ok: true`，警告 `projection_needs_rebuild` | 不可变版本已经提交，不能改报 `saved: false` |
+| 唯一无 Event 的 N+1 尾部目录 | 读取成功时警告 `incomplete_version_ignored`；显式读取该版本为 `version_not_found` | 该版本没有逻辑提交，C4 不修复或删除 |
+| 调用方正文 sink 写失败 | `error.code: output_write_failed`，固定消息 `capture body output failed` | Store 已通过完整验证；调用方丢弃部分 sink 输出后重试 |
 | `outbox_projection_failed` | `ok: true`，警告 `outbox_needs_rebuild` | 本地原件已经提交，索引可重建 |
 | `gbrain_sync_failed` | 异步状态/警告，不是捕获错误 | 不改变本地保存回执 |
 | `backup_failed` | 异步状态/警告，不是捕获错误 | 不改变本地保存回执 |
@@ -988,8 +1037,8 @@ v1 推荐暂不引入新的业务数据库：
 本文虽已获批，仍不应立即开发完整捕获系统。当前推荐顺序：
 
 1. C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A/C3B 完成后为 122 项，C3C 完成后为 140 项，C3V 完成后为 144 项，R0.1/R0.2 初始化所有权加固后为 148 项，D0G 当前全量 156 项测试通过。Envelope/Event/Projection schema、受限 YAML、自哈希、配置/Store 初始化、Store 写锁、有界写入、staging 清理、真实 4/64 MiB 边界、完整新建 Item 事务、R0 回归及文档护栏均已有测试。
-2. 当前实现已包含公开 `capture_text`、版本 1、`capture.created`、幂等扫描和初始投影，并已通过 C3 阶段验收；读取、追加、业务崩溃恢复、重建与迁移尚未完成，因此本文整体仍不是 `Effective`。
-3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，C3A/C3B 已于 2026-09-10 分别完成，C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 在测试持有的 Store 中先后完成，D0-F 与 D0G 已分别于 2026-09-12、2026-09-13 闭合。之后仍需用户另行授权只修改文档/契约的 C4-0，不得直接实现读取操作或创建生产 Store。
-4. 按 C4–C6 逐批验收读取、追加、迁移和业务事务崩溃恢复。上述阶段均不接 GBrain。
+2. 当前实现已包含公开 `capture_text`、版本 1、`capture.created`、幂等扫描和初始投影，并已通过 C3 阶段验收；C4-0 已冻结读取可见性与追加 Event/逻辑提交契约，但读取、追加、业务崩溃恢复、重建与迁移尚未实现，因此本文整体仍不是 `Effective`。
+3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，C3A/C3B 已于 2026-09-10 分别完成，C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 在测试持有的 Store 中先后完成，D0-F 与 D0G 已分别于 2026-09-12、2026-09-13 闭合。C4-0 也于 2026-09-13 通过独立本地提交闭合且未 push；不得据此直接实现读取操作或创建生产 Store。
+4. 下一步先另行授权并完成 R0.3D；只有证据要求时再授权 R0.3F。随后按 C4A/C4B/C4C/C4V、C5、C6 逐批验收读取、追加、迁移和业务事务崩溃恢复。上述阶段均不接 GBrain。
 5. 本地链路验收后，再把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. 最后分别设计 URL 和文件 Payload 的入口门禁。

@@ -1,12 +1,13 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；C0–C3 已完成，`capture_text` 已实现并通过本阶段验收，其余三操作尚未实现<br>
+> 状态：Approved Design；C0–C3 与 C4-0 已完成，`capture_text` 已实现并通过本阶段验收，读取与追加操作仍未实现<br>
 > 确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
 > C3 编码前收口日期：2026-09-09<br>
 > C3A/C3B 完成日期：2026-09-10<br>
 > C3C 完成日期：2026-09-11<br>
 > C3V 完成日期：2026-09-11<br>
+> C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
 > 边界：本文定义调用方可见的完整操作；C3 只实现并验收了 `capture_text`，其余三个公开操作尚未完成，也未创建生产目录
 
@@ -215,6 +216,19 @@ warnings:
 
 `retryable: true` 表示修复原因后可以安全重试；写操作必须使用**同一幂等键**，读取操作重放同一请求。它不保证立刻重试一定成功。错误和警告不得包含 Payload 正文、预览、原始幂等键、凭据或敏感本机路径。
 
+### 3.6 已提交版本与读取可见性
+
+读取只能观察由不可变版本目录和版本建立 Event 共同证明的**连续已提交版本前缀**；`capture.yaml`、目录修改时间和“最高目录名”都不是提交证明。
+
+1. 版本 1 可见，当且仅当最终 Item 中存在规范 `versions/000001/`，且存在唯一、规范、交叉引用完全匹配的 `capture.created` Event。创建事务以完整 Item rename 为原子单位，因此已经定位到 `<capture-id>/` 却无法证明版本 1 时属于 `integrity_check_failed`，不得当成空 Item 或自动清理。
+2. 对 `N > 1`，版本 N 可见，当且仅当 `versions/<六位版本号>/` 已在最终 Item 中存在，且 `events/` 中存在唯一、规范的 `capture.version-appended` Event，同时绑定版本 N、前一版本 N-1、前后两个 Envelope 哈希和相同 `capture_id`。该 Event 的最终无覆盖提交是追加事务的逻辑提交点。
+3. 已提交版本必须恰好构成 `1..N` 的连续链。每个版本目录名只能是 `000001` 至 `999999` 的六位 ASCII 十进制数；Python `bool` 等不得冒充整数版本。Item 的 `YYYY/MM` 分片必须与版本 1 `received_at` 一致，同一 Store 中不得存在两个相同 `capture_id`。
+4. 在有效前缀 `1..N` 后，至多允许一个普通、非 reparse、仍位于 Item 内的 `versions/<N+1>/` 目录没有任何版本建立 Event。无论其内部文件是否写全，它都只视为追加事务残留：读取 latest 和列表继续使用 N，并返回 `incomplete_version_ignored`；显式读取 N+1 返回 `version_not_found`。C4 只读路径不得删除、补 Event 或修复该目录。
+5. Event 已存在但对应版本目录、Envelope、Payload 或交叉引用缺失/损坏，孤立或重复的版本建立 Event，版本缺口，两个以上未提交尾部目录，或未提交尾部之后又出现更高版本/Event，均返回 `integrity_check_failed`，不得回退到较旧版本伪装成功。
+6. 已知 schema 的非法内容、非规范机器字节和交叉引用矛盾属于 `integrity_check_failed`；Store Manifest 或机器文件使用本实现不支持的 schema/schema version 时返回 `unsupported_store_version`。投影从不改变上述判定。
+
+这里的“忽略”只隔离唯一、无 Event 的 N+1 尾部残留；它不是一般性的损坏容忍策略。正式恢复、隔离或删除残留属于 C6。
+
 ## 4. `capture_text`
 
 ### 4.1 目的
@@ -291,11 +305,11 @@ warnings: []
 
 ### 5.1 目的
 
-按 `capture_id` 读取最新版本或一个明确历史版本，并校验其 Payload 和 Envelope 完整性。
+按 `capture_id` 读取最新版本或一个明确历史版本，先完整校验不可变版本链和目标 Payload，再把正文写入调用方拥有的二进制 sink。
 
 ### 5.2 请求
 
-读取最新版本：
+请求由结构化元数据和一个带 `write(bytes)` 的调用方二进制 `body_sink` 组成；sink 不序列化进 JSON/YAML。读取最新版本：
 
 ```yaml
 capture_id: "cap_..."
@@ -309,17 +323,29 @@ capture_id: "cap_..."
 version: 1
 ```
 
+字段规则：
+
+| 字段 | 必填 | 规则 |
+|---|---:|---|
+| `capture_id` | 是 | 必须是规范 `cap_` UUIDv7；不得参与未校验路径拼接 |
+| `version` | 否 | `null` 表示最高已提交版本；非空时是 `1..999999` 的整数，`bool` 无效 |
+| `body_sink` | 是 | 调用方拥有、带 `write(bytes) -> int` 的二进制输出；一次请求使用一个初始为空或可安全丢弃的 sink |
+
 ### 5.3 成功返回
 
 ```yaml
 ok: true
+body_length_bytes: 42
 capture:
   capture_id: "cap_..."
   version: 1
   current_version: 2
-  text: "原始文本"
   fidelity: "channel-exact"
+  media_type: "text/plain; charset=utf-8"
+  encoding: "utf-8"
+  byte_size: 42
   primary_payload_sha256: "sha256:..."
+  payload_set_sha256: "sha256:..."
   envelope_sha256: "sha256:..."
   captured_at: "2026-09-01T02:10:12.456Z"
   channel:
@@ -336,13 +362,21 @@ integrity: "verified"
 warnings: []
 ```
 
+成功时，`body_sink` 恰好收到 `body_length_bytes` 个原始 UTF-8 字节；结构化结果自身不包含 `text` 或正文副本。具体适配器可以在调用完成后按自己的帧协议先发送结果头、再转发已经验证的正文。
+
 规则：
 
 - `version: null` 明确表示读取当前最高已提交版本，不表示“找到什么就返回什么”。
 - 指定版本不存在时返回 `version_not_found`，不得悄悄退回最新版本。
-- 返回正文前重新计算并核对字节数、Payload SHA256 和 Envelope SHA256。
+- 返回正文前，按第 3.6 节验证连续版本/Event 链：链中每个版本都校验规范 Envelope、自哈希及 Event/路径/ID/版本交叉引用；对**本次请求的目标版本**，再校验其每个 Payload 的实际字节数和 SHA256 以及 `payload_set_sha256`。任一相关 Store 读取或完整性错误都必须发生在 sink 收到第一个字节之前。
+- 实现以不超过 1 MiB 的块把目标主 Payload 读入 Store 外、测试或运行时拥有的磁盘验证 spool；全部验证通过后再从 spool 流式复制到 sink。正文即使达到 64 MiB 也不得整体驻留内存，spool 不属于 Capture Store，不得改变其可见性或原件。
+- 每次 sink `write` 的参数不超过 1 MiB；返回值必须是 `1..len(chunk)` 的整数，短写时继续发送未消费后缀。返回 0、`None`、boolean、越界值或抛出异常都视为 sink 失败。核心不关闭、flush 或复用调用方 sink，也不把“write 已接受”宣称为 sink 自身的持久化保证。
+- sink 写入失败返回可重试的 `output_write_failed`，固定消息为 `capture body output failed`，并省略 `commit_state`。此时 sink 可能已有一段**已通过 Store 完整性验证**的正文；调用方仍必须丢弃该 sink，并以新的或已清空的 sink 重试。该错误不表示 Store 损坏。
 - 当前状态投影损坏时，可以从不可变版本和事件在内存中恢复读取结果，并返回 `projection_needs_rebuild` 警告；读取操作本身不静默改写存储。
-- 读取历史版本时，`capture.version` 表示所读版本，`current_version` 和 `item_state` 表示 Item 当前状态，两者不得混淆。
+- 读取历史版本时，`capture.version`、`captured_at`、`channel`、`user_intent` 和 Payload/Envelope 哈希均来自所读版本；`current_version` 和 `item_state` 表示 Item 当前已提交状态，两者不得混淆。
+- `integrity: verified` 证明目标版本的 Envelope、全部 Payload 与 Payload Set，以及用于确定当前版本的 Envelope/Event 链；它不宣称顺带重哈希了其他历史版本的全部 Payload。读取另一历史版本时会对该目标版本重新完成同样证明。
+- 唯一无 Event 的 N+1 尾部目录按第 3.6 节处理；latest 返回 N 并警告，显式读取 N+1 返回 `version_not_found` 且不向 sink 写字节。
+- 读取操作没有提交语义，成功和失败结果都省略 `commit_state`。
 
 ## 6. `list_captures`
 
@@ -361,6 +395,8 @@ cursor: null                    # 可选，服务端返回的不透明游标
 ```
 
 MVP-0 不提供全文搜索、语义搜索、标签筛选、模型排序或任意字段排序。
+
+`routing_status` 省略或为 `null` 表示不按路由状态过滤；MVP-0 非空时只接受 `unassigned`，其他值在对应状态事件和投影 schema 获批前返回 `invalid_input`。
 
 ### 6.3 成功返回
 
@@ -382,11 +418,22 @@ warnings: []
 规则：
 
 - 固定按 `captured_at DESC, capture_id DESC` 排序，避免同一页内顺序漂移。
-- 游标是服务端不透明值；调用方不得解析或自行构造。
-- `preview` 由当前版本正文前 160 个 Unicode code point 确定性生成，仅供展示，不写回原件，不调用模型。
-- 换行可以在 `preview` 中转义或显示为空格，但 `get_capture` 必须返回未经该展示转换的原文。
+- `captured_at` 固定取版本 1 Envelope；`updated_at` 取当前已提交版本所匹配版本建立 Event 的 `occurred_at`；`envelope_sha256` 取当前已提交版本。筛选只作用于版本 1 `captured_at`，`created_after` 与 `created_before` 都是严格排除边界。
+- 时间过滤值非空时必须是带 `Z`、毫秒精度的规范 UTC；`created_after >= created_before` 返回 `invalid_input`。`limit` 默认 50，只接受 1–100 的整数且 `bool` 无效。
+- 游标固定为 `c1.<payload-base64url-no-padding>.<checksum-lower-hex>`。payload 按固定键序编码为 `{"schema":"knowledgeflow.capture-list-cursor","schema_version":1,"store_id":"store_...","query_sha256":"sha256:...","last_captured_at":"...","last_capture_id":"cap_..."}`；checksum segment 是 `lower_hex(SHA256(UTF8("knowledgeflow.capture-list-cursor.v1\n") + payload_bytes))`。它检测误传和篡改，但不是 MAC、签名或授权边界。
+- 规范查询 JSON 的固定键序和形状是 `{"routing_status":"unassigned","created_after":null,"created_before":null,"order":"captured_at-desc,capture_id-desc"}`；未提供 `routing_status` 时写 `null`。`query_sha256` 是 `"sha256:" + lower_hex(SHA256(UTF8("knowledgeflow.capture-list-query.v1\n") + canonical_query_json_bytes))`。query 不包含 `cursor` 或 `limit`，因此后续页可把 limit 改为另一个 1–100 的合法值。
+- 两种 JSON 都复用 Envelope 第 8.6 节的紧凑 UTF-8 规则：无 BOM、无空白/尾随换行、非 ASCII 直接使用 UTF-8，只做 JSON 必需转义；游标 payload 再使用 RFC 4648 URL-safe Base64 并移除 `=` padding。
+- 游标 schema/version、编码、checksum、`store_id`、查询指纹或最后排序键任一无效都返回 `invalid_input`；游标没有 TTL。下一页严格选择 `(captured_at, capture_id)` 小于游标末项的记录。
+- `preview` 是当前主文本的前 160 个 Unicode code point，保留原始换行、空白和字符值；JSON/YAML 传输只做必要语法转义，不折叠为空格、不规范化、不调用模型。MVP-0 不承诺在 grapheme cluster 边界截断，完整原文只能通过 `get_capture` 获取。
+- 列表为控制内存和 I/O，只验证目录/事件/Envelope/版本链、交叉引用、规范机器字节，以及 Payload 声明大小与普通文件实际大小；只读取解码预览所需的有界 UTF-8 前缀，不对每个大 Payload 计算完整 SHA256。因此列表不声称完成 Payload attestation，前缀之后的等长篡改可能只在 `get_capture` 被发现。
+- 投影缺失、损坏或落后时，从受支持的不可变 Event 历史在内存中重建状态后再筛选和返回，不信任失配投影；每个受影响 Item 返回带 `capture_id` 的 `projection_needs_rebuild`，但不写 Store。
+- 发现任何不可变结构、版本建立 Event 或引用矛盾时，整个列表返回 `integrity_check_failed`，不得返回部分 `items` 或 `next_cursor`。唯一无 Event 的 N+1 尾部残留不属于该失败：列表使用 N，并返回带 `capture_id + version` 的 `incomplete_version_ignored`。
+- warning 按 `(details.capture_id 或空字符串, code, details.version 或 0)` 的 Unicode code point 升序稳定返回；仅真正 Store 级、无法归属 Item 的 warning 才能省略 `capture_id`。
+- 分页只对扫描期间不变的数据集保证无重复、无遗漏；不建立跨请求快照、数据库事务或 TTL。并发创建、追加或路由变化后，调用方要获得新鲜一致视图应从空 cursor 重新开始。
 - 不强制返回 `total_count`，避免每次打开捕获箱都全量扫描。
+- `next_cursor` 在本页之后没有更多匹配 Item 时固定为 `null`；否则锚定本页最后一个返回 Item，而不是最后一个被过滤或扫描的目录。
 - Global Intake 就是把 `routing_status` 固定为 `unassigned` 的这个操作，不产生第二份文件。
+- 读取操作没有提交语义，成功和失败结果都省略 `commit_state`。
 
 ## 7. `append_capture_version`
 
@@ -469,6 +516,7 @@ warnings: []
 | `idempotency_conflict` | 两个写操作 | 同一 key 对应不同请求 | 使用新 key 或人工检查 |
 | `integrity_check_failed` | 读取、写后校验 | 哈希或字节数不一致 | 停止使用并告警 |
 | `atomic_commit_failed` | 两个写操作 | staging 无法完成原子提交；由 `commit_state` 区分未提交与未知 | 保留输入并使用同一幂等键重试或查询 |
+| `output_write_failed` | `get_capture` | Store 数据已完整验证，但调用方正文 sink 写入失败；固定消息 `capture body output failed` | 丢弃 sink 中任何部分输出，换新或清空 sink 后重试 |
 
 底层 `payload_hash_mismatch`、`payload_set_hash_mismatch`、`envelope_hash_mismatch` 或 `byte_size_mismatch` 统一映射为公共 `integrity_check_failed`，具体原因放在 `cause_code`。调用方不应依赖底层原因决定是否绕过完整性门禁。
 
@@ -477,18 +525,22 @@ warnings: []
 | 警告码 | 适用操作 | 含义 |
 |---|---|---|
 | `projection_needs_rebuild` | 全部 | 当前状态投影缺失、损坏或提交后更新失败；不可变原件仍有效 |
+| `incomplete_version_ignored` | 两个读取操作 | 唯一无版本建立 Event 的 N+1 尾部目录不可见；固定消息 `incomplete capture version was ignored` |
+
+读取 warning 的 `details` 至少包含受影响的 `capture_id`；`incomplete_version_ignored` 还必须包含整数 `version`。警告不授权 C4 修复或清理磁盘状态。
 
 底层 `projection_update_failed` 只作为内部原因，不作为公共失败码。不可变版本是否已提交，是判断保存成功与否的边界。
 
 ## 9. 原子性和并发不变量
 
-1. `capture_text` 成功意味着版本 `1` 已在最终路径提交并回读校验。
-2. `append_capture_version` 成功意味着新版本已提交；旧版本字节完全不变。
-3. `get_capture` 和 `list_captures` 不修改原件、状态、路由或索引。
+1. `capture_text` 成功意味着版本 `1` 和唯一匹配的 `capture.created` Event 已在最终 Item 中提交并回读校验。
+2. `append_capture_version` 成功意味着新版本目录及唯一匹配的 `capture.version-appended` Event 均已提交并回读；Event 是追加的逻辑提交点，旧版本字节完全不变。
+3. `get_capture` 和 `list_captures` 不修改原件、投影、状态、路由、索引或事务残留。
 4. 同一 Item 的并发追加最多一个请求能以相同 `expected_current_version` 成功。
 5. 回执丢失后的同幂等重试不能创建第二个 Item 或第二个新版本；不可变身份、版本和哈希字段保持一致，警告按当前投影事实生成。
 6. 投影和索引丢失不得导致不可变版本丢失，也不得改变其哈希。
 7. GBrain、Git、模型或网络故障不能让本地已提交原件回滚或消失。
+8. 目录存在不等于版本可见；读取结果只能来自连续、Event 证明的已提交版本链。
 
 ## 10. MVP-0 验收场景
 
@@ -535,6 +587,11 @@ warnings: []
 | 列表分页 | 默认 50，最大 100 |
 | 列表排序 | `captured_at DESC, capture_id DESC` |
 | 预览 | 当前正文前 160 个 Unicode code point，纯机械派生 |
+| 预览换行/截断 | 保留原字符与换行；只做传输语法转义；按 code point 截断，不承诺 grapheme cluster 边界 |
+| `get_capture` 正文 | 结构化元数据 + 调用方二进制 sink；完整验证后以不超过 1 MiB 的块公开 |
+| 列表完整性 | 验证版本/Event/Envelope/结构与文件大小，仅读有界预览前缀；完整 Payload 哈希由 `get_capture` 证明 |
+| 版本可见性 | 连续版本目录 + 唯一匹配版本建立 Event；追加 Event 是 N>1 的逻辑提交点 |
+| 游标 | `c1` 规范 JSON keyset 游标，绑定 Store 与查询；无 TTL、无跨页快照 |
 | 创建幂等键 | 核心可选，官方客户端默认生成 |
 | 追加幂等键 | 必填 |
 | C3 创建锁 | 固定 Store 级 Windows 内核锁；`journal/capture-write.lock` 可长期存在，不按文件存在或年龄清理 |
@@ -543,4 +600,4 @@ warnings: []
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 契约能力和 C3B 写入基础已于 2026-09-10 分别完成；C3C 与 C3V 已于 2026-09-11 在测试持有的 Store 中先后实现并验收完整 `capture_text` 事务，C3V 当时全量为 144 项。R0.1/R0.2 随后完成初始化所有权加固，R0 后全量为 148 项；D0-F 与 D0G 也已闭合，D0G 后当前全量 156 项测试通过。只有在另行授权只修改文档/契约的 C4-0 并完成读取边界裁决后，才可另行授权实现 `get_capture` 与 `list_captures`；其余公开操作、生产 Store、GBrain 与路由均未实现。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 契约能力和 C3B 写入基础已于 2026-09-10 分别完成；C3C 与 C3V 已于 2026-09-11 在测试持有的 Store 中先后实现并验收完整 `capture_text` 事务，C3V 当时全量为 144 项。R0.1/R0.2 随后完成初始化所有权加固，R0 后全量为 148 项；D0-F 与 D0G 也已闭合，D0G 后当前全量 156 项测试通过。C4-0 于 2026-09-13 通过独立本地提交完成上述读取边界收口且未 push；下一步须另行授权并完成 R0.3D，之后才可另行授权 C4A。读取/追加公开操作、生产 Store、GBrain 与路由均未实现。

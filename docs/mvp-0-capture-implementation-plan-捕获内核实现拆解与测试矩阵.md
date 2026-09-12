@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=C4-0 -->
+<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=R0.3D -->
 
-> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F 与 D0G 已完成，当前 156 项测试通过；现停在 C4-0 授权门禁<br>
+> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F、D0G 与 C4-0 已完成，当前 156 项测试通过；现停在 R0.3D 授权门禁<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -17,6 +17,7 @@
 > R0.1/R0.2 完成日期：2026-09-11<br>
 > D0 内容与本地验证日期：2026-09-11；D0-F 版本化收口日期：2026-09-12（本地提交；未 push）<br>
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（本地提交；未 push）<br>
+> C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
 > 边界：本文定义实现与测试要求；C3 的完成不授权 C4–C5 其余三个捕获操作、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
@@ -32,7 +33,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 与 C3B 已于 2026-09-10 分别完成，C3C、C3V、R0.1 与 R0.2 已于 2026-09-11 先后完成，D0-F 与 D0G 已分别于 2026-09-12、2026-09-13 完成版本化收口；这些动作都不自动授权 C4-0、C4 实现、创建生产目录或接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 与 C3B 已于 2026-09-10 分别完成，C3C、C3V、R0.1 与 R0.2 已于 2026-09-11 先后完成，D0-F、D0G 与 C4-0 已分别于 2026-09-12、2026-09-13 完成版本化收口。这些动作都不自动授权 R0.3D、C4 实现、创建生产目录或接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -174,7 +175,7 @@ UUID 使用 48 位 Unix 毫秒、version 7、RFC variant `10` 和 74 位操作�
 核心 Python API 接受“小型结构化元数据对象 + 文本字符串或二进制 UTF-8 流”，不要求所有正文先塞入 JSON。
 
 - `capture_text` / `append_capture_version`：渠道、幂等键和预期版本使用小型 JSON 元数据；正文通过 stdin、受控文件流或同进程 stream 传入。
-- `get_capture`：元数据和状态可以返回 JSON；大正文通过调用方明确选择的输出流返回，避免把 64 MiB 文本强行嵌入 JSON。
+- `get_capture`：结构化结果返回元数据和 `body_length_bytes`；正文先在 Store 外磁盘 spool 中以不超过 1 MiB 的块完成全量验证，再通过调用方提供的二进制 sink 返回，避免把 64 MiB 文本强行嵌入 JSON 或内存。
 - `list_captures`：只返回列表元数据和 160 code point 预览，可以完整使用 JSON。
 - 命令行不得接收 `--text "完整正文"`；否则正文可能受 shell 转义、命令长度和进程列表暴露影响。
 - CLI 的精确帧格式属于 M0-E12，但无论如何不能改变四操作的身份、幂等、哈希和版本语义。
@@ -500,12 +501,12 @@ knowledge-flow/
 | `codec.py` | 受限 YAML 读写和规范发射 | 通用 YAML 编辑器 |
 | `ids.py` | UUIDv7 与类型前缀 | 从正文生成 ID |
 | `hashing.py` | 流式 SHA256、字节计数 | 去重决策 |
-| `locking.py` | C2 先实现配置目标初始化锁；后续批次再增加幂等和 Item 版本锁 | 长时间业务锁 |
+| `locking.py` | C2 已实现配置目标初始化锁，C3 已实现 Store 级写锁；MVP-0 追加继续复用 Store 级写锁 | 提前引入细粒度 Item 锁 |
 | `durability.py` | staging、flush、原子替换/rename | 远程备份 |
 | `manifest.py` | Store 身份和布局版本 | 保存主机路径 |
 | `store.py` | C2 只负责初始化、重开和布局校验；后续批次再增加扫描、投影重建原语 | UI、GBrain |
 | `operations.py` | 四个操作的事务编排 | 任意文件系统访问接口 |
-| `cli.py` | JSON/流适配和退出码 | 把正文放进命令行参数 |
+| `cli.py` | JSON 结果头、精确长度正文流和退出码 | 把正文放进命令行参数或 JSON |
 
 Python import、包和机器契约名称使用英文，属于此前双语命名规则的机器接口例外；说明文档继续使用“英文名-中文名”。
 
@@ -522,11 +523,13 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-E6 | Manifest 与 `init_capture_store` | E2–E5 | **已于 2026-09-04 通过：Manifest、完整骨架、并发幂等、配置连接与六点崩溃恢复通过** |
 | M0-D2 | C3 阻塞性行为冻结 | E2–E6 | **已确认：2026-09-08 冻结输入、完整 Item/Event 原子提交、投影、写锁、幂等及 actor/时间；2026-09-09 完成回执、输入省略归一化与目标碰撞结果收口** |
 | M0-E7 | `capture_text` | M0-D2 | 版本 1、哈希、Envelope、原子创建 Event、投影和回执闭环 |
-| M0-E8 | `get_capture` | E3、E7 | 最新/历史读取与完整性错误闭环 |
-| M0-E9 | `list_captures` | E3、E7 | 稳定排序、游标、预览和 Global Intake 视图闭环 |
-| M0-E10 | `append_capture_version` | E4、E5、E7–E8 | CAS 版本冲突、幂等重试和完整新版本闭环 |
+| M0-D3 | C4-0 读取契约冻结 | E3、E7 | **2026-09-13 已由独立本地提交闭合且未 push：冻结 Event 证明的连续可见版本、读取 sink、完整性深度、游标、时间/快照和 warning 归属** |
+| M0-E8A | C4A 读取侧契约能力 | M0-D3 | 追加 Event schema、连续版本发现、请求/结果模型、游标 codec 与真实两版本 golden 闭环；不公开读取操作 |
+| M0-E8 | `get_capture`（C4B） | E7、E8A | 先完整验证、再经有界磁盘 spool 向调用方 sink 输出；最新/历史、错误与 warning 闭环 |
+| M0-E9 | `list_captures`（C4C） | E7、E8A | 有界预览、稳定 keyset 游标、投影内存重建和 Global Intake 视图闭环 |
+| M0-E10 | `append_capture_version` | E4、E5、E7–E8、M0-D3 | CAS、幂等重试、版本先落盘/Event 后逻辑提交和完整新版本闭环 |
 | M0-E11 | 投影/索引重建和恢复扫描 | E7–E10 | 删除派生投影后可由不可变记录重建 |
-| M0-E12 | JSON/文本流 CLI 适配 | E6–E11 | stdin/文件描述符传正文；stdout 只输出结构化结果 |
+| M0-E12 | JSON/文本流 CLI 适配 | E6–E11 | stdin 使用 JSON 头 + 精确长度正文；stdout 使用 JSON 结果头 + `get_capture` 精确长度正文 |
 | M0-V1 | 全故障注入和并发验证 | E6–E12 | 第 10 节全部自动化场景通过 |
 | M0-V2 | 迁移演练 | E11、V1 | 临时 Store 复制—校验—切换后身份和哈希不变 |
 | M0-V3 | Windows 人工耐久验收 | V1–V2 | 强制终止恢复通过；断电声明按实测校准 |
@@ -549,23 +552,35 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 ### 9.2 `get_capture`
 
 - 指定版本严格读取，不存在时不降级为最新。
-- 每次返回正文前验证 Payload 和 Envelope 哈希。
-- 投影缺失时从不可变版本确定当前版本并发出警告。
+- latest 只取由唯一匹配版本建立 Event 证明的连续最高版本；目录、投影和修改时间都不能扩大可见范围。
+- 每次公开正文前验证全链的版本/Event/Envelope/引用，并验证目标版本全部 Payload 的实际大小/SHA256 和 Payload Set 哈希；不借读取当前版本全量重哈希其他历史正文。
+- 正文不进入结构化结果；先以不超过 1 MiB 的块写入 Store 外磁盘 spool，全部验证通过后才复制到调用方二进制 sink，64 MiB 正文不整体驻留内存。
+- 任一 Store 错误使 sink 保持零字节；sink 自身失败返回 `output_write_failed`，调用方丢弃可能存在的已验证部分输出后重试。
+- 投影缺失、损坏或落后时从不可变版本/Event 在内存中重建当前状态并发出带 Item 身份的警告。
+- 唯一无 Event 的 N+1 尾部残留对 latest 不可见并产生警告；显式读取该版本为 `version_not_found`。其他缺口、重复/孤立 Event 或交叉引用矛盾 fail-closed。
 - 不借读取动作静默修复或改写 Store。
+- 读取成功/失败均不返回 `commit_state`。
 
 ### 9.3 `list_captures`
 
 - 固定 `captured_at DESC, capture_id DESC`。
-- 游标分页在同一静态数据集上不重复、不漏项。
-- preview 是内存派生，不写回文件。
-- Global Intake 只是 `routing_status=unassigned` 过滤结果。
+- `c1` keyset 游标以规范 JSON 绑定 Store、规范查询和末项排序键；checksum 只防误传/篡改，不承担认证，无 TTL。limit 不进入查询指纹，可在合法范围内跨页调整。
+- 游标分页只在同一静态数据集上保证不重复、不漏项；不承诺跨页快照，并发变化后从空 cursor 重新扫描。
+- preview 保留当前正文前 160 个 Unicode code point 的原字符和换行，只读有界 UTF-8 前缀，不写回文件，也不承诺 grapheme cluster 边界。
+- 列表验证版本/Event/Envelope/结构和声明大小，不为每条大正文计算完整哈希；完整 Payload attestation 由 `get_capture` 承担。
+- 投影不可信时以不可变 Event 在内存中重建状态后再筛选；Global Intake 只是该状态下 `routing_status=unassigned` 的过滤结果。
+- 任一不可变矛盾使整个列表失败，不返回部分 items/cursor；唯一无 Event 的 N+1 尾部目录被忽略并产生归属到 Item/版本的警告。
+- 时间筛选使用版本 1 `captured_at` 且边界严格排除；结果 `updated_at` 使用当前版本建立 Event 的 `occurred_at`。
 - 不实现全文或语义搜索。
+- 读取成功/失败均不返回 `commit_state`。
 
 ### 9.4 `append_capture_version`
 
 - 必须提供 `expected_current_version` 和幂等键。
 - 保存完整新 Payload，不保存补丁链。
 - 同一基线的并发追加最多一个成功。
+- 版本目录先无覆盖提交，匹配的 `capture.version-appended` Event 后无覆盖提交；Event 是 N>1 的唯一逻辑提交点。
+- 追加 Event 同时绑定 N、N+1 及前后 Envelope 哈希；投影只能在 Event 提交并完成最终回读后推进。
 - 旧版本、旧哈希和旧批准不变，新版本不继承批准。
 
 ## 10. 自动化测试矩阵
@@ -695,13 +710,22 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 
 | ID | 场景 | 预期 |
 |---|---|---|
-| GET-01 | 不传版本 | 返回最高完整已提交版本 |
+| GET-01 | 不传版本 | 返回最高连续且由 Event 证明的已提交版本，不按最高目录或投影选择 |
 | GET-02 | 指定历史版本 | 返回指定正文和当前版本号 |
 | GET-03 | Item 不存在 | `capture_not_found` |
 | GET-04 | 版本不存在 | `version_not_found`，不回退 |
-| GET-05 | Payload 被篡改 | `integrity_check_failed`，不返回 verified |
+| GET-05 | 任一 Payload 被篡改、大小或 Payload Set 不符 | `integrity_check_failed`，sink 零字节，不返回 verified |
 | GET-06 | Envelope 被篡改 | `integrity_check_failed` |
 | GET-07 | `capture.yaml` 缺失 | 从不可变记录读取并警告，不静默写回 |
+| GET-08 | 合法两版本 fixture | latest 返回版本 2；历史版本 1 不变；当前状态与所读版本不混淆 |
+| GET-09 | 唯一 N+1 目录缺追加 Event | latest 返回 N 并给出带 capture/version 的 `incomplete_version_ignored`；显式 N+1 为 `version_not_found`，sink 零字节 |
+| GET-10 | Event 存在但版本/Envelope/Payload/前后哈希不匹配 | `integrity_check_failed`，不回退到 N |
+| GET-11 | 版本缺口、重复/孤立版本 Event 或多个尾部残留 | `integrity_check_failed` |
+| GET-12 | 不支持的机器 schema/schema version | `unsupported_store_version`；已知 schema 非法仍为完整性错误 |
+| GET-13 | 64 MiB 正文 | 验证和输出块均不超过 1 MiB，正文不整体驻留内存，sink 字节精确 |
+| GET-14 | sink 异常、零/非法返回或合法短写 | 短写正确续传；其余为 `output_write_failed`、固定消息、可重试且无 `commit_state`，调用方丢弃部分输出；核心不 close/flush sink |
+| GET-15 | Item 分片不符、重复 capture ID、reparse/越界路径 | fail-closed，不任选一个 Item 或越界读取 |
+| GET-16 | 所有成功/Store 失败结果 | `body_length_bytes` 与输出精确一致；正文不嵌入结果；无 `commit_state` |
 
 ### 10.6 `list_captures`
 
@@ -710,11 +734,22 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | LIST-01 | 空 Store | 空 items、无错误 |
 | LIST-02 | 多 Item 相同时间 | 用 `capture_id` 稳定打破平局 |
 | LIST-03 | 多页遍历 | 无重复、无漏项 |
-| LIST-04 | 非法或过期游标 | 结构化错误，不猜测位置 |
+| LIST-04 | 非法游标 | `invalid_input`，不猜测位置；游标本身没有 TTL |
 | LIST-05 | `routing_status=unassigned` | 结果即 Global Intake 视图 |
-| LIST-06 | emoji/换行预览 | 160 code point 机械派生，不破坏原文 |
-| LIST-07 | 请求 `limit > 100` | 按当前推荐返回 `invalid_input`，不静默钳制 |
+| LIST-06 | emoji/组合字符/换行预览 | 精确前 160 code point，保留换行；不承诺 grapheme 边界，不破坏原文 |
+| LIST-07 | `limit` 为 0、>100、bool 或非整数 | 返回 `invalid_input`，不静默钳制 |
 | LIST-08 | 投影损坏 | 返回可解释警告，不能把 Item 当成丢失 |
+| LIST-09 | 游标用于另一 Store 或不同过滤条件 | `invalid_input`；不能跨 Store/查询复用 |
+| LIST-10 | 同查询下一页改变合法 limit | 接受并保持 keyset 边界，无重复 |
+| LIST-11 | 时间边界与 after>=before | after/before 严格排除；非法区间为 `invalid_input` |
+| LIST-12 | 两版本 Item | `captured_at` 来自 v1，`updated_at`/当前哈希来自版本 2 的匹配 Event |
+| LIST-13 | 唯一 N+1 目录缺 Event | 列出 N，并给出带 capture/version 的 `incomplete_version_ignored` |
+| LIST-14 | 任一 Item 有 Event/版本/Envelope 矛盾 | 整个请求 `integrity_check_failed`，无部分 items/cursor |
+| LIST-15 | 大 Payload 前缀后的等长篡改 | 列表不声称完整 attestation；`get_capture` 必须发现完整哈希失败 |
+| LIST-16 | 64 MiB 当前正文 | 仅读取生成 160 code point 所需的有界前缀，不全量哈希或整体入内存 |
+| LIST-17 | 投影缺失/落后且带 routing filter | 先从不可变事件内存重建再筛选，警告带 `capture_id`，不写回 |
+| LIST-18 | 多 Item warning | 按 capture_id/code/version 确定排序；读取结果无 `commit_state` |
+| LIST-19 | 静态分页期间并发创建/状态变化 | 不声称快照一致；从空 cursor 重启可获得新鲜视图 |
 
 `LIST-07` 已选定“拒绝”而不是“钳制”：返回 `invalid_input`，让调用错误可见。
 
@@ -840,7 +875,7 @@ before_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C1 已于 2026-09-02 通过；C2A、C2B-1、C2B-2 已于 2026-09-03 通过；C2B-3 已于 2026-09-04 通过；C3A/C3B 已于 2026-09-10 通过；C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 通过；D0-F 已于 2026-09-12 通过；D0G 已于 2026-09-13 通过；当前停在 C4-0 授权前** | 未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C1 已于 2026-09-02 通过；C2A、C2B-1、C2B-2 已于 2026-09-03 通过；C2B-3 已于 2026-09-04 通过；C3A/C3B 已于 2026-09-10 通过；C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 通过；D0-F 已于 2026-09-12 通过；D0G 与 C4-0 已于 2026-09-13 通过；当前停在 R0.3D 授权前** | 未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | **已于 2026-09-04 通过：LOCK/DUR/INIT/FI 全绿，自动发现总计 85 项测试** | 使用真实生产 root |
@@ -863,4 +898,4 @@ before_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0-F 与 D0G 也已闭合，D0G 后当前为 156 项测试。安全 Store 初始化、初始化崩溃恢复及 C3 `capture_text` 已实现并通过本阶段验收；其余三个公开操作和业务事务恢复仍未完成。下一步是只修改文档/契约且仍需授权的 C4-0。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0-F、D0G 与 C4-0 也已闭合，当前为 156 项测试。安全 Store 初始化、初始化崩溃恢复及 C3 `capture_text` 已实现并通过本阶段验收；三个读取/追加公开操作和业务事务恢复仍未实现。下一门禁是另行授权 R0.3D，之后才可另行授权 C4A。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。

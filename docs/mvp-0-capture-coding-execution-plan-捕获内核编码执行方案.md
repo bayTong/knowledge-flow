@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=C4-0 -->
+<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=R0.3D -->
 
-> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F 与 D0G 已完成；当前停在 C4-0 授权门禁<br>
+> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F、D0G 与 C4-0 已完成；当前停在 R0.3D 授权门禁<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -20,11 +20,12 @@
 > D0 内容与本地验证日期：2026-09-11<br>
 > D0-F 版本化收口日期：2026-09-12（本地提交；未 push）<br>
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（本地提交；未 push）<br>
+> C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）<br>
 > 当前状态同步日期：2026-09-13<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
 > 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0-F 与 D0G 已闭合，D0G 新增 8 项文档护栏回归后当前全量为 156 项<br>
-> 当前授权：A0、A1、A2、C3A–C3V、R0.1、R0.2、D0、D0-F 与 D0G 已完成；C4-0、C4 实现、真实 Capture Store 和外部系统接入均未授权
+> 当前授权：A0、A1、A2、C3A–C3V、R0.1、R0.2、D0、D0-F、D0G 与 C4-0 已完成；R0.3D、C4 实现、真实 Capture Store 和外部系统接入均未授权
 
 ## 0. 结论先行
 
@@ -36,7 +37,7 @@ C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开�
 
 C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 新增 8 项文档护栏回归后当前为 156 项。
 
-公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。D0-F 与 D0G 最小文档护栏均已闭合。下一步才可另行授权只修改文档/契约的 C4-0，冻结读取可见性、正文传输、完整性、分页和 warning 边界；之后才可分别授权实现 `get_capture` 与 `list_captures`，追加仍留在 C5。
+公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。D0-F、D0G 与 C4-0 均已闭合；C4-0 已冻结读取可见性、正文传输、完整性、分页和 warning 边界。下一步先另行授权 R0.3D，再根据证据决定是否授权 R0.3F，之后才可另行授权 C4A。追加仍留在 C5。
 
 ## 1. 本方案解决什么问题
 
@@ -498,30 +499,59 @@ C3V 通过后只能记录“C3 `capture_text` 已实现并通过本阶段验收�
 
 R0 加固记录（2026-09-11）：R0.1 `92a37b3` 把初始化事务内容、marker 与根目录拆开校验并固定 marker 最后删除，INIT-17/FI-07 证明清理失败保留所有权且新进程可恢复；R0.2 `79515ed` 将配置临时文件绑定完整 `request_sha256 + transaction_id`，INIT-18/INIT-19 证明不同配置目标不互删在途文件、身份匹配但字节不符的未知候选仍被保留。两批后普通与严格 `ResourceWarning` 全量测试均为 148 项（捕获内核 141 项、维护脚本 7 项），生产配置与生产 Store 仍未创建。
 
-### C4-0：读取契约收口（D0-F/D0G 后的下一功能门禁）
+### C4-0：读取契约收口（已完成）
 
-目标：只修改文档与契约，先裁决正文传输和内存边界、已提交版本的唯一判定、版本解析、`get_capture`/`list_captures` 完整性深度、游标与时间快照以及 warning 归属，特别是解决冲突登记 C-027。C4-0 不创建公开操作、不修改 Store、不写测试数据；完成并独立复核后，C4 实现仍需另行授权。
+目标：只修改文档与契约，裁决正文传输和内存边界、已提交版本的唯一判定、版本解析、`get_capture`/`list_captures` 完整性深度、游标与时间快照以及 warning 归属，并解决冲突登记 C-027。C4-0 不创建公开操作、不修改 Store、不写测试数据；完成并独立复核后，C4 实现仍需另行授权。
 
-### C4：`get_capture` 与 `list_captures`
+C4-0 固定结论：
 
-目标：闭合读取、完整性校验、Global Intake 列表和稳定分页。
+- 已提交版本是由唯一匹配版本建立 Event 证明的连续 `1..N` 前缀；版本 1 随完整 Item 提交，N>1 以 `capture.version-appended` Event 的无覆盖最终提交为逻辑提交点。
+- 唯一无 Event 的 N+1 尾部目录不可见并产生 `incomplete_version_ignored`；其他缺口、孤立/重复 Event 或引用矛盾 fail-closed。读取不修复或清理。
+- `get_capture` 先用 Store 外有界磁盘 spool 完整验证，再把正文写入调用方二进制 sink；Store 错误零输出，sink 错误使用独立 `output_write_failed`。
+- `list_captures` 验证版本/Event/Envelope/结构与文件大小，只读生成 160 code point 预览所需的有界前缀；完整 Payload attestation 由 `get_capture` 承担。
+- 列表使用绑定 Store、查询和末项键的 `c1` 规范 keyset 游标；时间边界严格排除，无 TTL、无跨请求快照，limit 不进入查询指纹。
+- 投影异常由不可变 Event 在内存中重建，warning 归属到 `capture_id`，未完成版本还包含 `version`；所有读取结果省略 `commit_state`。
+
+完成记录（2026-09-13）：操作契约、Envelope、设计权威、实现矩阵、编码方案及状态入口已同步上述裁决；未修改 `src/`、测试、fixture 或提示词，未创建配置/生产 Store。文档护栏、普通与严格 `ResourceWarning` 全量 156 项测试、`compileall`、`pip check` 和 diff 检查均通过；本批由独立本地提交完成版本化闭环，未执行 push。
+
+### C4A：读取侧契约能力
+
+目标：在不公开读取操作的前提下，把 C4-0 裁决落实为可单测的严格 schema、模型和纯读取原语。
 
 主要文件：
 
-- `operations.py`
-- 必要的 `store.py` 增量
-- `tests/capture/integration/test_get_capture.py`
-- `tests/capture/integration/test_list_captures.py`
+- `codec.py`、`models.py`、`errors.py`
+- 必要且保持内部的 `store.py` 版本发现/交叉引用原语
+- `tests/capture/fixtures/` 中真实两版本 Event/Envelope/Payload golden
+- 对应单元测试
 
-必须覆盖 GET-01–GET-07 和 LIST-01–LIST-08：
+交付边界：
 
-- 默认最高完整版本和精确历史版本读取。
-- Payload/Envelope 被篡改时返回完整性错误，不返回 `verified=true`。
-- `capture.yaml` 投影缺失时仍能从不可变记录读取，并给出警告但不偷偷修复。
-- 列表按稳定键排序，游标翻页无重复无遗漏。
-- Global Intake 由 `routing.status=unassigned` 投影形成。
-- 预览严格取 160 Unicode code point，不调用分词、摘要或模型。
-- `limit > 100` 返回 `invalid_input`，不静默钳制。
+- 严格 `capture.version-appended` Event v1 与创建 Event 分支；追加 Event 绑定 N/N+1 及前后 Envelope 哈希。
+- `GetCaptureRequest/Result`、`ListCapturesRequest/Result`、warning details 和 `output_write_failed` 公共形状。
+- 六位版本目录、连续已提交前缀、唯一尾部残留和投影内存重建所需的纯原语。
+- `c1` cursor/query fingerprint codec、固定 JSON 字节和坏 token 拒绝。
+- 不修改公共 `__init__` 导出，不公开 `get_capture`/`list_captures`，不实现 append writer。
+
+### C4B：`get_capture`
+
+目标：闭合精确历史/latest 读取、完整 Payload attestation 和“验证后再公开”正文流。
+
+主要文件：`operations.py`、必要的 `store.py` 增量和 `tests/capture/integration/test_get_capture.py`。
+
+必须覆盖实现矩阵 GET-01–GET-16，尤其是两版本链、唯一未完成尾部、Event/版本矛盾、全部 Payload 哈希、64 MiB 有界 spool、sink 中途失败、重复 ID/错误分片/reparse，以及任何 Store 失败时 sink 零字节。只写测试拥有的临时目录。
+
+### C4C：`list_captures`
+
+目标：闭合 Global Intake、稳定 keyset 分页、有界预览与投影只读降级。
+
+主要文件：`operations.py`、必要的 `store.py` 增量和 `tests/capture/integration/test_list_captures.py`。
+
+必须覆盖实现矩阵 LIST-01–LIST-19，尤其是游标 Store/查询绑定、合法 limit 跨页变化、严格时间边界、两版本时间来源、不可变矛盾整页失败、64 MiB 有界前缀、投影后重建再筛选、warning 确定顺序及无跨页快照承诺。不得以全量哈希所有列表正文换取伪“verified”。
+
+### C4V：读取阶段独立验收
+
+默认只补验收测试和证据；发现契约/实现缺陷时停下分类，不借验收批次扩写架构。至少重跑 GET/LIST 全矩阵、真实 4/64 MiB、静态多页、受控并发变化、普通及严格 `ResourceWarning` 全量测试，以及固定工程检查；确认生产配置/Store 仍不存在，`capture_text` 回归字节和回执不变。C4V 单独复核和提交。
 
 ### C5：`append_capture_version` 与并发控制
 
@@ -692,7 +722,7 @@ git status --short
 |---|---|---|---|
 | A0 方案批准 | “同意编码方案” | 把本文升级为 Approved Design | 修改代码、建环境、装依赖 |
 | A1 C0 编码 | “开始编码”或“开始 C0” | 只执行 C0；创建代码骨架、`.venv` 并运行测试 | C1 以后业务实现、真实 Store |
-| A2 后续批次 | 明确“继续 C1/C2A/C2B-1/…/C3A/C3B/C3C/C3V”中的当前批次 | 只执行本次点名批次并在边界报告；C3A/B/C/V 不能一次授权自动跨越 | 未授权批次和范围扩张 |
+| A2 后续批次 | 明确“继续 C1/C2A/…/C3V/R0.3D/C4A/C4B/C4C/C4V”中的当前批次 | 只执行本次点名批次并在边界报告；分批名称不能一次授权自动跨越 | 未授权批次和范围扩张 |
 | A3 外部下载 | 工具在安装依赖时请求的联网/权限批准 | 下载并安装已核验且精确锁定的依赖 | 其他软件或全局安装 |
 | A4 生产初始化 | “初始化生产 Capture Store”并确认目标 | 创建真实配置和 `capture-root` | 接入 GBrain 或 KB |
 | A5 Git 操作 | 明确要求 commit/push/建分支 | 仅执行指定 Git 操作 | 自动提交或发布 |
@@ -712,4 +742,4 @@ git status --short
 7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合且未 push。D0G 内容与本地验证于 2026-09-12 完成，并于 2026-09-13 通过独立本地提交闭合且未 push；C4-0、C4 实现与后续批次仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合且未 push。D0G 与 C4-0 均于 2026-09-13 通过各自独立本地提交闭合且未 push；R0.3D、C4A/C4B/C4C/C4V 与后续批次仍需逐批明确授权。

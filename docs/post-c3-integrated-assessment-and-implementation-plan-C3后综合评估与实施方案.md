@@ -1,12 +1,13 @@
 # KnowledgeFlow C3 后综合评估与后续实施方案
 
-<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=C4-0 -->
+<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=R0.3D -->
 
-> 状态：Draft，待用户逐批授权；R0.1/R0.2、D0-F 与 D0G 已完成，当前停在 C4-0 授权门禁
+> 状态：Draft，待用户逐批授权；R0.1/R0.2、D0-F、D0G 与 C4-0 已完成，当前停在 R0.3D 授权门禁
 > 形成日期：2026-09-11
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（本地提交；未 push）
+> C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）
 > 作用：综合当前仓库事实、既有评估、实施方案及其复核意见，确定 C3 之后的建议执行顺序、批次边界和验收门禁
-> 权威边界：本文是分析与计划，不自动修改任何 `Approved Design`，不代表 C4-0、C4 实现或后续批次已获授权；发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
+> 权威边界：本文是分析与计划，不自动修改任何 `Approved Design`；C4-0 的明确授权与完成事实已同步到主题权威，但不代表 R0.3D、C4 实现或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
 
 ---
 
@@ -15,8 +16,8 @@
 项目当前方向没有根本性错误，不需要更换文件型 Capture Store、引入数据库或重写 C0–C3。C3 已形成真实可验收的本地文本写入内核，R0.1/R0.2 已闭合此前发现的两个初始化所有权缺陷；当前主要问题是：
 
 1. 初始化事务 marker 顺序和配置临时文件身份问题已分别以 `92a37b3`、`79515ed` 修复并回归验证，不再阻塞读取主线。
-2. C4 的读取与分页语义尚不足以直接编码，尤其缺少版本可见性、流式正文和游标边界。
-3. C5 当前设计中“版本目录提交”和 `capture.version-appended` Event 分离，必须在 C4 读取侧确定可见性之前闭合。
+2. C4-0 已补齐读取与分页契约，但 C4A–C4V 尚未实现，不能把文档裁决误报为读取能力。
+3. C4-0 已解决 C5 “版本目录提交”和追加 Event 分离造成的读取可见性冲突；C5 编码前仍需在 C5-0 收口写侧幂等恢复和故障优先级。
 4. 策展提示词存在真实漂移和方法论矛盾，但其权威状态仍是 `Draft，待重构`，不应整体阻塞 C4。
 5. 人工审核成本是产品风险，需要实验；它应阻塞后续 SOP/审核工作流定型，而不是阻塞基本读取能力。
 
@@ -74,11 +75,11 @@ R0.1 初始化清理所有权修复（已完成）
 
 | 项目 | 当前事实 | 结论 |
 |---|---|---|
-| Git | D0G 由本次独立本地提交闭合；提交前 HEAD 为 D0-F `892578d`，`main` 比 `origin/main` 领先 10 个提交 | 本次提交后本地领先 11 个提交；未执行 push |
+| Git | C4-0 由本次独立本地提交闭合；提交前 HEAD 为 D0G `4ac0f03`，`main` 比 `origin/main` 领先 11 个提交 | 本次提交后本地领先 12 个提交；未执行 push |
 | 捕获内核 | C0–C3 已完成 | `capture_text` 已实现并通过当前阶段验收 |
 | 测试 | 156 项通过，其中捕获内核 141 项、维护脚本 7 项、文档护栏 8 项；普通与严格 `ResourceWarning` 模式均通过 | 当前绿线不得因后续批次下降 |
 | 源码 | `src/knowledgeflow_capture/` 共 13 个 Python 模块、6,802 个物理行 | 先前较低行数估计应更正为此口径 |
-| 下一动作 | 另行授权 C4-0 读取契约收口 | C4-0 只修改文档/契约，不等于 C4 实现授权 |
+| 下一动作 | 另行授权 R0.3D 初始化错误语义分诊 | 只诊断/裁决 M1、M3、M4；不等于 R0.3F 或 C4 实现授权 |
 | 生产环境 | 生产配置和生产 Capture Store 未创建 | 后续开发继续只使用测试持有的临时 Store |
 | 外部系统 | GBrain、模型、账号/API key、QQ 均未接入 | 不属于 MVP-0 当前热路径 |
 | 提示词/SOP | 策展地图和覆盖审计方法为 `Draft，待重构` | 可登记问题，但不能反向覆盖 Capture 权威契约 |
@@ -94,7 +95,7 @@ R0.1 初始化清理所有权修复（已完成）
 | 第一份评估 | 发现 H1/H2、提示词漂移、人审带宽和证据缺口 | 部分严重度和战略措辞过强；SQLite 等反事实缺少验证 | 作为缺陷与风险清单 |
 | 第二份实施方案 | 强调小批次、回归测试、文档护栏和实证 | 混淆 init/capture 事务，提出不存在的故障窗口；把大规模加固和实验错误地放到 C4 前 | 只保留经核验的任务，不沿用原排序 |
 | `0911dsh.md` | 正确认领并纠正 H1、故障点、WinError、阈值和 C4 依赖错误 | 精确百分比和工期仍无证据；“C4 是 X 的前置”只对产品内 dogfood 实验成立 | 作为复核记录和综合方案输入 |
-| 本次独立核查 | 区分事实、设计建议和授权；补齐 C4/C5 逻辑提交依赖 | C4-0 的具体选择仍须用户确认，不能以分析代替批准 | 作为本实施方案骨架 |
+| 本次独立核查 | 区分事实、设计建议和授权；补齐 C4/C5 逻辑提交依赖 | 当时 C4-0 的具体选择仍须用户确认，不能以分析代替批准；该确认已于 2026-09-13 完成 | 作为本实施方案骨架 |
 
 总体裁定：第一份评估在“发现问题”上最有贡献；此前针对 C4/C5 的评审在“确定主线顺序”上更可靠；`0911dsh.md` 对前述错误的修正基本准确。任何一份单独作为执行方案都不完整。
 
@@ -314,28 +315,28 @@ D0G 完成记录（内容与本地验证：2026-09-12；版本化收口：2026-0
 
 ## 7.5 C4-0：读取契约收口
 
-C4-0 是文档/契约批次，不实现公开操作。以下项目必须逐项形成明确结论。
+C4-0 是文档/契约批次，不实现公开操作。用户已于 2026-09-13 授权，以下项目已经逐项形成明确结论。
 
 ### A. 正文传输和内存边界
 
-推荐：`get_capture` 返回结构化元数据，并将正文写入调用方提供的二进制 sink；实现可以在测试临时目录使用有界 spool 完成“验证后再公开”。
+裁定：`get_capture` 返回结构化元数据和 `body_length_bytes`，正文不嵌入结果，而是写入调用方提供的二进制 sink。实现先用 Store 外、测试或运行时拥有的磁盘 spool 完成“验证后再公开”。
 
 必须满足：
 
-- 单次读取块大小有界。
+- Store→spool 和 spool→sink 的单次块大小均不超过 1 MiB。
 - 64 MiB 正文不整体常驻内存。
 - 哈希、字节数或 Envelope 校验失败时，不向调用方暴露部分正文。
-- sink 写失败与 Store 读取失败有稳定区分。
+- Store 读取/完整性失败时 sink 为零字节；sink 写失败使用 `output_write_failed` 和固定消息，调用方丢弃可能存在的部分输出后以新/空 sink 重试。
 
 ### B. 已提交版本的判定
 
 必须明确“目录存在”和“版本已逻辑提交”不是天然同义。
 
-推荐规则：
+裁定规则：
 
 - C3 初始版本继续以完整 Item 原子提交为事实边界，因为创建 Event 已封存在 Item 内。
-- C5 追加版本只有在版本目录完整有效且存在一条精确匹配、已封存的 `capture.version-appended` Event 时才对读取侧可见。
-- 只有版本目录、没有匹配 Event 的版本视为未完成事务证据，由 C6 恢复或隔离；C4 不自动删除或补写。
+- C5 追加版本只有在版本目录完整有效且存在唯一精确匹配、已封存的 `capture.version-appended` Event 时才对读取侧可见；Event 绑定 N/N+1 和前后 Envelope 哈希，并作为逻辑提交点。
+- 有效 `1..N` 前缀后至多一个无 Event 的 N+1 目录视为未完成事务证据：latest/list 使用 N 并发出 `incomplete_version_ignored`，显式 N+1 为 `version_not_found`；由 C6 恢复或隔离，C4 不自动删除或补写。
 - Event 存在但版本无效属于完整性故障，读取 fail closed。
 
 这一选择必须同步改写 Capture Envelope 的追加事务，而不是只写进 C4 文档。
@@ -343,44 +344,47 @@ C4-0 是文档/契约批次，不实现公开操作。以下项目必须逐项�
 ### C. 通用版本解析
 
 - 不把 `v000001` 永久硬编码为唯一版本。
-- 识别连续合法版本、缺口、重复、未知文件和版本号溢出。
+- 只接受 `000001`–`999999` 六位 ASCII 目录，识别连续合法版本、缺口、重复 Item/Event、错误分片、reparse/越界和版本号溢出。
 - 为 C4A 提供真实两版本 fixture；只实现读取侧 Event/schema，不提前实现 append writer。
 
 ### D. `get_capture` 完整性深度
 
-- 重新计算正文实际字节数和 SHA256。
+- 在公开正文前重新计算全部 Payload 的实际字节数和 SHA256。
 - 校验 Payload Set、Envelope 自哈希、ID/版本/路径一致性及匹配 Event。
 - 历史版本返回所读版本；`current_version` 与 `item_state` 表示当前已提交状态，不混淆。
 - 投影异常可以内存重建读取结果并返回 warning，但不得静默写盘修复。
 
 ### E. `list_captures` 完整性深度
 
-列表不应为每次打开收件箱而全量哈希所有 64 MiB payload。建议：
+列表不为每次打开收件箱而全量哈希所有 64 MiB payload。裁定：
 
-- 校验 Item/版本/Event/Envelope 结构和声明大小。
+- 校验 Item/版本/Event/Envelope 结构、规范字节、引用和声明大小与普通文件实际大小。
 - 以有界读取生成前 160 个 Unicode code point preview。
 - 完整 payload attestation 由 `get_capture` 承担。
-- 不可变结构损坏时 fail closed；可重建投影异常形成带 `capture_id` 的 warning。
+- 任一不可变结构损坏时整页 fail closed、不返回部分 items/cursor；可重建投影异常先在内存重建状态再筛选，并形成带 `capture_id` 的 warning。
+- 有界前缀之后的等长篡改可能由本操作略过，因此列表不返回完整 Payload `verified` 声明。
 
 ### F. 游标
 
-推荐使用版本化 base64url keyset cursor，至少封装：
+固定使用 `c1.<base64url-no-padding canonical-json>.<sha256-checksum>` keyset cursor，payload 封装：
 
-- 排序键 `captured_at + capture_id`。
-- 查询条件指纹。
-- cursor schema version。
+- Store 身份与末项排序键 `captured_at + capture_id`。
+- 不包含 cursor/limit 的规范查询条件指纹。
+- cursor schema 与 schema version。
 
-格式损坏、版本不支持或查询条件不匹配统一返回稳定 `invalid_input`。没有业务依据时不引入 TTL。
+checksum 使用固定领域前缀，只用于完整性而不是认证。格式损坏、版本不支持、Store 或查询条件不匹配统一返回稳定 `invalid_input`；不引入 TTL，合法 limit 可在后续页改变。
 
 ### G. 时间边界和快照
 
 - 时间过滤统一为规范 UTC 毫秒。
-- 明确 `created_after` / `created_before` 的包含或排除规则；建议采用严格 after/before。
-- 明确分页只保证在静态数据集上无重复遗漏，还是提供稳定快照。MVP 建议先冻结静态数据集保证，不额外建设快照数据库。
+- `created_after` / `created_before` 均严格排除，筛选版本 1 `captured_at`；after >= before 为 `invalid_input`。
+- 分页只保证静态数据集无重复遗漏，不提供跨请求快照。并发创建、追加或路由变化后，要获得新鲜视图应从空 cursor 重启。
 
 ### H. warning 归属
 
-列表级 warning 必须携带受影响的 `capture_id` 和稳定 warning code。不可定位的全局 warning 只用于真正的 Store 级问题。
+列表级 warning 必须携带受影响的 `capture_id` 和稳定 warning code；未完成版本还携带整数 `version`，并按 capture/code/version 稳定排序。不可定位的全局 warning 只用于真正的 Store 级问题。preview 精确保留前 160 Unicode code point 和换行，可能在 grapheme cluster 内截断，不制造不存在的展示保真承诺。
+
+C4-0 完成记录（2026-09-13）：上述 A–H 已同步进操作契约、Envelope、设计权威、实现矩阵和编码批次；C-027–C-031 均有明确裁决。仅修改项目文档，未实现公开读取、未改 schema 代码/fixture、未创建生产配置或 Store；文档护栏、普通与严格 `ResourceWarning` 全量 156 项测试、`compileall`、`pip check` 和 diff 检查均通过。本批由独立本地提交闭合，未执行 push。
 
 ## 7.6 C4A：读取侧契约能力
 
@@ -431,7 +435,7 @@ C4-0 是文档/契约批次，不实现公开操作。以下项目必须逐项�
 - 相同毫秒下以 `capture_id` 稳定排序。
 - 静态数据集跨页无重复、无遗漏。
 - cursor 被篡改、版本错误、查询条件变化时失败。
-- preview 按 Unicode code point 截取，不破坏组合字符语义的处理规则需在契约中写明。
+- preview 按 Unicode code point 截取并保留换行，允许在 grapheme cluster 内截断；完整原文由 `get_capture` 提供。
 - 列表不会完整读取所有大 payload。
 
 ## 7.9 C4V：独立阶段验收
@@ -488,16 +492,16 @@ C4-0 是文档/契约批次，不实现公开操作。以下项目必须逐项�
 
 ### C5-0：写入契约收口
 
-冻结：
+在 C4-0 已冻结追加 Event、前后哈希和逻辑提交点的基础上，C5-0 继续冻结写侧细节：
 
 - append 请求、回执、幂等 scope 和 request fingerprint。
 - `expected_current_version` 的锁内检查语义。
-- 新版本 Event 的精确 schema 与哈希绑定。
-- 版本目录、Event 和投影之间的逻辑提交顺序。
+- 新版本 Event schema 与哈希绑定的 writer 校验和复用规则。
+- 已冻结“版本目录先、Event 逻辑提交、投影后”的状态机在各故障点的确定结果。
 - rename/event 写入附近的 `not-committed | committed | unknown` 判定。
 - 同 key 重试和不同 key 竞争行为。
 
-当前 Envelope 文档中“先提交版本目录，再追加 Event”的描述必须改成完整状态机，不能继续让读取侧自行猜测。
+Envelope 文档已在 C4-0 改成完整状态机；C5-0 不得重新把“最高版本目录”降级为提交事实，也不得改变 C4 的读取可见性。
 
 ### C5A：追加写入基础
 
@@ -659,13 +663,12 @@ Git 状态：
 
 ## 13. 下一项应完成的工作
 
-当前下一项是另行授权并完成 **C4-0：读取契约收口**，而不是直接编码 C4，也不是启动提示词或 UI 重构。D0G 的完成不自动授权 C4-0。
+当前下一项是另行授权并完成 **R0.3D：初始化错误语义分诊**，而不是直接编码 C4，也不是启动提示词或 UI 重构。C4-0 的完成不自动授权 R0.3D、R0.3F 或 C4A。
 
 建议执行步骤：
 
-1. 另行授权 C4-0，再只读复核操作契约、Envelope、实现矩阵和当前代码，列出 C4 与 C5 对“完整版本/已提交版本”的所有不一致表述。
-2. 在 C4-0 中冻结 `get_capture`/`list_captures` 的正文、完整性、版本可见性、游标、时间快照和 warning 语义，并解决 C-027。
-3. C4-0 完成后实施 R0.3D；只有证据成立才另行实施 R0.3F。
-4. R0.3 完成或确认无需修复后，再请求 C4A 授权。
+1. 另行授权 R0.3D，只做 M1 最小复现、M3 回执优先级与 M4 Windows 错误分类的有界诊断/裁决。
+2. 只有 R0.3D 证据要求修改时才另行授权 R0.3F；否则明确记录无需修复。
+3. R0.3 完成或确认无需修复后，再请求 C4A 授权；C4A 仍不公开读取操作。
 
-本文仍是 Draft；D0G 的完成不等于 C4-0 或任何 C4 实现已获授权。
+本文仍是 Draft；C4-0 完成不等于 R0.3D、R0.3F 或任何 C4 实现已获授权。
