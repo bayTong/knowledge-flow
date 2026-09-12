@@ -1,6 +1,8 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-> 状态：Approved Design；C0–C3、R0.1/R0.2 与 D0-F 已完成；当前 148 项测试通过；下一批是需另行授权的 D0G，之后进入 C4-0 授权门禁<br>
+<!-- knowledgeflow-doc-status tests=156 capture_tests=141 script_tests=15 next_gate=C4-0 -->
+
+> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F 与 D0G 已完成，当前 156 项测试通过；现停在 C4-0 授权门禁<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -11,7 +13,8 @@
 > R0.1/R0.2 完成日期：2026-09-11<br>
 > D0 内容与本地验证日期：2026-09-11<br>
 > D0-F 版本化收口日期：2026-09-12（本地提交；未 push）<br>
-> 当前状态同步日期：2026-09-12<br>
+> D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（本地提交；未 push）<br>
+> 当前状态同步日期：2026-09-13<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：本文件只把 C3 `capture_text` 记为已实现并通过本阶段验收；C4–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
 
@@ -47,8 +50,8 @@
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4 MiB 内联阈值和 64 MiB 默认安全上限 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后当前 148 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C3A–C3V、R0.1/R0.2 与 D0-F 已完成；下一批是需另行授权的 D0G，之后再进入 C4-0 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 当前 156 项通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C3A–C3V、R0.1/R0.2、D0-F 与 D0G 已完成；下一门禁是需另行授权的 C4-0 |
 | C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C4-0 及后续实现 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
@@ -267,6 +270,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3A–C3V 已闭合并验收完整 `capture_text` 事务，R0.1/R0.2 又修复初始化事务与配置临时文件的所有权边界，D0-F 已完成文档版本化收口；普通与严格 `ResourceWarning` 全量测试当前均为 148 项。下一批是需另行授权并独立提交的 D0G；之后才可另行授权 C4-0 解决 C-027 及读取边界，不得直接编码 `get_capture` 或 `list_captures`。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3A–C3V 已闭合并验收完整 `capture_text` 事务，R0.1/R0.2 又修复初始化事务与配置临时文件的所有权边界，D0-F 已完成文档版本化收口。D0G 已实现并闭合最小 Git 感知文档护栏，普通与严格 `ResourceWarning` 全量测试均为 156 项；下一步才可另行授权 C4-0 解决 C-027 及读取边界，不得直接编码 `get_capture` 或 `list_captures`。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。
