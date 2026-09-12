@@ -6,7 +6,7 @@
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-11):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C3 are complete, and C3 `capture_text` is implemented and has passed this stage's acceptance. The current suite has 144 passing tests (137 capture-kernel tests and 7 maintenance-script regressions). Acceptance covers the real 4 MiB/64 MiB boundaries, bounded non-seekable input, two same-key processes racing from the lock boundary, the default 10-second write-lock timeout, and strengthened disk evidence for target conflicts, Event/projection failures, rename-unknown, and staging cleanup. The next independent gate is C4 `get_capture` + `list_captures`; the other three capture operations and the production Store do not exist. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-12):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C3 are complete, and C3 `capture_text` is implemented and has passed this stage's acceptance. Post-C3 initialization hardening R0.1 (`92a37b3`) and R0.2 (`79515ed`) are also complete. The current suite has 148 passing tests (141 capture-kernel tests and 7 maintenance-script regressions). D0 and its D0-F versioned closeout are complete in the current local documentation commit; no push was performed. The next control step is the separately authorized D0G documentation guard, followed by the separately authorized C4-0 read-contract closure. `get_capture`, `list_captures`, the remaining capture operation, and the production Store do not exist. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -19,7 +19,10 @@
 | Design philosophy | [Philosophy](#philosophy) |
 | Current design authority & conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Capture & routing design | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
+| C3 blocking behavior decisions | [`docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md`](docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) |
 | MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| Post-C3 assessment & implementation plan (Draft) | [`docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md`](docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) |
+| Historical research inputs (non-authoritative) | [`docs/research/README.md`](docs/research/README.md) |
 | Legacy SOP reference (partially superseded) | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | Build plan & roadmap | [`docs/build-plan.md`](docs/build-plan.md) |
 | Strategic vision | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
@@ -181,7 +184,7 @@ knowledge-flow/
 │   │   ├── fixtures/                 Seven C1–C3A JSON/YAML golden files
 │   │   ├── unit/                     C0–C3B unit and platform tests
 │   │   ├── integration/              C2B/C3 transaction, real-boundary, and concurrency tests
-│   │   └── fault/                    C2B process-crash recovery tests (137 capture tests total)
+│   │   └── fault/                    C2B/R0 process-crash recovery tests (141 capture tests total)
 │   └── scripts/
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
 ├── docs/
@@ -194,9 +197,14 @@ knowledge-flow/
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
+│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      Approved C3 blocking behavior decisions
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Approved capture root and text-operation design
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Approved implementation choices and test matrix
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Approved coding batches and authorization gates
+│   ├── post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md  Draft post-C3 plan
+│   ├── research/                         Non-authoritative historical research inputs
+│   │   ├── README.md                    Scope, provenance, and use rules
+│   │   └── 2026-09-11/                 Archived assessment and review texts
 │   ├── adaptive-extraction-plan.md  Adaptive extraction tiers design
 │   ├── improvement-action-plan.md   Evaluation findings & fix checklist（评估整改清单）
 │   ├── gbrain-integration-plan.md   GBrain engine integration plan（GBrain 集成方案）
@@ -237,7 +245,7 @@ knowledge-flow/
 The complete capture MVP is not implemented yet. Public `capture_text` has passed the complete C3 stage acceptance in test-owned temporary Stores, but read, list, append, business-transaction recovery, the restricted CLI, and production initialization are still pending. There is therefore no production-ready save path yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C3 are complete; explicitly authorize C4 before implementing `get_capture` and `list_captures`.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C3, R0.1/R0.2, D0, and D0-F are complete. Implement and commit D0G as a separately authorized guard batch; C4-0 still requires its own authorization before any `get_capture` or `list_captures` implementation.
 3. Then complete append, recovery, and the restricted adapter through C5–C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 

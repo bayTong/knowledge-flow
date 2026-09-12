@@ -5,7 +5,7 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-11）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C0–C3 已完成，C3 `capture_text` 已实现并通过本阶段验收；全量测试为 144 项（捕获内核 137 项、维护脚本回归 7 项），全部通过。验收覆盖真实 4 MiB/64 MiB 边界、有界非 seekable 输入、锁边界双进程同 key 竞争、默认 10 秒写锁超时，以及目标冲突、Event/投影失败、rename unknown 与 staging 清理证据。下一独立门禁是 C4 `get_capture` + `list_captures`；其余三个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-12）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C0–C3 已完成，C3 `capture_text` 已实现并通过本阶段验收；C3 后的初始化加固 R0.1（`92a37b3`）与 R0.2（`79515ed`）也已完成。全量测试现为 148 项（捕获内核 141 项、维护脚本回归 7 项），全部通过。D0 及其 D0-F 版本化收口已由本次本地文档提交闭合，未执行 push。当前控制步骤是另行授权 D0G 文档护栏，之后才进入同样需另行授权的 C4-0 读取契约收口。`get_capture`、`list_captures`、其余一个捕获操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -19,7 +19,10 @@
 | 设计背后的思维方式 | [设计哲学](#设计哲学) |
 | 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | 捕获与路由设计 | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
+| C3 阻塞性行为决策 | [`docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md`](docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) |
 | MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| C3 后综合评估与实施方案（Draft） | [`docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md`](docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) |
+| 历史研究输入（非权威） | [`docs/research/README.md`](docs/research/README.md) |
 | 旧版 SOP 参考（部分被取代） | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
 | 建设规划与路线图 | [`docs/build-plan.md`](docs/build-plan.md) |
 | 战略愿景 | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
@@ -181,7 +184,7 @@ knowledge-flow/
 │   │   ├── fixtures/                 C1–C3A 的 7 份 JSON/YAML golden 文件
 │   │   ├── unit/                     C0–C3B 单元与平台测试
 │   │   ├── integration/              C2B/C3 事务、真实边界与并发测试
-│   │   └── fault/                    C2B 进程崩溃恢复测试（捕获测试共 137 项）
+│   │   └── fault/                    C2B/R0 进程崩溃恢复测试（捕获测试共 141 项）
 │   └── scripts/
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
 ├── docs/
@@ -194,9 +197,14 @@ knowledge-flow/
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
+│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      已批准的 C3 阻塞性行为决策
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           捕获根目录与四个文本操作已批准设计
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  已批准的实现选择与测试矩阵
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       已批准的编码批次与授权门禁
+│   ├── post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md  C3 后综合实施草案
+│   ├── research/                         非权威历史研究输入
+│   │   ├── README.md                    边界、来源与使用规则
+│   │   └── 2026-09-11/                 归档的评估与复核文本
 │   ├── adaptive-extraction-plan.md  自适应提取分层设计方案
 │   ├── improvement-action-plan.md   评估发现与整改清单
 │   ├── gbrain-integration-plan.md   GBrain 引擎集成方案
@@ -237,7 +245,7 @@ knowledge-flow/
 完整的捕获 MVP 尚未实现。公开 `capture_text` 已在测试持有的临时 Store 中通过完整 C3 阶段验收，但读取、列表、追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的保存链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C3 已完成，当前需另行明确授权 C4，才可实现 `get_capture` 与 `list_captures`。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C3、R0.1/R0.2、D0 与 D0-F 已完成。把 D0G 文档护栏作为单独授权、实现和提交的一批；C4-0 仍需单独授权，之后才可授权实现 `get_capture` 与 `list_captures`。
 3. 再按 C5–C8 闭合追加、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
