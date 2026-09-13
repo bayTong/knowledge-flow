@@ -116,7 +116,15 @@ knowledge-flow/
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual(report["errors"], [])
-        self.assertEqual(report["stats"]["status"]["tests"], 163)
+        self.assertEqual(
+            report["stats"]["status"],
+            {
+                "tests": 182,
+                "capture_tests": 167,
+                "script_tests": 15,
+                "next_gate": "C4B",
+            },
+        )
 
     def test_untracked_project_document_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+import hashlib
+import hmac
 import json
 import re
 from typing import Any
@@ -14,7 +18,9 @@ from yaml.tokens import AliasToken, AnchorToken, DirectiveToken, TagToken
 
 from .ids import IdKind, validate_typed_id
 from .models import (
+    CaptureListCursor,
     ChannelMetadata,
+    ListCapturesRequest,
     canonical_idempotency_scope,
     require_canonical_utc_milliseconds,
 )
@@ -33,7 +39,7 @@ class NonCanonicalYamlError(ValueError):
 
 
 class CaptureEventReferenceError(SchemaValidationError):
-    """A valid capture.created document points at a different Envelope."""
+    """A valid version-establishing Event points at different Envelopes."""
 
 
 SchemaValidator = Callable[[object, str], None]
@@ -162,6 +168,14 @@ _EVENT_ID = ScalarSchema(
     pattern=re.compile(
         r"evt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z"
     ),
+)
+
+CAPTURE_LIST_QUERY_DOMAIN = b"knowledgeflow.capture-list-query.v1\n"
+CAPTURE_LIST_CURSOR_DOMAIN = b"knowledgeflow.capture-list-cursor.v1\n"
+_CAPTURE_LIST_CURSOR_SCHEMA = "knowledgeflow.capture-list-cursor"
+_CAPTURE_LIST_CURSOR_MAXIMUM_CHARACTERS = 4096
+_CAPTURE_LIST_CURSOR_PATTERN = re.compile(
+    r"c1\.([A-Za-z0-9_-]+)\.([0-9a-f]{64})\Z"
 )
 
 
@@ -385,7 +399,7 @@ ENVELOPE_SCHEMA_V1 = MappingSchema(
 )
 
 
-def _validate_capture_event_schema(value: object, path: str) -> None:
+def _validate_capture_event_identity_and_time(value: object, path: str) -> None:
     event = value
     try:
         validate_typed_id(event["event_id"], IdKind.EVENT)
@@ -396,11 +410,11 @@ def _validate_capture_event_schema(value: object, path: str) -> None:
         )
     except ValueError as exc:
         raise SchemaValidationError(
-            f"{path} contains an invalid capture.created identity or time"
+            f"{path} contains an invalid capture Event identity or time"
         ) from exc
 
 
-CAPTURE_EVENT_SCHEMA_V1 = MappingSchema(
+CAPTURE_CREATED_EVENT_SCHEMA_V1 = MappingSchema(
     (
         _field(
             "schema",
@@ -415,8 +429,65 @@ CAPTURE_EVENT_SCHEMA_V1 = MappingSchema(
         _field("occurred_at", _STRING),
         _field("actor", _ACTOR_SCHEMA),
     ),
-    validator=_validate_capture_event_schema,
+    validator=_validate_capture_event_identity_and_time,
 )
+
+
+def _validate_version_appended_event(value: object, path: str) -> None:
+    _validate_capture_event_identity_and_time(value, path)
+    if not isinstance(value, Mapping):
+        raise SchemaValidationError(f"{path} must be mapping")
+    version = value["version"]
+    previous_version = value["previous_version"]
+    if type(version) is not int or type(previous_version) is not int:
+        raise SchemaValidationError(f"{path} version fields must be integers")
+    if version > 999999:
+        raise SchemaValidationError(f"{path}.version exceeds the v1 maximum")
+    if previous_version != version - 1:
+        raise SchemaValidationError(
+            f"{path}.previous_version must identify the preceding version"
+        )
+
+
+CAPTURE_VERSION_APPENDED_EVENT_SCHEMA_V1 = MappingSchema(
+    (
+        _field(
+            "schema",
+            ScalarSchema(str, allowed_values=("knowledgeflow.capture-event",)),
+        ),
+        _field("schema_version", ScalarSchema(int, allowed_values=(1,))),
+        _field("event_id", _EVENT_ID),
+        _field(
+            "event_type",
+            ScalarSchema(str, allowed_values=("capture.version-appended",)),
+        ),
+        _field("capture_id", _CAPTURE_ID),
+        _field("version", ScalarSchema(int, minimum=2)),
+        _field("previous_version", _POSITIVE_INTEGER),
+        _field("previous_envelope_sha256", _SHA256),
+        _field("envelope_sha256", _SHA256),
+        _field("occurred_at", _STRING),
+        _field("actor", _ACTOR_SCHEMA),
+    ),
+    validator=_validate_version_appended_event,
+)
+
+
+class _CaptureEventSchemaV1(ValueSchema):
+    def normalize(self, value: object, path: str) -> object:
+        if not isinstance(value, Mapping):
+            raise SchemaValidationError(f"{path} must be mapping")
+        event_type = value.get("event_type")
+        if event_type == "capture.created":
+            selected = CAPTURE_CREATED_EVENT_SCHEMA_V1
+        elif event_type == "capture.version-appended":
+            selected = CAPTURE_VERSION_APPENDED_EVENT_SCHEMA_V1
+        else:
+            raise SchemaValidationError(f"{path}.event_type is not an allowed v1 value")
+        return selected.normalize(value, path)
+
+
+CAPTURE_EVENT_SCHEMA_V1 = _CaptureEventSchemaV1()
 
 _DURABILITY_SCHEMA = MappingSchema(
     (
@@ -498,7 +569,7 @@ CAPTURE_STATE_SCHEMA_V1 = MappingSchema(
     validator=_validate_capture_state_schema,
 )
 
-_SCHEMA_REGISTRY: Mapping[tuple[str, int], MappingSchema] = {
+_SCHEMA_REGISTRY: Mapping[tuple[str, int], ValueSchema] = {
     ("knowledgeflow.capture-envelope", 1): ENVELOPE_SCHEMA_V1,
     ("knowledgeflow.capture-event", 1): CAPTURE_EVENT_SCHEMA_V1,
     ("knowledgeflow.capture-state", 1): CAPTURE_STATE_SCHEMA_V1,
@@ -594,7 +665,7 @@ def parse_restricted_yaml(source: str | bytes | bytearray | memoryview) -> objec
     return value
 
 
-def _schema_for_document(value: object) -> MappingSchema:
+def _schema_for_document(value: object) -> ValueSchema:
     if not isinstance(value, Mapping):
         raise SchemaValidationError("$ must be a mapping with schema identity")
     schema_name = value.get("schema")
@@ -753,6 +824,7 @@ def _validated_reference_envelope(value: object) -> dict[str, object]:
 def _validate_capture_event_references(
     event: Mapping[str, object],
     envelope: Mapping[str, object],
+    previous_envelope: Mapping[str, object] | None,
 ) -> None:
     fields = (
         ("event_id", "event_id"),
@@ -766,23 +838,74 @@ def _validate_capture_event_references(
             raise CaptureEventReferenceError(
                 f"$.{event_field} does not match the referenced Envelope"
             )
+    if event["event_type"] == "capture.created":
+        if envelope["version"] != 1 or envelope["previous_version"] is not None:
+            raise CaptureEventReferenceError(
+                "capture.created must reference Envelope version 1"
+            )
+        return
+
+    if previous_envelope is None:
+        raise CaptureEventReferenceError(
+            "capture.version-appended requires the previous Envelope"
+        )
+    appended_fields = (
+        ("previous_version", previous_envelope, "version"),
+        (
+            "previous_envelope_sha256",
+            previous_envelope,
+            "envelope_sha256",
+        ),
+    )
+    for event_field, referenced, envelope_field in appended_fields:
+        if event[event_field] != referenced[envelope_field]:
+            raise CaptureEventReferenceError(
+                f"$.{event_field} does not match the previous Envelope"
+            )
+    if previous_envelope["capture_id"] != envelope["capture_id"]:
+        raise CaptureEventReferenceError(
+            "previous Envelope belongs to a different Capture"
+        )
+    if envelope["previous_version"] != previous_envelope["version"]:
+        raise CaptureEventReferenceError(
+            "new Envelope does not identify the previous Envelope version"
+        )
 
 
 def validate_capture_event(
     value: object,
     *,
     envelope: object,
+    previous_envelope: object | None = None,
 ) -> dict[str, object]:
-    """Validate capture.created schema and all immutable Envelope references."""
+    """Validate one version-establishing Event and immutable references."""
 
     normalized = validate_document(value, CAPTURE_EVENT_SCHEMA_V1)
     normalized_envelope = _validated_reference_envelope(envelope)
-    _validate_capture_event_references(normalized, normalized_envelope)
+    normalized_previous = (
+        None
+        if previous_envelope is None
+        else _validated_reference_envelope(previous_envelope)
+    )
+    _validate_capture_event_references(
+        normalized,
+        normalized_envelope,
+        normalized_previous,
+    )
     return normalized
 
 
-def dump_capture_event(value: object, *, envelope: object) -> bytes:
-    normalized = validate_capture_event(value, envelope=envelope)
+def dump_capture_event(
+    value: object,
+    *,
+    envelope: object,
+    previous_envelope: object | None = None,
+) -> bytes:
+    normalized = validate_capture_event(
+        value,
+        envelope=envelope,
+        previous_envelope=previous_envelope,
+    )
     return dump_restricted_yaml(normalized, CAPTURE_EVENT_SCHEMA_V1)
 
 
@@ -790,6 +913,7 @@ def load_capture_event(
     source: str | bytes | bytearray | memoryview,
     *,
     envelope: object,
+    previous_envelope: object | None = None,
     require_canonical: bool = True,
 ) -> dict[str, object]:
     normalized = load_restricted_yaml(
@@ -798,8 +922,139 @@ def load_capture_event(
         require_canonical=require_canonical,
     )
     normalized_envelope = _validated_reference_envelope(envelope)
-    _validate_capture_event_references(normalized, normalized_envelope)
+    normalized_previous = (
+        None
+        if previous_envelope is None
+        else _validated_reference_envelope(previous_envelope)
+    )
+    _validate_capture_event_references(
+        normalized,
+        normalized_envelope,
+        normalized_previous,
+    )
     return normalized
+
+
+def _compact_json_bytes(value: object) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def capture_list_query_canonical_json(request: ListCapturesRequest) -> bytes:
+    if not isinstance(request, ListCapturesRequest):
+        raise TypeError("request must be ListCapturesRequest")
+    return _compact_json_bytes(request.as_query_mapping())
+
+
+def capture_list_query_sha256(request: ListCapturesRequest) -> str:
+    digest = hashlib.sha256(
+        CAPTURE_LIST_QUERY_DOMAIN + capture_list_query_canonical_json(request)
+    )
+    return "sha256:" + digest.hexdigest()
+
+
+def encode_capture_list_cursor(
+    *,
+    store_id: str,
+    request: ListCapturesRequest,
+    last_captured_at: str,
+    last_capture_id: str,
+) -> str:
+    cursor = CaptureListCursor(
+        store_id=store_id,
+        query_sha256=capture_list_query_sha256(request),
+        last_captured_at=last_captured_at,
+        last_capture_id=last_capture_id,
+    )
+    payload = _compact_json_bytes(cursor.as_canonical_mapping())
+    payload_segment = base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
+    checksum = hashlib.sha256(CAPTURE_LIST_CURSOR_DOMAIN + payload).hexdigest()
+    return f"c1.{payload_segment}.{checksum}"
+
+
+def _reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("cursor payload contains duplicate JSON keys")
+        result[key] = value
+    return result
+
+
+def decode_capture_list_cursor(
+    token: str,
+    *,
+    store_id: str,
+    request: ListCapturesRequest,
+) -> CaptureListCursor:
+    if not isinstance(request, ListCapturesRequest):
+        raise TypeError("request must be ListCapturesRequest")
+    if type(token) is not str or not token or (
+        len(token) > _CAPTURE_LIST_CURSOR_MAXIMUM_CHARACTERS
+    ):
+        raise ValueError("cursor token is invalid")
+    match = _CAPTURE_LIST_CURSOR_PATTERN.fullmatch(token)
+    if match is None:
+        raise ValueError("cursor token is invalid")
+    payload_segment, checksum = match.groups()
+    try:
+        encoded = payload_segment.encode("ascii")
+        padding = b"=" * (-len(encoded) % 4)
+        payload = base64.b64decode(
+            encoded + padding,
+            altchars=b"-_",
+            validate=True,
+        )
+    except (UnicodeEncodeError, binascii.Error, ValueError) as exc:
+        raise ValueError("cursor payload encoding is invalid") from exc
+    if base64.urlsafe_b64encode(payload).rstrip(b"=") != encoded:
+        raise ValueError("cursor payload encoding is not canonical")
+    expected_checksum = hashlib.sha256(
+        CAPTURE_LIST_CURSOR_DOMAIN + payload
+    ).hexdigest()
+    if not hmac.compare_digest(checksum, expected_checksum):
+        raise ValueError("cursor checksum does not match")
+
+    try:
+        decoded = payload.decode("utf-8")
+        value = json.loads(decoded, object_pairs_hook=_reject_duplicate_json_keys)
+        if not isinstance(value, Mapping):
+            raise ValueError("cursor payload must be a mapping")
+        expected_fields = {
+            "schema",
+            "schema_version",
+            "store_id",
+            "query_sha256",
+            "last_captured_at",
+            "last_capture_id",
+        }
+        if set(value) != expected_fields:
+            raise ValueError("cursor payload fields are invalid")
+        if value["schema"] != _CAPTURE_LIST_CURSOR_SCHEMA or (
+            type(value["schema_version"]) is not int
+            or value["schema_version"] != 1
+        ):
+            raise ValueError("cursor schema is unsupported")
+        cursor = CaptureListCursor(
+            store_id=value["store_id"],
+            query_sha256=value["query_sha256"],
+            last_captured_at=value["last_captured_at"],
+            last_capture_id=value["last_capture_id"],
+        )
+    except (KeyError, TypeError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise ValueError("cursor payload is invalid") from exc
+    if _compact_json_bytes(cursor.as_canonical_mapping()) != payload:
+        raise ValueError("cursor payload JSON is not canonical")
+    if cursor.store_id != store_id:
+        raise ValueError("cursor belongs to a different Capture Store")
+    expected_query = capture_list_query_sha256(request)
+    if not hmac.compare_digest(cursor.query_sha256, expected_query):
+        raise ValueError("cursor belongs to a different Capture query")
+    return cursor
 
 
 def _validate_capture_state_references(
@@ -853,8 +1108,12 @@ def load_capture_state(
 
 
 __all__ = [
+    "CAPTURE_CREATED_EVENT_SCHEMA_V1",
     "CAPTURE_EVENT_SCHEMA_V1",
+    "CAPTURE_LIST_CURSOR_DOMAIN",
+    "CAPTURE_LIST_QUERY_DOMAIN",
     "CAPTURE_STATE_SCHEMA_V1",
+    "CAPTURE_VERSION_APPENDED_EVENT_SCHEMA_V1",
     "CaptureEventReferenceError",
     "ENVELOPE_PREHASH_SCHEMA_V1",
     "ENVELOPE_SCHEMA_V1",
@@ -872,6 +1131,10 @@ __all__ = [
     "dump_capture_event",
     "dump_capture_state",
     "dump_restricted_yaml",
+    "capture_list_query_canonical_json",
+    "capture_list_query_sha256",
+    "decode_capture_list_cursor",
+    "encode_capture_list_cursor",
     "load_envelope",
     "load_capture_event",
     "load_capture_state",

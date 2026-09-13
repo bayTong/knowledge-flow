@@ -1,4 +1,4 @@
-"""Immutable value objects used by the C1 deterministic primitives."""
+"""Immutable value objects used by Capture Store operations."""
 
 from __future__ import annotations
 
@@ -18,12 +18,21 @@ _UTC_MILLISECOND_PATTERN = re.compile(
 _WRITE_OPERATIONS = frozenset({"capture_text", "append_capture_version"})
 _MAX_EXTERNAL_REF_BYTES = 2048
 _MAX_IDEMPOTENCY_KEY_BYTES = 512
+_MAX_CAPTURE_VERSION = 999999
+_CAPTURE_LIST_ORDER = "captured_at-desc,capture_id-desc"
 
 
 class BinaryReadable(Protocol):
     """One-pass binary input accepted by the capture operation boundary."""
 
     def read(self, size: int = -1, /) -> bytes:
+        ...
+
+
+class BinaryWritable(Protocol):
+    """Caller-owned binary output accepted by the read operation boundary."""
+
+    def write(self, data: bytes, /) -> int:
         ...
 
 
@@ -55,6 +64,12 @@ def _require_nonnegative_integer(value: object, field_name: str) -> int:
 def _require_positive_integer(value: object, field_name: str) -> int:
     if type(value) is not int or value < 1:
         raise ValueError(f"{field_name} must be a positive integer")
+    return value
+
+
+def _require_capture_version(value: object, field_name: str) -> int:
+    if type(value) is not int or not 1 <= value <= _MAX_CAPTURE_VERSION:
+        raise ValueError(f"{field_name} must be an integer from 1 through 999999")
     return value
 
 
@@ -136,6 +151,22 @@ def _require_capture_id(value: object) -> str:
         raise ValueError("capture_id must use the cap_ UUIDv7 form") from exc
     if str(parsed) != value[4:] or parsed.version != 7 or parsed.variant != RFC_4122:
         raise ValueError("capture_id must use the cap_ UUIDv7 form")
+    return value
+
+
+def _require_store_id(value: object) -> str:
+    if (
+        type(value) is not str
+        or not value.startswith("store_")
+        or value != value.lower()
+    ):
+        raise ValueError("store_id must use the store_ UUIDv7 form")
+    try:
+        parsed = UUID(value[6:])
+    except (ValueError, AttributeError) as exc:
+        raise ValueError("store_id must use the store_ UUIDv7 form") from exc
+    if str(parsed) != value[6:] or parsed.version != 7 or parsed.variant != RFC_4122:
+        raise ValueError("store_id must use the store_ UUIDv7 form")
     return value
 
 
@@ -279,6 +310,220 @@ class CaptureTextRequest:
         object.__setattr__(self, "user_intent", intent)
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class GetCaptureRequest:
+    """Validated inputs for one exact or latest Capture read."""
+
+    capture_id: str
+    version: int | None = None
+    body_sink: BinaryWritable
+
+    def __post_init__(self) -> None:
+        _require_capture_id(self.capture_id)
+        if self.version is not None:
+            _require_capture_version(self.version, "version")
+        if not callable(getattr(self.body_sink, "write", None)):
+            raise TypeError("body_sink must provide write(bytes)")
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ListCapturesRequest:
+    """Validated filters and paging inputs for the stable Capture listing."""
+
+    routing_status: str | None = None
+    created_after: str | None = None
+    created_before: str | None = None
+    limit: int = 50
+    cursor: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.routing_status is not None and self.routing_status != "unassigned":
+            raise ValueError("routing_status is not a supported v1 value")
+        if self.created_after is not None:
+            require_canonical_utc_milliseconds(
+                self.created_after,
+                "created_after",
+            )
+        if self.created_before is not None:
+            require_canonical_utc_milliseconds(
+                self.created_before,
+                "created_before",
+            )
+        if (
+            self.created_after is not None
+            and self.created_before is not None
+            and self.created_after >= self.created_before
+        ):
+            raise ValueError("created_after must be earlier than created_before")
+        if type(self.limit) is not int or not 1 <= self.limit <= 100:
+            raise ValueError("limit must be an integer from 1 through 100")
+        if self.cursor is not None and (
+            type(self.cursor) is not str or not self.cursor
+        ):
+            raise ValueError("cursor must be a non-empty string or null")
+
+    def as_query_mapping(self) -> dict[str, object]:
+        return {
+            "routing_status": self.routing_status,
+            "created_after": self.created_after,
+            "created_before": self.created_before,
+            "order": _CAPTURE_LIST_ORDER,
+        }
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CaptureListCursor:
+    """Validated decoded payload of one c1 Capture list cursor."""
+
+    store_id: str
+    query_sha256: str
+    last_captured_at: str
+    last_capture_id: str
+
+    def __post_init__(self) -> None:
+        _require_store_id(self.store_id)
+        require_sha256(self.query_sha256, "query_sha256")
+        require_canonical_utc_milliseconds(
+            self.last_captured_at,
+            "last_captured_at",
+        )
+        _require_capture_id(self.last_capture_id)
+
+    def as_canonical_mapping(self) -> dict[str, object]:
+        return {
+            "schema": "knowledgeflow.capture-list-cursor",
+            "schema_version": 1,
+            "store_id": self.store_id,
+            "query_sha256": self.query_sha256,
+            "last_captured_at": self.last_captured_at,
+            "last_capture_id": self.last_capture_id,
+        }
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CaptureItemState:
+    """Current mutable-state fields exposed by MVP-0 reads."""
+
+    routing_status: str = "unassigned"
+    trust_status: str = "unreviewed-capture"
+
+    def __post_init__(self) -> None:
+        if self.routing_status != "unassigned":
+            raise ValueError("routing_status is not a supported v1 value")
+        if self.trust_status != "unreviewed-capture":
+            raise ValueError("trust_status is not a supported v1 value")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "routing_status": self.routing_status,
+            "trust_status": self.trust_status,
+        }
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CaptureReadMetadata:
+    """Metadata returned beside, but never containing, a Capture body."""
+
+    capture_id: str
+    version: int
+    current_version: int
+    fidelity: str
+    media_type: str
+    encoding: str
+    byte_size: int
+    primary_payload_sha256: str
+    payload_set_sha256: str
+    envelope_sha256: str
+    captured_at: str
+    channel: ChannelMetadata
+    user_intent: UserIntent
+
+    def __post_init__(self) -> None:
+        _require_capture_id(self.capture_id)
+        _require_capture_version(self.version, "version")
+        _require_capture_version(self.current_version, "current_version")
+        if self.version > self.current_version:
+            raise ValueError("version must not exceed current_version")
+        if self.fidelity != "channel-exact":
+            raise ValueError("fidelity is not the supported text value")
+        if self.media_type != "text/plain; charset=utf-8":
+            raise ValueError("media_type is not the supported text value")
+        if self.encoding != "utf-8":
+            raise ValueError("encoding is not the supported text value")
+        _require_nonnegative_integer(self.byte_size, "byte_size")
+        require_sha256(self.primary_payload_sha256, "primary_payload_sha256")
+        require_sha256(self.payload_set_sha256, "payload_set_sha256")
+        require_sha256(self.envelope_sha256, "envelope_sha256")
+        require_canonical_utc_milliseconds(self.captured_at, "captured_at")
+        if not isinstance(self.channel, ChannelMetadata):
+            raise TypeError("channel must be ChannelMetadata")
+        if not isinstance(self.user_intent, UserIntent):
+            raise TypeError("user_intent must be UserIntent")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "capture_id": self.capture_id,
+            "version": self.version,
+            "current_version": self.current_version,
+            "fidelity": self.fidelity,
+            "media_type": self.media_type,
+            "encoding": self.encoding,
+            "byte_size": self.byte_size,
+            "primary_payload_sha256": self.primary_payload_sha256,
+            "payload_set_sha256": self.payload_set_sha256,
+            "envelope_sha256": self.envelope_sha256,
+            "captured_at": self.captured_at,
+            "channel": {
+                "type": self.channel.type,
+                "instance_id": self.channel.instance_id,
+            },
+            "user_intent": self.user_intent.as_canonical_mapping(),
+        }
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CaptureListItem:
+    """One metadata-only row returned by list_captures."""
+
+    capture_id: str
+    current_version: int
+    captured_at: str
+    updated_at: str
+    preview: str
+    routing_status: str
+    trust_status: str
+    envelope_sha256: str
+
+    def __post_init__(self) -> None:
+        _require_capture_id(self.capture_id)
+        _require_capture_version(self.current_version, "current_version")
+        require_canonical_utc_milliseconds(self.captured_at, "captured_at")
+        require_canonical_utc_milliseconds(self.updated_at, "updated_at")
+        if type(self.preview) is not str or len(self.preview) > 160:
+            raise ValueError("preview must contain at most 160 Unicode code points")
+        if self.routing_status != "unassigned":
+            raise ValueError("routing_status is not a supported v1 value")
+        if self.trust_status != "unreviewed-capture":
+            raise ValueError("trust_status is not a supported v1 value")
+        require_sha256(self.envelope_sha256, "envelope_sha256")
+
+    @property
+    def sort_key(self) -> tuple[str, str]:
+        return self.captured_at, self.capture_id
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "capture_id": self.capture_id,
+            "current_version": self.current_version,
+            "captured_at": self.captured_at,
+            "updated_at": self.updated_at,
+            "preview": self.preview,
+            "routing_status": self.routing_status,
+            "trust_status": self.trust_status,
+            "envelope_sha256": self.envelope_sha256,
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class RequestFingerprint:
     """Caller-controlled fields that determine write-request identity."""
@@ -353,10 +598,17 @@ class EnvelopeSeal:
 
 __all__ = [
     "BinaryReadable",
+    "BinaryWritable",
+    "CaptureItemState",
+    "CaptureListCursor",
+    "CaptureListItem",
+    "CaptureReadMetadata",
     "CaptureTextRequest",
     "ChannelMetadata",
     "DigestResult",
     "EnvelopeSeal",
+    "GetCaptureRequest",
+    "ListCapturesRequest",
     "PayloadMetadata",
     "PayloadSetEntry",
     "RequestFingerprint",

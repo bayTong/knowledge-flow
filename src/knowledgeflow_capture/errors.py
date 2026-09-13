@@ -9,6 +9,8 @@ import re
 from types import MappingProxyType
 from typing import Any
 
+from .models import CaptureItemState, CaptureListItem, CaptureReadMetadata
+
 
 class CommitState(StrEnum):
     NOT_COMMITTED = "not-committed"
@@ -32,6 +34,7 @@ class PublicErrorCode(StrEnum):
     IDEMPOTENCY_CONFLICT = "idempotency_conflict"
     INTEGRITY_CHECK_FAILED = "integrity_check_failed"
     ATOMIC_COMMIT_FAILED = "atomic_commit_failed"
+    OUTPUT_WRITE_FAILED = "output_write_failed"
 
 
 class CauseCode(StrEnum):
@@ -51,6 +54,7 @@ class CauseCode(StrEnum):
 class WarningCode(StrEnum):
     PROJECTION_NEEDS_REBUILD = "projection_needs_rebuild"
     OUTBOX_NEEDS_REBUILD = "outbox_needs_rebuild"
+    INCOMPLETE_VERSION_IGNORED = "incomplete_version_ignored"
 
 
 _ERROR_MESSAGES: Mapping[PublicErrorCode, str] = {
@@ -75,11 +79,15 @@ _ERROR_MESSAGES: Mapping[PublicErrorCode, str] = {
     PublicErrorCode.IDEMPOTENCY_CONFLICT: "idempotency key refers to a different request",
     PublicErrorCode.INTEGRITY_CHECK_FAILED: "stored data failed integrity verification",
     PublicErrorCode.ATOMIC_COMMIT_FAILED: "atomic capture commit failed",
+    PublicErrorCode.OUTPUT_WRITE_FAILED: "capture body output failed",
 }
 
 _WARNING_MESSAGES: Mapping[WarningCode, str] = {
     WarningCode.PROJECTION_NEEDS_REBUILD: "capture state projection needs rebuild",
     WarningCode.OUTBOX_NEEDS_REBUILD: "outbox projection needs rebuild",
+    WarningCode.INCOMPLETE_VERSION_IGNORED: (
+        "incomplete capture version was ignored"
+    ),
 }
 
 _INTEGRITY_CAUSES = frozenset(
@@ -115,10 +123,14 @@ _DIAGNOSTIC_INTEGER_FIELDS = frozenset(
         "maximum_bytes",
         "observed_bytes",
         "requested_version",
+        "version",
     }
 )
 _DIAGNOSTIC_STAGE_FIELDS = frozenset({"stage", "cleanup_stage"})
-_DIAGNOSTIC_DETAIL_FIELDS = _DIAGNOSTIC_INTEGER_FIELDS | _DIAGNOSTIC_STAGE_FIELDS
+_DIAGNOSTIC_ID_FIELDS = frozenset({"capture_id"})
+_DIAGNOSTIC_DETAIL_FIELDS = (
+    _DIAGNOSTIC_INTEGER_FIELDS | _DIAGNOSTIC_STAGE_FIELDS | _DIAGNOSTIC_ID_FIELDS
+)
 _CAPTURE_TEXT_RECEIPT_FIELDS = (
     "capture_id",
     "event_id",
@@ -178,8 +190,13 @@ def _freeze_diagnostic_details(value: Mapping[str, object]) -> Mapping[str, obje
         if key in _DIAGNOSTIC_STAGE_FIELDS:
             if type(item) is not str or _SAFE_STAGE.fullmatch(item) is None:
                 raise ValueError(f"details.{key} must be a safe machine token")
+        elif key in _DIAGNOSTIC_ID_FIELDS:
+            if type(item) is not str or _CAPTURE_ID.fullmatch(item) is None:
+                raise ValueError(f"details.{key} must be a canonical capture ID")
         elif type(item) is not int or item < 0:
             raise ValueError(f"details.{key} must be a non-negative integer")
+        elif key == "version" and not 1 <= item <= 999999:
+            raise ValueError("details.version must be from 1 through 999999")
         frozen[key] = item
     return MappingProxyType(frozen)
 
@@ -252,6 +269,23 @@ class OperationWarning:
         if not isinstance(self.details, Mapping):
             raise ValueError("details must be a mapping")
         object.__setattr__(self, "details", _freeze_diagnostic_details(self.details))
+        detail_keys = set(self.details)
+        if self.code is WarningCode.INCOMPLETE_VERSION_IGNORED and detail_keys != {
+            "capture_id",
+            "version",
+        }:
+            raise ValueError(
+                "incomplete_version_ignored requires capture_id and version details"
+            )
+        if self.code is WarningCode.PROJECTION_NEEDS_REBUILD and detail_keys not in (
+            set(),
+            {"capture_id"},
+        ):
+            raise ValueError(
+                "projection_needs_rebuild accepts only optional capture_id details"
+            )
+        if self.code is WarningCode.OUTBOX_NEEDS_REBUILD and detail_keys:
+            raise ValueError("outbox_needs_rebuild does not accept details in v1")
 
     @property
     def message(self) -> str:
@@ -318,11 +352,124 @@ class CommittedWriteResult:
         return result
 
 
+def _read_warning_sort_key(warning: OperationWarning) -> tuple[str, str, int]:
+    raw_capture_id = warning.details.get("capture_id", "")
+    raw_version = warning.details.get("version", 0)
+    capture_id = raw_capture_id if type(raw_capture_id) is str else ""
+    version = raw_version if type(raw_version) is int else 0
+    return capture_id, warning.code.value, version
+
+
+def _normalize_read_warnings(
+    warnings: tuple[OperationWarning, ...],
+    *,
+    capture_ids: frozenset[str],
+) -> tuple[OperationWarning, ...]:
+    normalized = tuple(warnings)
+    if not all(isinstance(warning, OperationWarning) for warning in normalized):
+        raise TypeError("warnings must contain OperationWarning values")
+    for warning in normalized:
+        if warning.code not in {
+            WarningCode.PROJECTION_NEEDS_REBUILD,
+            WarningCode.INCOMPLETE_VERSION_IGNORED,
+        }:
+            raise ValueError("read results contain an unsupported warning code")
+        capture_id = warning.details.get("capture_id")
+        if capture_id not in capture_ids:
+            raise ValueError("read warning must identify a returned capture")
+    return tuple(sorted(normalized, key=_read_warning_sort_key))
+
+
+@dataclass(frozen=True, slots=True)
+class GetCaptureResult:
+    """Successful metadata result after the body has been verified and emitted."""
+
+    body_length_bytes: int
+    capture: CaptureReadMetadata
+    item_state: CaptureItemState
+    warnings: tuple[OperationWarning, ...] = ()
+    integrity: str = field(default="verified", init=False)
+
+    def __post_init__(self) -> None:
+        if type(self.body_length_bytes) is not int or self.body_length_bytes < 0:
+            raise ValueError("body_length_bytes must be a non-negative integer")
+        if not isinstance(self.capture, CaptureReadMetadata):
+            raise TypeError("capture must be CaptureReadMetadata")
+        if self.body_length_bytes != self.capture.byte_size:
+            raise ValueError("body_length_bytes must equal capture.byte_size")
+        if not isinstance(self.item_state, CaptureItemState):
+            raise TypeError("item_state must be CaptureItemState")
+        object.__setattr__(
+            self,
+            "warnings",
+            _normalize_read_warnings(
+                self.warnings,
+                capture_ids=frozenset({self.capture.capture_id}),
+            ),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "ok": True,
+            "body_length_bytes": self.body_length_bytes,
+            "capture": self.capture.to_dict(),
+            "item_state": self.item_state.to_dict(),
+            "integrity": self.integrity,
+            "warnings": [warning.to_dict() for warning in self.warnings],
+        }
+
+
+_CURSOR_TOKEN = re.compile(r"c1\.[A-Za-z0-9_-]+\.[0-9a-f]{64}\Z")
+
+
+@dataclass(frozen=True, slots=True)
+class ListCapturesResult:
+    """Successful stable page of metadata-only Capture rows."""
+
+    items: tuple[CaptureListItem, ...]
+    next_cursor: str | None
+    warnings: tuple[OperationWarning, ...] = ()
+
+    def __post_init__(self) -> None:
+        items = tuple(self.items)
+        if not all(isinstance(item, CaptureListItem) for item in items):
+            raise TypeError("items must contain CaptureListItem values")
+        capture_ids = tuple(item.capture_id for item in items)
+        if len(capture_ids) != len(set(capture_ids)):
+            raise ValueError("items must not contain duplicate capture IDs")
+        if items != tuple(sorted(items, key=lambda item: item.sort_key, reverse=True)):
+            raise ValueError("items must use the stable descending Capture list order")
+        if self.next_cursor is not None and (
+            type(self.next_cursor) is not str
+            or _CURSOR_TOKEN.fullmatch(self.next_cursor) is None
+        ):
+            raise ValueError("next_cursor must be a canonical c1 token or null")
+        object.__setattr__(self, "items", items)
+        object.__setattr__(
+            self,
+            "warnings",
+            _normalize_read_warnings(
+                self.warnings,
+                capture_ids=frozenset(capture_ids),
+            ),
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "ok": True,
+            "items": [item.to_dict() for item in self.items],
+            "next_cursor": self.next_cursor,
+            "warnings": [warning.to_dict() for warning in self.warnings],
+        }
+
+
 __all__ = [
     "CauseCode",
     "CommitState",
     "CommittedWriteResult",
     "FailureResult",
+    "GetCaptureResult",
+    "ListCapturesResult",
     "OperationError",
     "OperationWarning",
     "PublicErrorCode",

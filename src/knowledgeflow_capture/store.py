@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -16,6 +16,8 @@ import stat
 from uuid import RFC_4122, UUID
 
 from .codec import (
+    CAPTURE_EVENT_SCHEMA_V1,
+    CaptureEventReferenceError,
     MappingSchema,
     ScalarSchema,
     SchemaField,
@@ -24,7 +26,9 @@ from .codec import (
     YamlSyntaxGateError,
     dump_restricted_yaml,
     parse_restricted_yaml,
+    validate_capture_event,
     validate_document,
+    validate_envelope,
 )
 from .config import (
     ConfigLoadError,
@@ -39,7 +43,14 @@ from .durability import (
     DurabilityError,
     DurabilityStage,
 )
-from .errors import FailureResult, OperationError, OperationWarning, PublicErrorCode
+from .errors import (
+    FailureResult,
+    OperationError,
+    OperationWarning,
+    PublicErrorCode,
+    WarningCode,
+)
+from .hashing import verify_envelope
 from .ids import generate_store_id, generate_uuid7, validate_typed_id, IdKind
 from .locking import (
     InitializationLock,
@@ -84,6 +95,7 @@ _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _EVENT_FILENAME_PATTERN = re.compile(
     r"evt_[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.yaml\Z"
 )
+_VERSION_DIRECTORY_PATTERN = re.compile(r"[0-9]{6}\Z")
 _REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 _LockFactory = Callable[[Path], InitializationLock]
@@ -236,6 +248,218 @@ class _CaptureStagingCleanupStatus(StrEnum):
     ALREADY_ABSENT = "already-absent"
     REFUSED = "refused"
     FAILED = "failed"
+
+
+class _CaptureVersionChainError(ValueError):
+    """Immutable version/Event facts do not form one readable v1 chain."""
+
+
+@dataclass(frozen=True, slots=True)
+class _CommittedCaptureVersion:
+    version: int
+    envelope: Mapping[str, object]
+    event: Mapping[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class _CaptureVersionChain:
+    capture_id: str
+    versions: tuple[_CommittedCaptureVersion, ...]
+    incomplete_version: int | None = None
+
+    @property
+    def current_version(self) -> int:
+        return self.versions[-1].version
+
+    @property
+    def current(self) -> _CommittedCaptureVersion:
+        return self.versions[-1]
+
+    def version(self, number: int) -> _CommittedCaptureVersion | None:
+        if type(number) is not int:
+            return None
+        if 1 <= number <= len(self.versions):
+            candidate = self.versions[number - 1]
+            if candidate.version == number:
+                return candidate
+        return None
+
+
+@dataclass(frozen=True, slots=True)
+class _CaptureReadState:
+    capture_id: str
+    current_version: int
+    current_envelope_sha256: str
+    captured_at: str
+    updated_at: str
+    routing_status: str = "unassigned"
+    trust_status: str = "unreviewed-capture"
+
+
+def _parse_capture_version_directory_name(value: object) -> int:
+    if type(value) is not str or _VERSION_DIRECTORY_PATTERN.fullmatch(value) is None:
+        raise _CaptureVersionChainError(
+            "version directory must use six ASCII decimal digits"
+        )
+    version = int(value)
+    if not 1 <= version <= 999999:
+        raise _CaptureVersionChainError("version directory is outside the v1 range")
+    return version
+
+
+def _build_capture_version_chain(
+    *,
+    capture_id: str,
+    version_directory_names: Iterable[object],
+    envelopes_by_version: Mapping[int, object],
+    events: Iterable[object],
+) -> _CaptureVersionChain:
+    """Validate already-read immutable facts without touching or repairing disk."""
+
+    try:
+        validate_typed_id(capture_id, IdKind.CAPTURE)
+    except (TypeError, ValueError) as exc:
+        raise _CaptureVersionChainError("capture_id is invalid") from exc
+
+    directory_versions = tuple(
+        sorted(
+            _parse_capture_version_directory_name(name)
+            for name in tuple(version_directory_names)
+        )
+    )
+    if not directory_versions or directory_versions[0] != 1:
+        raise _CaptureVersionChainError("version chain must begin at version 1")
+    if len(directory_versions) != len(set(directory_versions)):
+        raise _CaptureVersionChainError("version directories must be unique")
+    directory_set = frozenset(directory_versions)
+
+    if not isinstance(envelopes_by_version, Mapping):
+        raise _CaptureVersionChainError("envelopes_by_version must be a mapping")
+    for version in envelopes_by_version:
+        if type(version) is not int or version not in directory_set:
+            raise _CaptureVersionChainError(
+                "Envelope version does not identify a version directory"
+            )
+
+    events_by_version: dict[int, Mapping[str, object]] = {}
+    event_ids: set[str] = set()
+    for raw_event in tuple(events):
+        try:
+            normalized_event = validate_document(raw_event, CAPTURE_EVENT_SCHEMA_V1)
+        except (TypeError, ValueError, SchemaValidationError) as exc:
+            raise _CaptureVersionChainError("version Event schema is invalid") from exc
+        if not isinstance(normalized_event, Mapping):
+            raise _CaptureVersionChainError("version Event must be a mapping")
+        version = normalized_event["version"]
+        event_id = normalized_event["event_id"]
+        if type(version) is not int or type(event_id) is not str:
+            raise _CaptureVersionChainError("version Event identity is invalid")
+        if version in events_by_version or event_id in event_ids:
+            raise _CaptureVersionChainError("version Event is duplicated")
+        events_by_version[version] = normalized_event
+        event_ids.add(event_id)
+
+    committed_numbers = tuple(sorted(events_by_version))
+    if not committed_numbers or committed_numbers != tuple(
+        range(1, committed_numbers[-1] + 1)
+    ):
+        raise _CaptureVersionChainError(
+            "version Events must form a continuous prefix from version 1"
+        )
+    if any(version not in directory_set for version in committed_numbers):
+        raise _CaptureVersionChainError("version Event has no version directory")
+
+    uncommitted = tuple(
+        version for version in directory_versions if version not in events_by_version
+    )
+    incomplete_version: int | None = None
+    if uncommitted:
+        expected_tail = committed_numbers[-1] + 1
+        if len(uncommitted) != 1 or uncommitted[0] != expected_tail:
+            raise _CaptureVersionChainError(
+                "uncommitted versions are not one immediate tail"
+            )
+        incomplete_version = expected_tail
+
+    committed: list[_CommittedCaptureVersion] = []
+    previous_envelope: Mapping[str, object] | None = None
+    for version in committed_numbers:
+        raw_envelope = envelopes_by_version.get(version)
+        if not isinstance(raw_envelope, Mapping):
+            raise _CaptureVersionChainError(
+                "committed version has no readable Envelope"
+            )
+        try:
+            envelope = validate_envelope(raw_envelope)
+        except (TypeError, ValueError, SchemaValidationError) as exc:
+            raise _CaptureVersionChainError("committed Envelope schema is invalid") from exc
+        if not verify_envelope(envelope):
+            raise _CaptureVersionChainError("committed Envelope hash is invalid")
+        if envelope["capture_id"] != capture_id or envelope["version"] != version:
+            raise _CaptureVersionChainError(
+                "committed Envelope does not match its Item and version"
+            )
+        event = events_by_version[version]
+        try:
+            normalized_event = validate_capture_event(
+                event,
+                envelope=envelope,
+                previous_envelope=previous_envelope,
+            )
+        except (CaptureEventReferenceError, TypeError, ValueError) as exc:
+            raise _CaptureVersionChainError(
+                "version Event does not prove the committed Envelope"
+            ) from exc
+        committed.append(
+            _CommittedCaptureVersion(
+                version=version,
+                envelope=envelope,
+                event=normalized_event,
+            )
+        )
+        previous_envelope = envelope
+
+    return _CaptureVersionChain(
+        capture_id=capture_id,
+        versions=tuple(committed),
+        incomplete_version=incomplete_version,
+    )
+
+
+def _rebuild_capture_read_state(chain: _CaptureVersionChain) -> _CaptureReadState:
+    """Derive C4 read state in memory; never broaden the C3 disk projection."""
+
+    if not isinstance(chain, _CaptureVersionChain) or not chain.versions:
+        raise TypeError("chain must be a non-empty _CaptureVersionChain")
+    created = chain.versions[0]
+    current = chain.current
+    return _CaptureReadState(
+        capture_id=chain.capture_id,
+        current_version=current.version,
+        current_envelope_sha256=str(current.envelope["envelope_sha256"]),
+        captured_at=str(created.envelope["captured_at"]),
+        updated_at=str(current.event["occurred_at"]),
+    )
+
+
+def _warnings_for_capture_version_chain(
+    chain: _CaptureVersionChain,
+) -> tuple[OperationWarning, ...]:
+    """Translate an allowed incomplete tail into the exact public warning."""
+
+    if not isinstance(chain, _CaptureVersionChain):
+        raise TypeError("chain must be a _CaptureVersionChain")
+    if chain.incomplete_version is None:
+        return ()
+    return (
+        OperationWarning(
+            code=WarningCode.INCOMPLETE_VERSION_IGNORED,
+            details={
+                "capture_id": chain.capture_id,
+                "version": chain.incomplete_version,
+            },
+        ),
+    )
 
 
 def _default_utc_now() -> datetime:

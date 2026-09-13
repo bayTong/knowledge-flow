@@ -1,0 +1,13 @@
+schema: "knowledgeflow.capture-event"
+schema_version: 1
+event_id: "evt_01991a7e-7b22-72ae-9ef5-4f45249ad333"
+event_type: "capture.version-appended"
+capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+version: 2
+previous_version: 1
+previous_envelope_sha256: "sha256:d060313160f00566464a47a23f37d530a8cd77a100a6efcda591a7224c17515a"
+envelope_sha256: "sha256:74226c67b1efc60342a6aff3225597e41f690b6583a7d7f8d3b25a580ca7200a"
+occurred_at: "2026-09-13T00:00:00.005Z"
+actor:
+  type: "user"
+  actor_id: "local-user"

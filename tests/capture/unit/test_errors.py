@@ -195,6 +195,7 @@ class ErrorModelTest(unittest.TestCase):
                 "stored data failed integrity verification"
             ),
             PublicErrorCode.ATOMIC_COMMIT_FAILED: "atomic capture commit failed",
+            PublicErrorCode.OUTPUT_WRITE_FAILED: "capture body output failed",
         }
         self.assertEqual(
             {

@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=163 capture_tests=148 script_tests=15 next_gate=C4A -->
+<!-- knowledgeflow-doc-status tests=182 capture_tests=167 script_tests=15 next_gate=C4B -->
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-13):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C3 are complete, and C3 `capture_text` is implemented and has passed this stage's acceptance. Post-C3 initialization hardening R0.1 (`92a37b3`) and R0.2 (`79515ed`) are also complete. R0.3D is closed by independent local commit `a493d22`, and R0.3F is also closed by its own local commit, with no push performed: unreadable candidates are skipped only before ownership proof, primary errors survive secondary cleanup failures with a safe `cleanup_stage`, and only direct WinError 32/33 durability causes are retryable. The current suite has 163 passing tests (148 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). The next functional gate is separately authorized C4A; C4A remains unauthorized. `get_capture`, `list_captures`, the remaining capture operation, and the production Store do not exist. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-13):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C3 and the post-C3 initialization hardening are complete; the stable baseline through `dc3a35f` is synchronized with `origin/main`. C4A is now closed by its own local commit: it implements internal read contracts, a strict appended-version Event schema, continuous Event-proved version-chain primitives, a canonical `c1` cursor codec, and real two-version golden fixtures. The current suite has 182 passing tests (167 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). Local `main` is one C4A commit ahead and has not been pushed. The next gate is separately authorized C4B; `get_capture`, `list_captures`, the remaining capture operation, and the production Store do not exist. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -249,7 +249,7 @@ knowledge-flow/
 The complete capture MVP is not implemented yet. Public `capture_text` has passed the complete C3 stage acceptance in test-owned temporary Stores, but read, list, append, business-transaction recovery, the restricted CLI, and production initialization are still pending. There is therefore no production-ready save path yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C3, R0.1/R0.2, D0, D0-F, D0G, C4-0, R0.3D, and R0.3F are complete. C4A still requires separate authorization. This does not authorize `get_capture` or `list_captures` implementation.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C3, R0.1/R0.2, D0, D0-F, D0G, C4-0, R0.3D, R0.3F, and C4A are complete and independently versioned. This does not authorize C4B or public `get_capture`/`list_captures` implementation.
 3. Then complete append, recovery, and the restricted adapter through C5–C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 

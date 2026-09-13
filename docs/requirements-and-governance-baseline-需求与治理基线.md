@@ -338,7 +338,7 @@ knowledge-hub/                 # 可选：只保存 KB 注册表和全局 Intake
 
 主题级优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准。推荐顺序：
 
-1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3 已完成，公开 `capture_text` 的完整事务已在测试 Store 中通过真实大小、加强版竞态与故障验收；R0.1/R0.2 初始化所有权加固后为 148 项测试，D0-F、D0G、C4-0、R0.3D 与 R0.3F 也已闭合。R0.3F 后当前全量 163 项通过，并已通过独立本地提交闭合且未 push；下一步才可另行授权 C4A。
+1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3 已完成，公开 `capture_text` 的完整事务已在测试 Store 中通过真实大小、加强版竞态与故障验收；R0.1/R0.2 初始化所有权加固及 D0-F、D0G、C4-0、R0.3D、R0.3F、C4A 均已闭合。C4A 后当前全量 182 项通过，并由独立本地提交闭环且未 push；C4B 尚未授权。
 2. 按 C4–C8 逐批验收读取、追加、恢复和机器适配接口。
 3. 增加人工路由与 SOP-000A 执行边界。
 4. 实证 GBrain 未审核镜像和查询隔离。
