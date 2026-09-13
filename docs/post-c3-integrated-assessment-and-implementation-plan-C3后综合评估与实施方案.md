@@ -1,8 +1,8 @@
 # KnowledgeFlow C3 后综合评估与后续实施方案
 
-<!-- knowledgeflow-doc-status tests=197 capture_tests=182 script_tests=15 next_gate=C4C -->
+<!-- knowledgeflow-doc-status tests=212 capture_tests=197 script_tests=15 next_gate=C4V -->
 
-> 状态：Draft，待用户逐批授权；C4A 提交 `06cff02` 已 push；C4B 已由独立本地提交闭合且未 push，下一门禁为 C4C
+> 状态：Draft，待用户逐批授权；C4B 提交 `666ba18` 已 push；C4C 已完成并由独立本地提交闭合、尚未 push；下一门禁为 C4V
 > 形成日期：2026-09-11
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
@@ -11,8 +11,10 @@
 > 稳定基线同步日期：2026-09-13（截至 C4A 提交 `06cff02` 已 push 至 `origin/main`）
 > C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）
 > C4B 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）
+> C4B 远端同步日期：2026-09-13（提交 `666ba18` 已 push 至 `origin/main`）
+> C4C 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）
 > 作用：综合当前仓库事实、既有评估、实施方案及其复核意见，确定 C3 之后的建议执行顺序、批次边界和验收门禁
-> 权威边界：本文是分析与计划，不自动修改任何 `Approved Design`；C4B 已按单独授权完成公开 `get_capture`、本地验证和独立版本化，但不代表 C4C/C4V 或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
+> 权威边界：本文是分析与计划，不自动修改任何 `Approved Design`；C4C 已按单独授权完成公开 `list_captures`、本地验证和独立本地提交，但当前不代表 push、C4V 或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
 
 ---
 
@@ -21,7 +23,7 @@
 项目当前方向没有根本性错误，不需要更换文件型 Capture Store、引入数据库或重写 C0–C3。C3 已形成真实可验收的本地文本写入内核，R0.1/R0.2 已闭合此前发现的两个初始化所有权缺陷；当前主要问题是：
 
 1. 初始化事务 marker 顺序和配置临时文件身份问题已分别以 `92a37b3`、`79515ed` 修复并回归验证，不再阻塞读取主线。
-2. C4A 已把读取与分页裁决落实为内部 schema、模型、codec、版本链纯原语和 golden，并以提交 `06cff02` 推送；C4B 现已公开 `get_capture`、通过本地验证并独立版本化，C4C/C4V 仍未实现。
+2. C4A 已把读取与分页裁决落实为内部 schema、模型、codec、版本链纯原语和 golden，并以提交 `06cff02` 推送；C4B `get_capture` 已以 `666ba18` 推送；C4C `list_captures` 已完成实现、212 项本地验证和独立本地提交，尚未 push，C4V 尚未实施。
 3. C4-0 已解决 C5 “版本目录提交”和追加 Event 分离造成的读取可见性冲突；C5 编码前仍需在 C5-0 收口写侧幂等恢复和故障优先级。
 4. 策展提示词存在真实漂移和方法论矛盾，但其权威状态仍是 `Draft，待重构`，不应整体阻塞 C4。
 5. 人工审核成本是产品风险，需要实验；它应阻塞后续 SOP/审核工作流定型，而不是阻塞基本读取能力。
@@ -38,8 +40,8 @@ R0.1 初始化清理所有权修复（已完成）
   -> R0.3D 初始化错误语义诊断/裁决（已完成）
   -> R0.3F 初始化错误语义修复（已完成）
   -> C4A 契约能力（已完成）
-  -> C4B get_capture（已完成并独立版本化）
-  -> C4C list_captures
+  -> C4B get_capture（已完成、版本化并 push）
+  -> C4C list_captures（完成并独立本地提交，未 push）
   -> C4V 独立验收
   -> C5-0/C5A/C5B/C5V
   -> C6A/C6B/C6C
@@ -80,11 +82,11 @@ R0.1 初始化清理所有权修复（已完成）
 
 | 项目 | 当前事实 | 结论 |
 |---|---|---|
-| Git | C4A 提交 `06cff02` 已与 `origin/main` 同步；C4B 已形成一个尚未 push 的独立本地提交 | 是否 push 由用户另行决定 |
+| Git | C4B 提交 `666ba18` 已与 `origin/main` 同步；C4C 已独立本地提交、尚未 push | C4C push 需用户另行授权 |
 | 捕获内核 | C0–C3 已完成 | `capture_text` 已实现并通过当前阶段验收 |
-| 测试 | C4B 新增 15 项后为 197 项，其中捕获内核 182 项、维护脚本 7 项、文档护栏 8 项；普通与严格 `ResourceWarning` 模式均通过 | 当前绿线不得因后续批次下降 |
-| 源码 | 截至 C4B，`src/knowledgeflow_capture/` 共 13 个 Python 模块、8,753 个物理行 | C4B 没有新增模块，只扩大经批准的公开读取入口 |
-| 下一动作 | 决定是否 push C4B，并另行决定是否授权 C4C | C4B 完成不自动授权 `list_captures` |
+| 测试 | C4C 新增 15 项后为 212 项，其中捕获内核 197 项、维护脚本 7 项、文档护栏 8 项；普通与严格 `ResourceWarning` 模式均通过 | 当前绿线不得因后续批次下降 |
+| 源码 | C4C 完成后，`src/knowledgeflow_capture/` 共 13 个 Python 模块、9,118 个物理行 | 未新增模块，只扩大经批准的公开列表入口 |
+| 下一动作 | 决定是否 push C4C，并另行授权 C4V | C4C 完成不自动授权 C4V |
 | 生产环境 | 生产配置和生产 Capture Store 未创建 | 后续开发继续只使用测试持有的临时 Store |
 | 外部系统 | GBrain、模型、账号/API key、QQ 均未接入 | 不属于 MVP-0 当前热路径 |
 | 提示词/SOP | 策展地图和覆盖审计方法为 `Draft，待重构` | 可登记问题，但不能反向覆盖 Capture 权威契约 |
@@ -448,6 +450,8 @@ C4-0 完成记录（2026-09-13）：上述 A–H 已同步进操作契约、Enve
 
 完成记录（2026-09-13；独立本地提交，未 push）：已公开签名固定的 `get_capture`，按唯一 Item、规范分片、Event 证明的连续 `1..N` 前缀解析 latest 或精确历史版本；在任何正文输出前验证目标版本全部 Payload 的集合、大小、SHA-256、UTF-8 和 Envelope/Event 关系，并经 Store 外、单块不超过 1 MiB 的删除即关闭磁盘 spool 交付主正文。sink 合法短写会循环，零值、`None`、布尔值、越界返回和异常统一为可重试 `output_write_failed`，核心不关闭或 flush 调用方 sink。缺失或已知损坏投影只在内存重建并返回可归属 `projection_needs_rebuild`，未知机器 schema/version 失败为 `unsupported_store_version`；唯一无 Event 的 N+1 尾部对 latest 隐藏并警告，显式读取该尾部返回版本不存在。新增 15 项测试覆盖 GET-01–GET-16、真实 64 MiB、短写/部分输出失败、附件篡改、完整链冲突、错误分片、重复 ID、路径穿越及 Windows junction reparse；本地全量 197 项在普通与严格 `ResourceWarning` 模式均通过。没有实现 `list_captures`、append writer，未修改磁盘 schema/golden，也未创建生产配置或 Store；C4B 完成不自动进入 C4C。
 
+远端同步记录（2026-09-13）：上述 C4B 独立提交 `666ba18` 已按用户授权 push 至 `origin/main`。
+
 ## 7.8 C4C：`list_captures`
 
 ### 交付
@@ -465,6 +469,8 @@ C4-0 完成记录（2026-09-13）：上述 A–H 已同步进操作契约、Enve
 - cursor 被篡改、版本错误、查询条件变化时失败。
 - preview 按 Unicode code point 截取并保留换行，允许在 grapheme cluster 内截断；完整原文由 `get_capture` 提供。
 - 列表不会完整读取所有大 payload。
+
+完成记录（2026-09-13；独立本地提交，未 push）：已公开 `ListCapturesRequest`、`ListCapturesResult`、`ListCapturesOperationResult` 与固定签名的 `list_captures`。实现先遍历唯一规范 Item 并验证所有已提交版本/Event/Envelope、Payload 集合、安全路径、普通文件与实际大小，再以内存重建状态执行严格筛选和固定降序；`c1` keyset 游标绑定 Store/规范查询/末项，合法 limit 可跨页改变。每个当页主正文最多读取 640 byte 以生成精确 160 code point 预览，不全量哈希所有列表正文。投影异常和唯一 N+1 尾部只形成可归属、稳定排序的 warning，未知机器 schema 单独失败，其他不可变矛盾整页失败。新增 15 项测试覆盖 LIST-01–LIST-19；普通与严格 `ResourceWarning` 全量均为 212 项。未实现 append writer，未修改磁盘 schema/golden，未创建生产配置或 Store；C4V 未获授权。
 
 ## 7.9 C4V：独立阶段验收
 
@@ -691,11 +697,11 @@ Git 状态：
 
 ## 13. 下一项应完成的工作
 
-截至 C4A 提交 `06cff02` 的稳定基线已同步到 `origin/main`。C4B `get_capture` 已按独立授权完成代码、GET-01–GET-16、197 项本地验证和独立本地版本化，但尚未 push。当前下一项是决定是否 push C4B，并另行决定是否授权 C4C；不能在未授权时直接实现 `list_captures`，也不能启动提示词或 UI 重构。
+截至 C4B 提交 `666ba18` 的稳定基线已同步到 `origin/main`。C4C `list_captures` 已按独立授权完成代码、LIST-01–LIST-19、212 项本地验证和独立本地提交，尚未 push。当前下一项是决定是否 push C4C，并另行授权 C4V；不能自动进入 C4V/C5，也不能启动提示词或 UI 重构。
 
 建议执行步骤：
 
-1. 由用户决定是否把 C4B 独立提交 push 至 `origin/main`。
-2. C4B 远端同步不是 C4C 的自动授权；只有用户另行明确同意后，才实施 C4C `list_captures`。
+1. 由用户决定是否 push C4C 的独立本地提交。
+2. 由用户另行授权后，按既定边界实施 C4V 读取阶段验收。
 
-本文仍是 Draft；C4B 已版本化不等于 C4C 或任何后续批次已获授权。
+本文仍是 Draft；C4C 完成并本地版本化不等于 push、C4V 或任何后续批次已获授权。

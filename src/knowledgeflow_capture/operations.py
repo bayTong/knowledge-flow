@@ -21,8 +21,10 @@ from uuid import UUID
 from .codec import (
     CAPTURE_EVENT_SCHEMA_V1,
     CaptureEventReferenceError,
+    decode_capture_list_cursor,
     dump_capture_event,
     dump_capture_state,
+    encode_capture_list_cursor,
     load_capture_event,
     load_capture_state,
     load_envelope,
@@ -48,6 +50,7 @@ from .errors import (
     CommittedWriteResult,
     FailureResult,
     GetCaptureResult,
+    ListCapturesResult,
     OperationError,
     OperationWarning,
     PublicErrorCode,
@@ -74,13 +77,16 @@ from .locking import (
     CaptureWriteLockError,
     _acquire_capture_write_lock,
 )
+from .manifest import CaptureStoreManifest
 from .models import (
     CaptureItemState,
+    CaptureListItem,
     CaptureReadMetadata,
     CaptureTextRequest,
     ChannelMetadata,
     DigestResult,
     GetCaptureRequest,
+    ListCapturesRequest,
     PayloadMetadata,
     PayloadSetEntry,
     RequestFingerprint,
@@ -106,11 +112,14 @@ from .store import (
 
 CaptureTextOperationResult: TypeAlias = CommittedWriteResult | FailureResult
 GetCaptureOperationResult: TypeAlias = GetCaptureResult | FailureResult
+ListCapturesOperationResult: TypeAlias = ListCapturesResult | FailureResult
 
 _ACTOR = {"type": "user", "actor_id": "local-user"}
 _ENVELOPE_MAXIMUM_BYTES = 1024 * 1024
 _EVENT_MAXIMUM_BYTES = 256 * 1024
 _PROJECTION_MAXIMUM_BYTES = 1024 * 1024
+_CAPTURE_PREVIEW_CODE_POINTS = 160
+_CAPTURE_PREVIEW_MAXIMUM_BYTES = _CAPTURE_PREVIEW_CODE_POINTS * 4
 _YEAR_PATTERN = re.compile(r"[0-9]{4}\Z")
 _MONTH_PATTERN = re.compile(r"(?:0[1-9]|1[0-2])\Z")
 _REPARSE_POINT_ATTRIBUTE = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
@@ -122,6 +131,7 @@ _UuidFactory = Callable[[], UUID]
 _FaultHook = Callable[[], None]
 _ReplaceFile = Callable[[Path, Path], None]
 _BodySpoolFactory = Callable[[Path], BinaryIO]
+_PreviewOpener = Callable[[Path], BinaryIO]
 
 
 class _CaptureFaultPoint(StrEnum):
@@ -209,6 +219,19 @@ class _GetCaptureDependencies:
     )
 
 
+def _default_preview_opener(path: Path) -> BinaryIO:
+    return cast(BinaryIO, path.open("rb"))
+
+
+@dataclass(frozen=True, slots=True)
+class _ListCapturesDependencies:
+    preview_opener: _PreviewOpener = field(
+        default=_default_preview_opener,
+        repr=False,
+        compare=False,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _StoredItem:
     item_path: Path
@@ -274,6 +297,25 @@ class _PayloadFile:
     metadata: Mapping[str, object]
     path: Path
     path_stat: os.stat_result = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True, slots=True)
+class _CaptureListCandidate:
+    disk_chain: _DiskCaptureVersionChain
+    captured_at: str
+    updated_at: str
+    routing_status: str
+    trust_status: str
+    envelope_sha256: str
+    warnings: tuple[OperationWarning, ...]
+
+    @property
+    def capture_id(self) -> str:
+        return self.disk_chain.chain.capture_id
+
+    @property
+    def sort_key(self) -> tuple[str, str]:
+        return self.captured_at, self.capture_id
 
 
 def _trigger_fault(
@@ -785,6 +827,69 @@ def _locate_capture_item(
     return matches[0] if matches else None
 
 
+def _locate_capture_items(capture_root: Path) -> tuple[_LocatedCaptureItem, ...]:
+    """Enumerate every canonical Item and reject duplicate Capture identities."""
+
+    located: list[_LocatedCaptureItem] = []
+    capture_ids: set[str] = set()
+    items_root = capture_root / "items"
+    for year_path in _directory_entries(items_root, stage="item-list"):
+        if _YEAR_PATTERN.fullmatch(year_path.name) is None:
+            continue
+        _immutable_directory_stat(
+            year_path,
+            missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            stage="item-list",
+        )
+        for month_path in _immutable_directory_entries(
+            year_path,
+            missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            stage="item-list",
+        ):
+            if _MONTH_PATTERN.fullmatch(month_path.name) is None:
+                continue
+            _immutable_directory_stat(
+                month_path,
+                missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                stage="item-list",
+            )
+            for item_path in _immutable_directory_entries(
+                month_path,
+                missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                stage="item-list",
+            ):
+                if not ntpath.normcase(item_path.name).startswith("cap_"):
+                    continue
+                try:
+                    validate_typed_id(item_path.name, IdKind.CAPTURE)
+                except (TypeError, ValueError) as exc:
+                    raise _IntegrityFailure(
+                        CauseCode.EVENT_REFERENCE_MISMATCH
+                    ) from exc
+                _immutable_directory_stat(
+                    item_path,
+                    missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                    invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                    stage="item-list",
+                )
+                identity = ntpath.normcase(item_path.name)
+                if identity in capture_ids:
+                    raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+                capture_ids.add(identity)
+                located.append(
+                    _LocatedCaptureItem(
+                        item_path=item_path,
+                        year=year_path.name,
+                        month=month_path.name,
+                    )
+                )
+    return tuple(located)
+
+
 def _load_event_without_references(path: Path) -> Mapping[str, object]:
     source = _read_regular_bytes(
         path,
@@ -1126,7 +1231,7 @@ def _verify_target_payloads(
     return primary
 
 
-def _projection_warning_for_get(
+def _projection_warning_for_read(
     disk_chain: _DiskCaptureVersionChain,
 ) -> tuple[OperationWarning, ...]:
     capture_id = disk_chain.chain.capture_id
@@ -1165,6 +1270,125 @@ def _projection_warning_for_get(
             code=WarningCode.PROJECTION_NEEDS_REBUILD,
             details={"capture_id": capture_id},
         ),
+    )
+
+
+def _capture_list_candidate(
+    disk_chain: _DiskCaptureVersionChain,
+) -> _CaptureListCandidate:
+    read_state = _rebuild_capture_read_state(disk_chain.chain)
+    return _CaptureListCandidate(
+        disk_chain=disk_chain,
+        captured_at=read_state.captured_at,
+        updated_at=read_state.updated_at,
+        routing_status=read_state.routing_status,
+        trust_status=read_state.trust_status,
+        envelope_sha256=read_state.current_envelope_sha256,
+        warnings=(
+            _warnings_for_capture_version_chain(disk_chain.chain)
+            + _projection_warning_for_read(disk_chain)
+        ),
+    )
+
+
+def _read_capture_preview(
+    candidate: _CaptureListCandidate,
+    *,
+    dependencies: _ListCapturesDependencies,
+) -> str:
+    current = candidate.disk_chain.chain.current
+    version_path = candidate.disk_chain.version_paths.get(current.version)
+    if version_path is None:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    payloads = _payload_files(version_path, current.envelope)
+    primary = next(
+        (
+            payload
+            for payload in payloads
+            if payload.metadata.get("ordinal") == 0
+            and payload.metadata.get("role") == "primary"
+        ),
+        None,
+    )
+    if primary is None:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+
+    decoder = codecs.getincrementaldecoder("utf-8")("strict")
+    decoded: list[str] = []
+    decoded_code_points = 0
+    prefix = bytearray()
+    remaining = _CAPTURE_PREVIEW_MAXIMUM_BYTES
+    reached_eof = False
+    try:
+        with dependencies.preview_opener(primary.path) as stream:
+            handle_stat = os.fstat(stream.fileno())
+            if not (
+                stat.S_ISREG(handle_stat.st_mode)
+                and handle_stat.st_dev == primary.path_stat.st_dev
+                and handle_stat.st_ino == primary.path_stat.st_ino
+                and handle_stat.st_mode == primary.path_stat.st_mode
+            ):
+                raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+            while remaining:
+                chunk = stream.read(min(64, remaining))
+                if type(chunk) is not bytes:
+                    raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+                if not chunk:
+                    reached_eof = True
+                    break
+                if len(chunk) > remaining:
+                    raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+                remaining -= len(chunk)
+                if len(prefix) < 3:
+                    prefix.extend(chunk[: 3 - len(prefix)])
+                for value in chunk:
+                    decoded_chunk = decoder.decode(bytes((value,)), final=False)
+                    if decoded_chunk:
+                        decoded.append(decoded_chunk)
+                        decoded_code_points += len(decoded_chunk)
+                    if decoded_code_points >= _CAPTURE_PREVIEW_CODE_POINTS:
+                        break
+                if decoded_code_points >= _CAPTURE_PREVIEW_CODE_POINTS:
+                    break
+    except (_IntegrityFailure, _StoreIoFailure):
+        raise
+    except UnicodeDecodeError as exc:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH) from exc
+    except Exception as exc:
+        raise _StoreIoFailure(
+            stage="payload-read",
+            cause_code=CauseCode.PAYLOAD_READ_FAILED,
+        ) from exc
+
+    if not _same_identity(primary.path, primary.path_stat):
+        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+    if not prefix or bytes(prefix).startswith(b"\xef\xbb\xbf"):
+        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+    if reached_eof:
+        try:
+            decoded.append(decoder.decode(b"", final=True))
+        except UnicodeDecodeError as exc:
+            raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH) from exc
+    preview = "".join(decoded)
+    if len(preview) < _CAPTURE_PREVIEW_CODE_POINTS and not reached_eof:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+    return preview[:_CAPTURE_PREVIEW_CODE_POINTS]
+
+
+def _capture_list_item(
+    candidate: _CaptureListCandidate,
+    *,
+    dependencies: _ListCapturesDependencies,
+) -> CaptureListItem:
+    return CaptureListItem(
+        capture_id=candidate.capture_id,
+        current_version=candidate.disk_chain.chain.current_version,
+        captured_at=candidate.captured_at,
+        updated_at=candidate.updated_at,
+        preview=_read_capture_preview(candidate, dependencies=dependencies),
+        routing_status=candidate.routing_status,
+        trust_status=candidate.trust_status,
+        envelope_sha256=candidate.envelope_sha256,
     )
 
 
@@ -1843,7 +2067,7 @@ def _load_capture_environment(
     *,
     config_path: str | os.PathLike[str] | None,
     path_policy: PathPolicy,
-) -> tuple[LocalConfig, Path]:
+) -> tuple[LocalConfig, Path, CaptureStoreManifest]:
     if not isinstance(path_policy, PathPolicy):
         raise ConfigLoadError(PublicErrorCode.CONFIG_INVALID)
     selected = resolve_config_path(config_path)
@@ -1863,7 +2087,7 @@ def _load_capture_environment(
                 retryable=False,
             )
         )
-    return local_config, local_config.capture.root
+    return local_config, local_config.capture.root, manifest
 
 
 def _capture_while_locked(
@@ -1930,7 +2154,7 @@ def _run_capture_text(
         )
     try:
         received_at = _sample_time(dependencies)
-        local_config, capture_root = _load_capture_environment(
+        local_config, capture_root, _manifest = _load_capture_environment(
             config_path=config_path,
             path_policy=path_policy,
         )
@@ -2078,7 +2302,7 @@ def _run_get_capture(
         return _read_failure(PublicErrorCode.INVALID_INPUT)
 
     try:
-        _local_config, capture_root = _load_capture_environment(
+        _local_config, capture_root, _manifest = _load_capture_environment(
             config_path=config_path,
             path_policy=path_policy,
         )
@@ -2121,7 +2345,7 @@ def _run_get_capture(
         )
         warnings = (
             _warnings_for_capture_version_chain(disk_chain.chain)
-            + _projection_warning_for_get(disk_chain)
+            + _projection_warning_for_read(disk_chain)
         )
         read_state = _rebuild_capture_read_state(disk_chain.chain)
         metadata = _capture_read_metadata(
@@ -2169,6 +2393,107 @@ def _run_get_capture(
                 pass
 
 
+def _run_list_captures(
+    request: ListCapturesRequest,
+    *,
+    config_path: str | os.PathLike[str] | None,
+    path_policy: PathPolicy,
+    dependencies: _ListCapturesDependencies,
+) -> ListCapturesOperationResult:
+    if not isinstance(request, ListCapturesRequest):
+        return _read_failure(PublicErrorCode.INVALID_INPUT)
+
+    try:
+        _local_config, capture_root, manifest = _load_capture_environment(
+            config_path=config_path,
+            path_policy=path_policy,
+        )
+    except ConfigLoadError as exc:
+        return _read_failure(exc.code)
+    except _InitFailure as exc:
+        return FailureResult(error=exc.error)
+    except (OSError, TypeError, ValueError):
+        return _read_failure(PublicErrorCode.CAPTURE_STORE_UNAVAILABLE)
+
+    cursor = None
+    if request.cursor is not None:
+        try:
+            cursor = decode_capture_list_cursor(
+                request.cursor,
+                store_id=manifest.store_id,
+                request=request,
+            )
+        except (TypeError, ValueError):
+            return _read_failure(PublicErrorCode.INVALID_INPUT)
+
+    try:
+        candidates = tuple(
+            _capture_list_candidate(_load_disk_capture_version_chain(item))
+            for item in _locate_capture_items(capture_root)
+        )
+        filtered = (
+            candidate
+            for candidate in candidates
+            if (
+                request.routing_status is None
+                or candidate.routing_status == request.routing_status
+            )
+            and (
+                request.created_after is None
+                or candidate.captured_at > request.created_after
+            )
+            and (
+                request.created_before is None
+                or candidate.captured_at < request.created_before
+            )
+            and (
+                cursor is None
+                or candidate.sort_key
+                < (cursor.last_captured_at, cursor.last_capture_id)
+            )
+        )
+        ordered = tuple(
+            sorted(filtered, key=lambda candidate: candidate.sort_key, reverse=True)
+        )
+        page_candidates = ordered[: request.limit]
+        items = tuple(
+            _capture_list_item(candidate, dependencies=dependencies)
+            for candidate in page_candidates
+        )
+        warnings = tuple(
+            warning
+            for candidate in page_candidates
+            for warning in candidate.warnings
+        )
+        next_cursor = None
+        if len(ordered) > request.limit:
+            anchor = page_candidates[-1]
+            next_cursor = encode_capture_list_cursor(
+                store_id=manifest.store_id,
+                request=request,
+                last_captured_at=anchor.captured_at,
+                last_capture_id=anchor.capture_id,
+            )
+        return ListCapturesResult(
+            items=items,
+            next_cursor=next_cursor,
+            warnings=warnings,
+        )
+    except _UnsupportedMachineSchema:
+        return _read_failure(PublicErrorCode.UNSUPPORTED_STORE_VERSION)
+    except _IntegrityFailure as exc:
+        return _read_integrity_failure(exc)
+    except _StoreIoFailure as exc:
+        return _read_io_failure(exc)
+    except (TypeError, ValueError):
+        return _read_failure(
+            PublicErrorCode.INTEGRITY_CHECK_FAILED,
+            cause_code=CauseCode.ENVELOPE_HASH_MISMATCH,
+        )
+    except OSError:
+        return _read_failure(PublicErrorCode.CAPTURE_STORE_UNAVAILABLE)
+
+
 def capture_text(
     request: CaptureTextRequest,
     *,
@@ -2198,6 +2523,22 @@ def get_capture(
         config_path=config_path,
         path_policy=path_policy,
         dependencies=_GetCaptureDependencies(),
+    )
+
+
+def list_captures(
+    request: ListCapturesRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+) -> ListCapturesOperationResult:
+    """Return one stable keyset page with bounded current-text previews."""
+
+    return _run_list_captures(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+        dependencies=_ListCapturesDependencies(),
     )
 
 
@@ -2239,9 +2580,30 @@ def _get_capture_with_dependencies(
     )
 
 
+def _list_captures_with_dependencies(
+    request: ListCapturesRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+    dependencies: _ListCapturesDependencies,
+) -> ListCapturesOperationResult:
+    """Internal deterministic entry point for bounded-preview tests."""
+
+    if not isinstance(dependencies, _ListCapturesDependencies):
+        raise TypeError("dependencies must be _ListCapturesDependencies")
+    return _run_list_captures(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+        dependencies=dependencies,
+    )
+
+
 __all__ = [
     "CaptureTextOperationResult",
     "GetCaptureOperationResult",
+    "ListCapturesOperationResult",
     "capture_text",
     "get_capture",
+    "list_captures",
 ]

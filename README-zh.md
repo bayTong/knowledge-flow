@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=197 capture_tests=182 script_tests=15 next_gate=C4C -->
+<!-- knowledgeflow-doc-status tests=212 capture_tests=197 script_tests=15 next_gate=C4V -->
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-13）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C0–C3 与 C3 后初始化加固均已完成，C4A 独立提交 `06cff02` 已同步到 `origin/main`。经用户单独授权后，C4B `get_capture` 现已由独立本地提交完成版本化：公开操作按 Event 证明的连续链读取 latest/历史版本，完整验证目标版本全部 Payload 后才经 Store 外磁盘 spool 向调用方 sink 输出。GET-01–GET-16 与全量 197 项测试（捕获内核 182 项、维护脚本回归 7 项、文档护栏回归 8 项）在普通与严格 `ResourceWarning` 模式均通过。C4B 提交尚未 push；下一实现门禁是另行授权的 C4C `list_captures`。追加操作和生产 Store 仍不存在。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-13）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4B 提交 `666ba18` 已同步到 `origin/main`。经单独授权后，C4C `list_captures` 现已完成实现、本地验证和独立本地提交，但尚未 push：它按 Event 证明的已提交链扫描，以 `captured_at DESC, capture_id DESC` 固定排序，使用绑定 Store/查询的 keyset 游标，投影异常时只在内存重建，并且每个返回项最多读取 640 个正文 byte 来生成 160 code point 预览，不宣称完整 Payload attestation。LIST-01–LIST-19 与全量 212 项测试（捕获内核 197 项、维护脚本回归 7 项、文档护栏回归 8 项）在普通与严格 `ResourceWarning` 模式均通过。下一门禁是需另行授权的 C4V；追加操作与生产 Store 均不在本批范围。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -168,7 +168,7 @@ knowledge-flow/
 ├── pyproject.toml                    捕获内核包与精确锁定的运行时依赖
 ├── src/
 │   └── knowledgeflow_capture/
-│       ├── __init__.py               C0/C3/C4B 包身份与公开捕获/读取接口
+│       ├── __init__.py               C0/C3/C4C 包身份与公开捕获/读取接口
 │       ├── errors.py                 C1/C3A/C4A 公共错误、写入回执与读取结果模型
 │       ├── models.py                 C1/C3A/C4A 哈希、写入及读取请求值对象
 │       ├── ids.py                    C1 UUIDv7 与类型前缀
@@ -180,13 +180,13 @@ knowledge-flow/
 │       ├── locking.py                C2B/C3B Windows 初始化锁与 Store 写锁
 │       ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
 │       ├── store.py                  C2B–C4A 初始化恢复、staging 与版本链纯原语
-│       └── operations.py             C3 capture_text 与 C4B get_capture 操作
+│       └── operations.py             C3 capture_text 与 C4B/C4C 读取操作
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
 │   │   ├── unit/                     C0–C4A 单元与平台测试
-│   │   ├── integration/              C2B–C4B 事务、读取、真实边界与并发测试
-│   │   └── fault/                    C2B/R0 进程崩溃恢复测试（捕获测试共 182 项）
+│   │   ├── integration/              C2B–C4C 事务、读取、真实边界与并发测试
+│   │   └── fault/                    C2B/R0 进程崩溃恢复测试（捕获测试共 197 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
@@ -246,10 +246,10 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text` 已通过完整 C3 阶段验收，C4B `get_capture` 也已实现、验证并由独立本地提交完成版本化；列表、追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、C4B `get_capture` 与 C4C `list_captures` 已实现并独立版本化；C4C 本地提交尚未 push。C4V、追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C3、R0.1/R0.2、D0、D0-F、D0G、C4-0、R0.3D、R0.3F、C4A 与 C4B 均已完成并独立版本化；C4B 完成不授权 C4C 或其他后续批次。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4C 已完成并独立版本化，C4C 尚未 push；这不授权 C4V 或其他后续批次。
 3. 再按 C5–C8 闭合追加、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 

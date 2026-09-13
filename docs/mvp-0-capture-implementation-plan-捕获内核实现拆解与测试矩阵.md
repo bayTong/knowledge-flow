@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=197 capture_tests=182 script_tests=15 next_gate=C4C -->
+<!-- knowledgeflow-doc-status tests=212 capture_tests=197 script_tests=15 next_gate=C4V -->
 
-> 状态：Approved Design；C4A 提交 `06cff02` 已 push；C4B 已由独立本地提交闭合且未 push，下一门禁为 C4C<br>
+> 状态：Approved Design；C4B 提交 `666ba18` 已 push；C4C 已完成并由独立本地提交闭合、尚未 push；当前门禁为 C4V<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -21,9 +21,10 @@
 > R0.3D 诊断与裁决完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > R0.3F 完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）<br>
-> C4B 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）<br>
+> C4B 完成与版本化收口日期：2026-09-13（独立提交 `666ba18`；已 push 至 `origin/main`）<br>
+> C4C 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；C4B 已按单独授权完成公开 `get_capture`、本地验证与独立版本化，但不授权 C4C/C4V、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；C4C 已按单独授权完成公开 `list_captures`、本地验证和独立本地提交，但当前不授权 push、C4V、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
 ## 0. 结论先行
 
@@ -37,7 +38,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 与 C3B 已于 2026-09-10 分别完成，C3C、C3V、R0.1 与 R0.2 已于 2026-09-11 先后完成，D0-F、D0G、C4-0、R0.3D、R0.3F 与 C4A 已分别完成版本化收口，C4A 提交 `06cff02` 已同步到 `origin/main`。C4B 后续获得单独授权并已由独立本地提交闭合；这不授权 C4C 或创建生产目录、接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 与 C3B 已于 2026-09-10 分别完成，C3C、C3V、R0.1 与 R0.2 已于 2026-09-11 先后完成，D0-F、D0G、C4-0、R0.3D、R0.3F 与 C4A 已分别完成版本化收口；C4A `06cff02` 和 C4B `666ba18` 已同步到 `origin/main`。C4C 后续获得单独授权并已完成实现、本地验证和独立本地提交；这不授权 push、C4V 或创建生产目录、接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -54,13 +55,14 @@
 - C2B-3 已实现六个内部初始化故障点（内部 no-op 钩子，公开接口无注入通道）和跨进程崩溃恢复测试，覆盖 FI-01–06。
 - C3A 已实现 Event/Projection v1、输入/时间/渠道边界、幂等摘要和精确回执，提交为 `346164d`；C3B 已实现 Store 写锁、有界 UTF-8 写入和可验证归属的 staging，提交为 `8050d88`；C3C 已实现公开 `capture_text` 的完整 T0–T9 事务，C3V 已完成真实大小、加强版竞态与故障验收。R0.1 `92a37b3` 和 R0.2 `79515ed` 随后修复初始化事务清理顺序与配置临时文件请求身份。
 - C4A 已在未公开操作的边界内实现严格追加 Event schema、读取请求/结果、规范游标 codec、Event 证明的连续版本链纯原语、内存状态重建及真实两版本 golden，并由独立提交 `06cff02` 闭环及 push。
-- C4B 已公开 `get_capture` 并闭合 latest/历史版本、目标 Payload 完整证明、Store 外磁盘 spool、sink 失败和投影只读降级；代码、测试、文档与独立本地版本化均已完成。
-- 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试，稳定化后为 93 项，C3A 后为 105 项，C3B 后为 122 项，C3C 后为 140 项，C3V 后为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后当前为 197 项。
+- C4B 已公开 `get_capture` 并闭合 latest/历史版本、目标 Payload 完整证明、Store 外磁盘 spool、sink 失败和投影只读降级；独立提交 `666ba18` 已 push。
+- C4C 已公开 `list_captures`，闭合全 Store 结构验证、内存状态筛选、有界预览、稳定 keyset 分页及 warning 归属，并由独立本地提交完成版本化；尚未 push。
+- 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试，稳定化后为 93 项，C3A 后为 105 项，C3B 后为 122 项，C3C 后为 140 项，C3V 后为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 内容后当前为 212 项。
 
 ### 1.2 尚不存在
 
 - 没有 `package.json`、Node/Bun 应用或桌面前端。
-- `list_captures` 与 `append_capture_version` 两个公开操作尚未实现；`get_capture` 已实现并由 C4B 独立版本化。
+- `append_capture_version` 尚未实现；`get_capture` 与 `list_captures` 已分别由 C4B、C4C 独立版本化，C4C 尚未 push。
 - 没有追加故障注入、投影与幂等索引恢复或迁移测试；初始化崩溃恢复和 C3 新建事务已验收，但捕获业务崩溃恢复尚未验收。
 - 没有统一 CLI；C3 的 Python 操作边界通过测试不代表机器适配层已经实现。
 - 没有接入 DeepSeek Harness，也没有可调用的 GBrain 适配器。
@@ -533,8 +535,8 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-D4 | R0.3D 初始化错误语义诊断 | E6、M0-D3 | **2026-09-13 已通过独立本地提交闭合：3 项特征测试复现 C-032–C-034，并冻结未知候选、错误优先级和 WinError 分类；完成时未 push，现已随 `dc3a35f` 同步** |
 | M0-E6F | R0.3F 初始化错误语义修复 | M0-D4 | **2026-09-13 已完成并由独立本地提交闭合：按 C-032–C-034 完成局部修复，把 3 项特征测试转换为目标行为并新增 4 项负向回归；全量 163 项通过，完成时未 push，现已随 `dc3a35f` 同步** |
 | M0-E8A | C4A 读取侧契约能力 | M0-E6F | **2026-09-13 已完成并由独立提交 `06cff02` 闭环、已 push：追加 Event schema、连续版本发现、请求/结果模型、游标 codec 与真实两版本 golden 闭环；182 项全绿且不公开读取操作** |
-| M0-E8 | `get_capture`（C4B） | E7、E8A | **2026-09-13 已由独立本地提交闭合且未 push：先完整验证、再经 Store 外有界磁盘 spool 向调用方 sink 输出；GET-01–GET-16 与 197 项全量通过** |
-| M0-E9 | `list_captures`（C4C） | E7、E8A | 有界预览、稳定 keyset 游标、投影内存重建和 Global Intake 视图闭环 |
+| M0-E8 | `get_capture`（C4B） | E7、E8A | **2026-09-13 已由独立提交 `666ba18` 闭合并 push：先完整验证、再经 Store 外有界磁盘 spool 向调用方 sink 输出；GET-01–GET-16 与当时 197 项全量通过** |
+| M0-E9 | `list_captures`（C4C） | E7、E8A | **2026-09-13 已完成并由独立本地提交闭合、尚未 push：有界预览、稳定 keyset 游标、投影内存重建和 Global Intake 视图闭环；LIST-01–LIST-19 与 212 项全量通过** |
 | M0-E10 | `append_capture_version` | E4、E5、E7–E8、M0-D3 | CAS、幂等重试、版本先落盘/Event 后逻辑提交和完整新版本闭环 |
 | M0-E11 | 投影/索引重建和恢复扫描 | E7–E10 | 删除派生投影后可由不可变记录重建 |
 | M0-E12 | JSON/文本流 CLI 适配 | E6–E11 | stdin 使用 JSON 头 + 精确长度正文；stdout 使用 JSON 结果头 + `get_capture` 精确长度正文 |
@@ -891,7 +893,7 @@ before_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C4B 已逐批通过并独立版本化；当前停在 C4C 授权前** | C4C 及后续未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C4C 已逐批通过并独立版本化；C4C 本地提交尚未 push，当前停在 C4V 授权门禁** | C4C push、C4V 及后续未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | **已于 2026-09-04 通过：LOCK/DUR/INIT/FI 全绿，自动发现总计 85 项测试** | 使用真实生产 root |
@@ -914,4 +916,4 @@ before_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后当前为 197 项。安全 Store 初始化、初始化崩溃恢复、C3 `capture_text` 及 C4B `get_capture` 已实现、通过各自当前阶段验证并独立版本化；`list_captures`、追加和业务事务恢复仍未实现。下一门禁是另行授权 C4C；真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后当前为 212 项。安全 Store 初始化、初始化崩溃恢复、C3 `capture_text`、C4B `get_capture` 及 C4C `list_captures` 已实现并独立版本化。下一门禁是另行授权 C4V；C4C 尚未 push，追加和业务事务恢复仍未实现。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。

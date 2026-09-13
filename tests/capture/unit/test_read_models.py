@@ -71,21 +71,20 @@ def list_item(
 
 
 class ReadRequestModelTest(unittest.TestCase):
-    def test_c4b_get_contract_is_public_but_list_operation_is_not(self) -> None:
+    def test_c4_read_contracts_are_public(self) -> None:
         for name in (
             "GetCaptureOperationResult",
             "GetCaptureRequest",
             "GetCaptureResult",
+            "ListCapturesOperationResult",
+            "ListCapturesRequest",
+            "ListCapturesResult",
             "get_capture",
+            "list_captures",
         ):
             with self.subTest(public=name):
                 self.assertTrue(hasattr(knowledgeflow_capture, name))
                 self.assertIn(name, knowledgeflow_capture.__all__)
-
-        for name in ("ListCapturesRequest", "ListCapturesResult", "list_captures"):
-            with self.subTest(name=name):
-                self.assertFalse(hasattr(knowledgeflow_capture, name))
-                self.assertNotIn(name, knowledgeflow_capture.__all__)
 
     def test_get_request_has_only_contract_fields_and_validates_version(self) -> None:
         sink = io.BytesIO()
