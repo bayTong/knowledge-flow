@@ -335,6 +335,39 @@ class ErrorModelTest(unittest.TestCase):
                     details=details,
                 )
 
+    def test_r03f_cleanup_stage_is_a_safe_typed_diagnostic_token(self) -> None:
+        error = OperationError(
+            code=PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            retryable=False,
+            details={
+                "stage": "file-readback",
+                "cleanup_stage": "transaction-cleanup-identity",
+            },
+        )
+
+        self.assertEqual(
+            error.to_dict()["details"],
+            {
+                "stage": "file-readback",
+                "cleanup_stage": "transaction-cleanup-identity",
+            },
+        )
+        for cleanup_stage in (
+            "contains private note",
+            r"E:\Private\note.txt",
+            "/home/private/note.txt",
+            {"text": "private note"},
+            32,
+        ):
+            with self.subTest(cleanup_stage=cleanup_stage), self.assertRaises(
+                ValueError
+            ):
+                OperationError(
+                    code=PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+                    retryable=False,
+                    details={"cleanup_stage": cleanup_stage},
+                )
+
     def test_receipt_cannot_override_reserved_or_embed_payload_text(self) -> None:
         for receipt in (
             {"ok": False},

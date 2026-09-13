@@ -467,14 +467,14 @@ class DurabilityBackendTest(unittest.TestCase):
             },
         )
 
-    def test_r03d_m4_characterizes_windows_retryability_gap(self) -> None:
+    def test_r03f_m4_windows_retryability_is_narrowly_classified(self) -> None:
         cases = (
             ("winerror-32", 32, True),
             ("winerror-33", 33, True),
             ("winerror-5", 5, False),
+            ("winerror-999", 999, False),
             ("errno-eacces", None, False),
         )
-        mismatches: list[str] = []
 
         for label, winerror, expected_retryable in cases:
             with self.subTest(label=label):
@@ -509,10 +509,20 @@ class DurabilityBackendTest(unittest.TestCase):
                 self.assertEqual(error.stage, DurabilityStage.RENAME)
                 self.assertIs(error.__cause__, cause)
                 self.assertEqual(getattr(cause, "winerror", None), winerror)
-                if error.retryable != expected_retryable:
-                    mismatches.append(label)
+                self.assertEqual(error.retryable, expected_retryable)
+                self.assertEqual(
+                    error.to_operation_error().retryable,
+                    expected_retryable,
+                )
 
-        self.assertEqual(mismatches, ["winerror-32", "winerror-33"])
+        self.assertFalse(DurabilityError(DurabilityStage.RENAME).retryable)
+        try:
+            raise ValueError("injected validation failure")
+        except ValueError as cause:
+            try:
+                raise DurabilityError(DurabilityStage.FILE_VALIDATE) from cause
+            except DurabilityError as error:
+                self.assertFalse(error.retryable)
 
     def test_dur_05_before_flush_callback_runs_after_write_before_flush(self) -> None:
         expected = b"durable payload with fault hook"

@@ -56,9 +56,16 @@ class DurabilityError(RuntimeError):
 
     def __init__(self, stage: DurabilityStage) -> None:
         self.code = PublicErrorCode.CAPTURE_STORE_UNAVAILABLE
-        self.retryable = False
         self.stage = DurabilityStage(stage)
         super().__init__("capture store durability operation failed")
+
+    @property
+    def retryable(self) -> bool:
+        cause = self.__cause__
+        return isinstance(cause, OSError) and getattr(cause, "winerror", None) in {
+            32,
+            33,
+        }
 
     def to_operation_error(self) -> OperationError:
         return OperationError(

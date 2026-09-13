@@ -309,6 +309,57 @@ def _fail(
     )
 
 
+def _operation_error_from_init_exception(
+    error: Exception,
+) -> OperationError | None:
+    """Map only exceptions already supported by the public init boundary."""
+
+    if isinstance(error, _InitFailure):
+        return error.error
+    if isinstance(error, (InitializationLockError, DurabilityError)):
+        return error.to_operation_error()
+    if isinstance(error, (ConfigLoadError, ManifestLoadError)):
+        return OperationError(code=error.code, retryable=False)
+    if isinstance(error, (PathPolicyError, TypeError, ValueError)):
+        return OperationError(
+            code=PublicErrorCode.CONFIG_INVALID,
+            retryable=False,
+        )
+    if isinstance(error, OSError):
+        return OperationError(
+            code=PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            retryable=False,
+        )
+    return None
+
+
+def _primary_error_with_cleanup_stage(
+    primary_error: Exception,
+    cleanup_error: Exception,
+    *,
+    fallback_cleanup_stage: str,
+) -> OperationError | None:
+    """Keep the first public error and retain one safe cleanup-stage token."""
+
+    primary = _operation_error_from_init_exception(primary_error)
+    if primary is None:
+        return None
+    cleanup = _operation_error_from_init_exception(cleanup_error)
+    cleanup_stage = (
+        cleanup.details.get("stage") if cleanup is not None else None
+    )
+    if not isinstance(cleanup_stage, str):
+        cleanup_stage = fallback_cleanup_stage
+    details = dict(primary.details)
+    details.setdefault("cleanup_stage", cleanup_stage)
+    return OperationError(
+        code=primary.code,
+        cause_code=primary.cause_code,
+        retryable=primary.retryable,
+        details=details,
+    )
+
+
 def _field(name: str, schema: ValueSchema) -> SchemaField:
     return SchemaField(name, schema)
 
@@ -1075,7 +1126,12 @@ def _safe_transaction_tree(
     *,
     expected_request_sha256: str,
 ) -> _SafeInitTransactionTree | None:
-    transaction_stat = _lstat_if_present(transaction_path)
+    # Before a matching marker is read, an unreadable candidate is unknown and
+    # must be retained without blocking an otherwise valid Store reopen.
+    try:
+        transaction_stat = _lstat_if_present(transaction_path)
+    except _InitFailure:
+        return None
     if transaction_stat is None or not stat.S_ISDIR(transaction_stat.st_mode) or (
         _is_reparse_point(transaction_stat)
     ):
@@ -1090,7 +1146,10 @@ def _safe_transaction_tree(
         return None
 
     marker_path = transaction_path / "transaction.yaml"
-    marker_stat = _lstat_if_present(marker_path)
+    try:
+        marker_stat = _lstat_if_present(marker_path)
+    except _InitFailure:
+        return None
     if marker_stat is None or not stat.S_ISREG(marker_stat.st_mode) or (
         _is_reparse_point(marker_stat)
     ):
@@ -1104,6 +1163,9 @@ def _safe_transaction_tree(
         or marker.request_sha256 != expected_request_sha256
     ):
         return None
+
+    # From this point onward the marker proves request ownership. I/O failures
+    # must fail closed instead of being downgraded to an unknown candidate.
 
     allowed: dict[tuple[str, ...], dict[str, str]] = {
         (): {"transaction.yaml": "file", "store": "directory"},
@@ -1138,13 +1200,22 @@ def _safe_transaction_tree(
         try:
             entries = tuple(directory.iterdir())
         except OSError:
-            return False
+            _fail(
+                PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+                stage="transaction-cleanup",
+            )
         rules = allowed[relative]
         for entry in entries:
             expected_kind = rules.get(entry.name)
             if expected_kind is None:
                 return False
-            entry_stat = _lstat_if_present(entry)
+            try:
+                entry_stat = _lstat_if_present(entry)
+            except _InitFailure:
+                _fail(
+                    PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+                    stage="transaction-cleanup",
+                )
             if entry_stat is None or _is_reparse_point(entry_stat):
                 return False
             child_relative = relative + (entry.name,)
@@ -1181,6 +1252,19 @@ def _same_identity(path: Path, expected: os.stat_result) -> bool:
     )
 
 
+def _same_owned_transaction_identity(
+    path: Path,
+    expected: os.stat_result,
+) -> bool:
+    try:
+        return _same_identity(path, expected)
+    except _InitFailure:
+        _fail(
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            stage="transaction-cleanup",
+        )
+
+
 def _remove_owned_transaction(
     transaction_path: Path,
     *,
@@ -1197,22 +1281,22 @@ def _remove_owned_transaction(
     root_path, root_stat = safe_tree.root
     try:
         if not all(
-            _same_identity(path, path_stat)
+            _same_owned_transaction_identity(path, path_stat)
             for path, path_stat in safe_tree.content_files
         ):
             return False
         if not all(
-            _same_identity(path, path_stat)
+            _same_owned_transaction_identity(path, path_stat)
             for path, path_stat in safe_tree.content_directories
         ):
             return False
-        if not _same_identity(marker_path, marker_stat):
+        if not _same_owned_transaction_identity(marker_path, marker_stat):
             return False
-        if not _same_identity(root_path, root_stat):
+        if not _same_owned_transaction_identity(root_path, root_stat):
             return False
 
         for path, expected_stat in safe_tree.content_files:
-            if not _same_identity(path, expected_stat):
+            if not _same_owned_transaction_identity(path, expected_stat):
                 return False
             path.unlink()
         for path, expected_stat in sorted(
@@ -1220,7 +1304,7 @@ def _remove_owned_transaction(
             key=lambda item: len(item[0].parts),
             reverse=True,
         ):
-            if not _same_identity(path, expected_stat):
+            if not _same_owned_transaction_identity(path, expected_stat):
                 return False
             path.rmdir()
 
@@ -1230,10 +1314,10 @@ def _remove_owned_transaction(
         )
         if tuple(root_path.iterdir()) != (marker_path,):
             return False
-        if not _same_identity(marker_path, marker_stat):
+        if not _same_owned_transaction_identity(marker_path, marker_stat):
             return False
         marker_path.unlink()
-        if not _same_identity(root_path, root_stat):
+        if not _same_owned_transaction_identity(root_path, root_stat):
             return False
         root_path.rmdir()
     except OSError:
@@ -1450,12 +1534,26 @@ def _create_or_adopt_store(
                 PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
                 stage="final-store-identity",
             )
-        _cleanup_current_transaction(transaction_path, request, dependencies)
+        cleanup_path = transaction_path
         transaction_path = None
+        _cleanup_current_transaction(cleanup_path, request, dependencies)
         return final_manifest, created
-    except Exception:
+    except Exception as primary_error:
         if transaction_path is not None:
-            _cleanup_current_transaction(transaction_path, request, dependencies)
+            try:
+                _cleanup_current_transaction(
+                    transaction_path,
+                    request,
+                    dependencies,
+                )
+            except Exception as cleanup_error:
+                merged = _primary_error_with_cleanup_stage(
+                    primary_error,
+                    cleanup_error,
+                    fallback_cleanup_stage="transaction-cleanup",
+                )
+                if merged is not None:
+                    raise _InitFailure(merged) from primary_error
         raise
 
 
@@ -1501,6 +1599,7 @@ def _connect_config(
         path_policy=path_policy,
         dependencies=dependencies,
     )
+    cleanup_candidate: Path | None = config_temp
     try:
         _trigger_fault(_InitFaultPoint.BEFORE_CONFIG_REPLACED, dependencies)
         try:
@@ -1515,8 +1614,10 @@ def _connect_config(
             )
         except DestinationAlreadyExistsError:
             existing = _read_config(request.config_path, path_policy=path_policy)
+            cleanup_path = config_temp
+            cleanup_candidate = None
             _cleanup_current_config_temp(
-                config_temp,
+                cleanup_path,
                 expected_request_sha256=request.request_sha256,
                 expected_bytes=expected_bytes,
                 dependencies=dependencies,
@@ -1531,13 +1632,23 @@ def _connect_config(
         connected = _read_config(request.config_path, path_policy=path_policy)
         if connected is None or not _configs_match(connected, request.local_config):
             _fail(PublicErrorCode.CONFIG_STORE_CONFLICT)
-    except Exception:
-        _cleanup_current_config_temp(
-            config_temp,
-            expected_request_sha256=request.request_sha256,
-            expected_bytes=expected_bytes,
-            dependencies=dependencies,
-        )
+    except Exception as primary_error:
+        if cleanup_candidate is not None:
+            try:
+                _cleanup_current_config_temp(
+                    cleanup_candidate,
+                    expected_request_sha256=request.request_sha256,
+                    expected_bytes=expected_bytes,
+                    dependencies=dependencies,
+                )
+            except Exception as cleanup_error:
+                merged = _primary_error_with_cleanup_stage(
+                    primary_error,
+                    cleanup_error,
+                    fallback_cleanup_stage="config-temp-cleanup",
+                )
+                if merged is not None:
+                    raise _InitFailure(merged) from primary_error
         raise
 
 

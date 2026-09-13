@@ -117,7 +117,8 @@ _DIAGNOSTIC_INTEGER_FIELDS = frozenset(
         "requested_version",
     }
 )
-_DIAGNOSTIC_DETAIL_FIELDS = _DIAGNOSTIC_INTEGER_FIELDS | {"stage"}
+_DIAGNOSTIC_STAGE_FIELDS = frozenset({"stage", "cleanup_stage"})
+_DIAGNOSTIC_DETAIL_FIELDS = _DIAGNOSTIC_INTEGER_FIELDS | _DIAGNOSTIC_STAGE_FIELDS
 _CAPTURE_TEXT_RECEIPT_FIELDS = (
     "capture_id",
     "event_id",
@@ -174,9 +175,9 @@ def _freeze_diagnostic_details(value: Mapping[str, object]) -> Mapping[str, obje
             raise ValueError("details keys must be strings")
         if key not in _DIAGNOSTIC_DETAIL_FIELDS:
             raise ValueError(f"details contains unsupported field {key!r}")
-        if key == "stage":
+        if key in _DIAGNOSTIC_STAGE_FIELDS:
             if type(item) is not str or _SAFE_STAGE.fullmatch(item) is None:
-                raise ValueError("details.stage must be a safe machine token")
+                raise ValueError(f"details.{key} must be a safe machine token")
         elif type(item) is not int or item < 0:
             raise ValueError(f"details.{key} must be a non-negative integer")
         frozen[key] = item

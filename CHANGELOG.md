@@ -26,6 +26,7 @@
 - **建立 D0G 最小文档护栏**：新增零第三方依赖的 `doc-check.py`，以 Git 索引核对双语 README 路由/结构树、现行 Markdown 相对链接、`docs/` 未跟踪文件、历史研究 allowlist 和六份机器可读状态锚点；新增 8 项回归后全量为 156 项。本批已由独立本地提交闭合，未执行 push；下一门禁 C4-0 未获授权。
 - **完成 C4-0 读取契约收口**：冻结由唯一版本建立 Event 证明的连续可见版本链，新增 `capture.version-appended` 对前后 Envelope 哈希的绑定并把 Event 定为追加逻辑提交点；`get_capture` 固定为全量验证后经有界磁盘 spool 向调用方 sink 输出，`list_captures` 固定为结构/Event/Envelope/大小校验和有界 160 code point 预览；同时冻结 Store/查询绑定的 `c1` keyset 游标、严格时间边界、静态数据集分页保证及可归属 warning，解决 C-027–C-031。未修改生产代码、测试、fixture 或提示词，未创建生产 Store；本批由独立本地提交闭合，未执行 push，下一门禁 R0.3D 尚未授权。
 - **完成 R0.3D 初始化错误语义诊断与裁决**：新增 3 项只使用测试临时目录的特征测试，确认 M1 并非整段死代码，但未知初始化候选的 `stat` 失败会阻断幂等重开；确认 M3 的二次清理身份失败会遮蔽原始 `file-readback` 阶段；确认 M4 当前只缺 WinError 32/33 的可重试分类，WinError 5 与仅 `errno.EACCES` 必须保持不可重试。C-032–C-034 已冻结 R0.3F 的修复边界；本批不修改生产代码，当前全量增至 159 项，并已通过独立本地提交闭合、未执行 push，且不自动授权 R0.3F 或 C4A。
+- **完成 R0.3F 初始化错误语义修复**：未知事务候选在 marker/request 归属证明前发生 `stat` 失败时保守跳过且不删除，归属证明后的遍历、身份复核与删除错误继续失败关闭；Store 与配置两条清理路径均保留首个公共错误，只以安全 `details.cleanup_stage` 记录次级清理阶段；durability 默认不可重试且仅直接 WinError 32/33 为可重试。3 项 R0.3D 特征测试已转换为目标回归，并补充 marker stat、自有树 stat、配置清理优先级和诊断字段安全测试；当前全量增至 163 项，本批已通过独立本地提交闭合，未执行 push，也不自动授权 C4A。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
 

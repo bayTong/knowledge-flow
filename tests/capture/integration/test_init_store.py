@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+import errno
 import json
 import os
 from pathlib import Path
@@ -804,7 +805,7 @@ class InitCaptureStoreTest(unittest.TestCase):
         self.assertEqual(unknown_temp.read_bytes(), b"unknown config fragment")
         self.assertTrue(self.config_path.is_file())
 
-    def test_r03d_m1_unknown_candidate_stat_failure_currently_blocks_reopen(
+    def test_r03f_m1_unknown_candidate_stat_failure_is_skipped(
         self,
     ) -> None:
         first = self._assert_success(self._init())
@@ -830,22 +831,113 @@ class InitCaptureStoreTest(unittest.TestCase):
             return original_stat(path, *args, **kwargs)
 
         with mock.patch.object(os, "stat", new=fail_unknown_transaction_stat):
+            reopened = self._assert_success(self._init())
+
+        self.assertEqual(observed_stat_failures, 1)
+        self.assertFalse(reopened.created)
+        self.assertEqual(reopened.store_id, first.store_id)
+        self.assertTrue(unknown_transaction.is_dir())
+
+    def test_r03f_m1_unknown_candidate_marker_stat_failure_is_skipped(
+        self,
+    ) -> None:
+        first = self._assert_success(self._init())
+        unknown_transaction = self.owned_root / (
+            f".knowledgeflow-init-{_UUIDS[0]}"
+        )
+        unknown_transaction.mkdir()
+        marker = unknown_transaction / "transaction.yaml"
+        marker.write_bytes(b"unverified marker")
+        original_stat = os.stat
+        observed_stat_failures = 0
+
+        def fail_unknown_marker_stat(
+            path: object,
+            *args: object,
+            **kwargs: object,
+        ) -> os.stat_result:
+            nonlocal observed_stat_failures
+            if (
+                isinstance(path, (str, os.PathLike))
+                and Path(path) == marker
+            ):
+                observed_stat_failures += 1
+                raise PermissionError("injected unknown marker stat failure")
+            return original_stat(path, *args, **kwargs)
+
+        with mock.patch.object(os, "stat", new=fail_unknown_marker_stat):
+            reopened = self._assert_success(self._init())
+
+        self.assertEqual(observed_stat_failures, 1)
+        self.assertFalse(reopened.created)
+        self.assertEqual(reopened.store_id, first.store_id)
+        self.assertEqual(marker.read_bytes(), b"unverified marker")
+        self.assertTrue(unknown_transaction.is_dir())
+
+    def test_r03f_m1_owned_tree_stat_failure_remains_fail_closed(
+        self,
+    ) -> None:
+        self.config_path.parent.mkdir()
+        local_config = create_local_config(
+            root=self.capture_root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+            path_policy=self.policy,
+        )
+        request_sha256 = _initialization_request_sha256(
+            config_path=self.policy.validate_config_path(self.config_path),
+            capture_root=local_config.capture.root,
+            inline_text_threshold_bytes=_INLINE_THRESHOLD,
+            max_text_version_bytes=_MAXIMUM,
+        )
+        owned_transaction = self.owned_root / (
+            f".knowledgeflow-init-{_UUIDS[0]}"
+        )
+        owned_transaction.mkdir()
+        marker = owned_transaction / "transaction.yaml"
+        marker.write_bytes(
+            _dump_init_transaction(
+                _InitTransaction(
+                    transaction_id=_UUIDS[0],
+                    request_sha256=request_sha256,
+                )
+            )
+        )
+        staged_store = owned_transaction / "store"
+        staged_store.mkdir()
+        content_file = staged_store / CAPTURE_STORE_MANIFEST_FILENAME
+        content_file.write_bytes(b"owned incomplete manifest")
+        original_stat = os.stat
+
+        def fail_owned_content_stat(
+            path: object,
+            *args: object,
+            **kwargs: object,
+        ) -> os.stat_result:
+            if (
+                isinstance(path, (str, os.PathLike))
+                and Path(path) == content_file
+            ):
+                raise PermissionError("injected owned content stat failure")
+            return original_stat(path, *args, **kwargs)
+
+        with mock.patch.object(os, "stat", new=fail_owned_content_stat):
             failure = self._assert_failure(
                 self._init(),
                 PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
             )
 
-        self.assertEqual(observed_stat_failures, 1)
-        self.assertFalse(failure.error.retryable)
-        self.assertEqual(failure.error.details, {"stage": "path-stat"})
-        self.assertTrue(unknown_transaction.is_dir())
+        self.assertEqual(failure.error.details, {"stage": "transaction-cleanup"})
+        self.assertTrue(marker.is_file())
+        self.assertEqual(content_file.read_bytes(), b"owned incomplete manifest")
 
-        reopened = self._assert_success(self._init())
-        self.assertFalse(reopened.created)
-        self.assertEqual(reopened.store_id, first.store_id)
-        self.assertTrue(unknown_transaction.is_dir())
+        recovered = self._assert_success(self._init())
 
-    def test_r03d_m3_cleanup_identity_failure_currently_masks_primary_stage(
+        self.assertTrue(recovered.created)
+        self.assertFalse(owned_transaction.exists())
+        self._assert_complete_store(self.capture_root)
+
+    def test_r03f_m3_primary_stage_survives_transaction_cleanup_failure(
         self,
     ) -> None:
         primary = DurabilityError(DurabilityStage.FILE_READBACK)
@@ -884,8 +976,14 @@ class InitCaptureStoreTest(unittest.TestCase):
         )
         self.assertEqual(
             failure.error.details,
-            {"stage": "transaction-cleanup-identity"},
+            {
+                "stage": "file-readback",
+                "cleanup_stage": "transaction-cleanup-identity",
+            },
         )
+        self.assertEqual(failure.error.code, primary.code)
+        self.assertEqual(failure.error.cause_code, None)
+        self.assertEqual(failure.error.retryable, primary.retryable)
         self.assertEqual(len(residue), 1)
         self.assertEqual(
             (residue[0] / "unexpected.txt").read_bytes(),
@@ -895,6 +993,66 @@ class InitCaptureStoreTest(unittest.TestCase):
         recovered = self._assert_success(self._init())
         self.assertTrue(recovered.created)
         self.assertTrue(residue[0].is_dir())
+
+    def test_r03f_m3_primary_retryability_survives_config_cleanup_failure(
+        self,
+    ) -> None:
+        primary_cause = OSError(
+            errno.EACCES,
+            "injected Windows sharing violation",
+            None,
+            32,
+        )
+        residue: list[Path] = []
+
+        def fail_before_config_commit() -> None:
+            candidates = tuple(
+                path
+                for path in self.config_path.parent.iterdir()
+                if path.name.startswith(".knowledgeflow-config-")
+                and path.name.endswith(".tmp")
+            )
+            self.assertEqual(len(candidates), 1)
+            residue.append(candidates[0])
+            candidates[0].write_bytes(b"foreign evidence")
+            try:
+                raise primary_cause
+            except OSError as cause:
+                raise DurabilityError(DurabilityStage.RENAME) from cause
+
+        dependencies = _StoreDependencies(
+            fault_point=_InitFaultPoint.BEFORE_CONFIG_REPLACED,
+            fault_hook=fail_before_config_commit,
+        )
+        failure = self._assert_failure(
+            _init_capture_store_with_dependencies(
+                config_path=self.config_path,
+                capture_root=self.capture_root,
+                inline_text_threshold_bytes=_INLINE_THRESHOLD,
+                max_text_version_bytes=_MAXIMUM,
+                path_policy=self.policy,
+                dependencies=dependencies,
+            ),
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+        )
+
+        self.assertTrue(failure.error.retryable)
+        self.assertEqual(
+            failure.error.details,
+            {
+                "stage": "rename",
+                "cleanup_stage": "config-temp-cleanup-identity",
+            },
+        )
+        self.assertEqual(len(residue), 1)
+        self.assertEqual(residue[0].read_bytes(), b"foreign evidence")
+        self.assertFalse(self.config_path.exists())
+        self._assert_complete_store(self.capture_root)
+
+        recovered = self._assert_success(self._init())
+
+        self.assertFalse(recovered.created)
+        self.assertEqual(residue[0].read_bytes(), b"foreign evidence")
 
 
 if __name__ == "__main__":

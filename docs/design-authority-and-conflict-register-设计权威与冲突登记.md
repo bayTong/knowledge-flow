@@ -1,8 +1,8 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-<!-- knowledgeflow-doc-status tests=159 capture_tests=144 script_tests=15 next_gate=R0.3F -->
+<!-- knowledgeflow-doc-status tests=163 capture_tests=148 script_tests=15 next_gate=C4A -->
 
-> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F、D0G、C4-0 与 R0.3D 已完成；R0.3D 已通过独立本地提交闭合且未 push，当前 159 项测试通过；下一门禁为 R0.3F<br>
+> 状态：Approved Design；C0–C3、R0.1/R0.2、D0-F、D0G、C4-0、R0.3D 与 R0.3F 已完成；当前 163 项测试通过；下一门禁为需另行授权的 C4A<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -16,9 +16,10 @@
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（本地提交；未 push）<br>
 > C4-0 读取契约完成日期：2026-09-13（独立本地提交；未 push）<br>
 > R0.3D 诊断与裁决完成日期：2026-09-13（已通过独立本地提交闭合；未 push）<br>
+> R0.3F 完成日期：2026-09-13（独立本地提交，未 push）<br>
 > 当前状态同步日期：2026-09-13<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件只把 C3 `capture_text` 记为已实现并通过本阶段验收；R0.3D 只完成诊断和裁决，不等于 R0.3F 已获授权或实现；C4–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
+> 边界：本文件只把 C3 `capture_text` 记为已实现并通过本阶段验收；R0.3F 已获授权、实现、验证并由独立本地提交闭合，但不等于 C4A 已获授权或实现；C4–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
 
 ## 1. 为什么需要本文件
 
@@ -52,9 +53,9 @@
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 又冻结读取 sink、可见性、完整性、游标、时间/快照和 warning 语义 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 当前 159 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C3A–C3V、R0.1/R0.2、D0-F、D0G、C4-0 与 R0.3D 已完成；随后门禁是需另行授权的 R0.3F |
-| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 R0.3F、C4A 及后续实现 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 当前 163 项通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C3A–C3V、R0.1/R0.2、D0-F、D0G、C4-0、R0.3D 与 R0.3F 已完成；随后门禁是需另行授权的 C4A |
+| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C4A 及后续实现 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
@@ -242,16 +243,18 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-029 | `list_captures` 若全量哈希所有 Payload 会使捕获箱 I/O 随总正文体积增长；若完全信任投影又会错误筛选或漏项 | 列表验证版本/Event/Envelope/结构、交叉引用和实际文件大小，只读有界预览前缀；不声明完整 Payload attestation。投影异常时从不可变 Event 内存重建后筛选，任何不可变矛盾使整页失败 | 2026-09-13 由 C4-0 解决；实现尚待 C4A/C4C |
 | C-030 | 游标没有冻结编码、查询绑定、时间边界和并发快照承诺，可能跨 Store/查询误用或产生含糊分页保证 | 使用带领域前缀 checksum 的 `c1` 规范 JSON keyset 游标，绑定 Store、规范查询与末项 `(captured_at,capture_id)`；limit 可变，时间边界严格排除，无 TTL，仅对静态数据集保证无重复/遗漏 | 2026-09-13 由 C4-0 解决；实现尚待 C4A/C4C |
 | C-031 | 预览换行/grapheme 及 warning 归属未定，列表可能改变展示语义或产生无法定位的修复提示 | preview 精确取前 160 Unicode code point 并保留换行，不承诺 grapheme 边界；Item warning 必带 `capture_id`，未完成版本还带 `version`，并按稳定键排序 | 2026-09-13 由 C4-0 解决；实现尚待 C4A/C4C |
-| C-032（R0.3-M1） | `_lstat_if_present` 会把 `stat` 的 `OSError` 转成 `_InitFailure`；这不使 `_remove_owned_transaction` 的整个 `except OSError` 成为死代码，但一个尚未证明属于当前请求的未知候选若 `stat` 不可读，会阻断已有合法 Store 的纯幂等重开 | 候选尚未通过 marker/request 身份证明时，`stat`/遍历/marker 读取失败统一视为“不可证明归属”，保守跳过且不删除；一旦已证明为本请求自有树，身份复核、`unlink` 或 `rmdir` 失败仍必须 fail-closed、保留 marker 并返回稳定清理阶段。不得全局放宽共享 `_lstat_if_present` | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 待独立授权实现 |
-| C-033（R0.3-M3） | 原操作失败后的二次清理若又发生身份或 I/O 失败，当前清理异常会覆盖原始公共 `details.stage`，调用方失去首个失败阶段 | 首个原操作错误拥有 `code`、`cause_code`、`retryable` 和 `details.stage` 的公共优先级；清理错误只能作为次级诊断，以新增安全 token `details.cleanup_stage` 保留，不得暴露路径或原始 OS 文本。仅清理本身失败时，清理阶段仍作为主 `stage`；初始化结果始终不含 `saved`/`commit_state` | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 待独立授权实现 |
-| C-034（R0.3-M4） | `DurabilityError` 当前恒定 `retryable=false`，使明确的 Windows sharing/lock violation（WinError 32/33）与初始化规范不一致；锁模块的 `errno.EACCES` 回退若直接复用又会把永久 ACL 拒绝误归类 | durability 默认 `retryable=false`；仅当直接保留的 Windows I/O 原因具有 `winerror` 32 或 33 时为 `true`。WinError 5、仅 `errno.EACCES`、无底层原因、校验失败及未知错误均保持 `false`；锁等待循环的上下文分类不外推到通用 durability | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 待独立授权实现 |
+| C-032（R0.3-M1） | R0.3D 确认 `_lstat_if_present` 会把 `stat` 的 `OSError` 转成 `_InitFailure`；这不使 `_remove_owned_transaction` 的整个 `except OSError` 成为死代码，但此前一个尚未证明属于当前请求的未知候选若 `stat` 不可读，会阻断已有合法 Store 的纯幂等重开 | 候选尚未通过 marker/request 身份证明时，`stat`/遍历/marker 读取失败统一视为“不可证明归属”，保守跳过且不删除；一旦已证明为本请求自有树，身份复核、`unlink` 或 `rmdir` 失败仍必须 fail-closed、保留 marker 并返回稳定清理阶段。不得全局放宽共享 `_lstat_if_present` | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 已按边界实现、验证并由独立本地提交闭合 |
+| C-033（R0.3-M3） | R0.3D 时，原操作失败后的二次清理若又发生身份或 I/O 失败，清理异常会覆盖原始公共 `details.stage`，调用方失去首个失败阶段 | 首个原操作错误拥有 `code`、`cause_code`、`retryable` 和 `details.stage` 的公共优先级；清理错误只能作为次级诊断，以新增安全 token `details.cleanup_stage` 保留，不得暴露路径或原始 OS 文本。仅清理本身失败时，清理阶段仍作为主 `stage`；初始化结果始终不含 `saved`/`commit_state` | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 已覆盖 Store/配置两条清理路径并由独立本地提交闭合 |
+| C-034（R0.3-M4） | R0.3D 时 `DurabilityError` 恒定 `retryable=false`，使明确的 Windows sharing/lock violation（WinError 32/33）与初始化规范不一致；锁模块的 `errno.EACCES` 回退若直接复用又会把永久 ACL 拒绝误归类 | durability 默认 `retryable=false`；仅当直接保留的 Windows I/O 原因具有 `winerror` 32 或 33 时为 `true`。WinError 5、仅 `errno.EACCES`、无底层原因、校验失败及未知错误均保持 `false`；锁等待循环的上下文分类不外推到通用 durability | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 已按窄分类实现、验证并由独立本地提交闭合 |
+
+面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，统一收录在[MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；本登记保留规范性裁决，避免在多个权威入口复制并逐渐漂移。
 
 ## 10. 功能门禁
 
 | 要实现的能力 | 必须先完成 |
 |---|---|
 | 本地文本捕获 | 本文件、Capture Envelope、捕获与路由规范及已批准的 MVP-0 操作契约 |
-| 本地文本读取与列表 | C4-0 已冻结正文传输/内存边界、版本可见性、完整性深度、游标/时间边界和 warning 归属；R0.3D 已裁决并版本化 C-032–C-034，证据要求先完成另行授权的 R0.3F，再分别授权 C4A/B/C/V |
+| 本地文本读取与列表 | C4-0 已冻结正文传输/内存边界、版本可见性、完整性深度、游标/时间边界和 warning 归属；R0.3F 已按 C-032–C-034 完成并独立版本化，下一步再分别授权 C4A/B/C/V |
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
@@ -279,6 +282,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3A–C3V、R0.1/R0.2、D0-F/D0G、C4-0 与 R0.3D 已分别闭合。R0.3D 已用 3 项特征测试裁决并版本化 C-032–C-034；下一步是另行授权 R0.3F，不能直接编码 `get_capture` 或 `list_captures`。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3A–C3V、R0.1/R0.2、D0-F/D0G、C4-0、R0.3D 与 R0.3F 已分别闭合。R0.3F 已按 C-032–C-034 完成实现、163 项验证和独立本地提交；下一步是另行授权 C4A，不能直接编码 `get_capture` 或 `list_captures`。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。
