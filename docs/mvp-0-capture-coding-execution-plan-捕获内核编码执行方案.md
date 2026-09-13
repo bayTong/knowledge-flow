@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=182 capture_tests=167 script_tests=15 next_gate=C4B -->
+<!-- knowledgeflow-doc-status tests=197 capture_tests=182 script_tests=15 next_gate=C4C -->
 
-> 状态：Approved Design；C4A 已完成并由独立本地提交闭环；随后停在 C4B 授权门禁<br>
+> 状态：Approved Design；C4A 已提交并 push；C4B 已由独立本地提交闭合且未 push，停在 C4C 授权门禁<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -23,13 +23,14 @@
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > R0.3D 诊断与裁决完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > R0.3F 完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
-> 稳定基线同步日期：2026-09-13（截至 `dc3a35f` 已 push 至 `origin/main`）<br>
-> C4A 完成日期：2026-09-13（独立本地提交；未 push）<br>
+> 稳定基线同步日期：2026-09-13（截至 C4A 提交 `06cff02` 已 push 至 `origin/main`）<br>
+> C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）<br>
+> C4B 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）<br>
 > 当前状态同步日期：2026-09-13<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 新增 19 项读取契约回归后当前全量为 182 项，并已由独立本地提交闭环<br>
-> 当前授权：C4A 已完成；C4B/C4C/C4V、真实 Capture Store 和外部系统接入均未授权
+> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 新增 15 项 GET 回归后当前全量为 197 项，并由独立本地提交闭合<br>
+> 当前授权：C4B 已完成；当前只允许决定是否 push C4B 或另行授权 C4C，C4C/C4V、真实 Capture Store 和外部系统接入均未授权
 
 ## 0. 结论先行
 
@@ -39,9 +40,9 @@
 
 C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。
 
-C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 新增 8 项文档护栏回归后为 156 项；R0.3D 再新增 3 项特征测试后为 159 项；R0.3F 新增 4 项负向回归并把特征测试转为目标行为后为 163 项；C4A 再新增 19 项读取契约回归，当前为 182 项。
+C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 新增 15 项读取回归后当前为 197 项。
 
-公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；其余三个公开捕获操作仍不存在，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。C4A 已把读取可见性、追加 Event、请求/结果、游标和 warning 裁决落实为内部可单测能力并独立版本化；下一步是另行授权 C4B。追加仍留在 C5。
+公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；C4B 又公开了 `get_capture`，并闭合 Event 证明的 latest/历史读取、目标版本全部 Payload attestation、Store 外有界磁盘 spool、sink 短写/失败和投影只读降级，现已独立版本化。`list_captures` 与追加仍分别留在 C4C/C5，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。
 
 ## 1. 本方案解决什么问题
 
@@ -581,7 +582,7 @@ C4-0 固定结论：
 - `c1` cursor/query fingerprint codec、固定 JSON 字节和坏 token 拒绝。
 - 不修改公共 `__init__` 导出，不公开 `get_capture`/`list_captures`，不实现 append writer。
 
-完成记录（2026-09-13）：已在 `codec.py` 中实现严格区分 `capture.created`/`capture.version-appended` 的 Event v1，并校验追加 Event 对前后 Envelope、版本、actor 与哈希的绑定；在 `models.py`/`errors.py` 中落实读取请求、元数据结果、列表结果、精确 warning details 和 `output_write_failed`；在内部 `store.py` 中实现六位目录解析、Event 证明的连续版本前缀、唯一无 Event 尾部隔离、warning 转换和只在内存构造的读取状态；同时实现绑定 Store/查询的规范 `c1` 游标及真实版本 2 Payload/Envelope/Event golden。新增 19 项测试后，捕获内核 167 项、维护与文档脚本 15 项，全量 182 项在普通和严格 `ResourceWarning` 模式均通过。顶层 `__init__.py` 与 `operations.py` 未改，未公开 `get_capture`/`list_captures`，未实现 append writer，未创建生产配置或 Store。本批已由独立本地提交闭环且未 push；下一步才可另行授权 C4B。
+完成记录（2026-09-13）：已在 `codec.py` 中实现严格区分 `capture.created`/`capture.version-appended` 的 Event v1，并校验追加 Event 对前后 Envelope、版本、actor 与哈希的绑定；在 `models.py`/`errors.py` 中落实读取请求、元数据结果、列表结果、精确 warning details 和 `output_write_failed`；在内部 `store.py` 中实现六位目录解析、Event 证明的连续版本前缀、唯一无 Event 尾部隔离、warning 转换和只在内存构造的读取状态；同时实现绑定 Store/查询的规范 `c1` 游标及真实版本 2 Payload/Envelope/Event golden。新增 19 项测试后，捕获内核 167 项、维护与文档脚本 15 项，全量 182 项在普通和严格 `ResourceWarning` 模式均通过。顶层 `__init__.py` 与 `operations.py` 未改，未公开 `get_capture`/`list_captures`，未实现 append writer，未创建生产配置或 Store。本批由独立提交 `06cff02` 闭环并已 push 至 `origin/main`；C4B 后续另行获授权。
 
 ### C4B：`get_capture`
 
@@ -590,6 +591,10 @@ C4-0 固定结论：
 主要文件：`operations.py`、必要的 `store.py` 增量和 `tests/capture/integration/test_get_capture.py`。
 
 必须覆盖实现矩阵 GET-01–GET-16，尤其是两版本链、唯一未完成尾部、Event/版本矛盾、全部 Payload 哈希、64 MiB 有界 spool、sink 中途失败、重复 ID/错误分片/reparse，以及任何 Store 失败时 sink 零字节。只写测试拥有的临时目录。
+
+完成记录（2026-09-13；独立本地提交，未 push）：已公开 `GetCaptureRequest`、`GetCaptureResult`、`GetCaptureOperationResult` 与 `get_capture`；运行时只按唯一规范 Item、六位版本目录和 Event 证明的连续 `1..N` 前缀确定 latest/历史版本，唯一无 Event 的 N+1 尾部保持不可见且不清理。链中全部已提交 Payload 先做安全路径、普通文件和声明大小检查，目标版本全部 Payload 再逐块计算实际大小/SHA256，主正文只有在所有 Store 校验及投影只读降级完成后才从 Store 外 delete-on-close 磁盘 spool 写入调用方 sink。sink 短写会续传，异常、0、`None`、boolean 或越界返回统一为可重试 `output_write_failed`，核心不 close/flush sink。
+
+新增 `tests/capture/integration/test_get_capture.py` 的 15 项测试覆盖 GET-01–GET-16，包括真实两版本、未完成尾部、附件/主正文/Envelope/Event/Payload Set 损坏、未知机器 schema、64 MiB 有界读写、部分输出失败、错误分片、重复 ID、Windows junction reparse、路径穿越和模拟 Store I/O；普通及严格 `ResourceWarning` 全量均为 197 项（捕获内核 182 项、维护与文档脚本 15 项）。实现没有公开 `list_captures`、实现 append writer、修改磁盘 schema/fixture 或创建生产配置/Store。当前 `next_gate` 为 C4C；C4B 完成不自动授权 C4C。
 
 ### C4C：`list_captures`
 
@@ -792,4 +797,4 @@ git status --short
 7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合。D0G、C4-0、R0.3D 与 R0.3F 均于 2026-09-13 通过各自独立本地提交闭合；截至研究归档提交 `dc3a35f` 的稳定基线随后已同步到 `origin/main`。C4A 也已于 2026-09-13 完成并由独立本地提交闭环且未 push；C4B/C4C/C4V 与后续批次仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合。D0G、C4-0、R0.3D 与 R0.3F 均于 2026-09-13 通过各自独立本地提交闭合；C4A 提交 `06cff02` 随后已同步到 `origin/main`。C4B 已获单独授权、完成 197 项验证并由独立本地提交闭合；C4C/C4V 与后续批次仍需逐批明确授权。

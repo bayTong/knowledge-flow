@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=182 capture_tests=167 script_tests=15 next_gate=C4B -->
+<!-- knowledgeflow-doc-status tests=197 capture_tests=182 script_tests=15 next_gate=C4C -->
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-13):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C3 and the post-C3 initialization hardening are complete; the stable baseline through `dc3a35f` is synchronized with `origin/main`. C4A is now closed by its own local commit: it implements internal read contracts, a strict appended-version Event schema, continuous Event-proved version-chain primitives, a canonical `c1` cursor codec, and real two-version golden fixtures. The current suite has 182 passing tests (167 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). Local `main` is one C4A commit ahead and has not been pushed. The next gate is separately authorized C4B; `get_capture`, `list_captures`, the remaining capture operation, and the production Store do not exist. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-13):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C0–C3 and the post-C3 initialization hardening are complete, and the independent C4A commit `06cff02` is synchronized with `origin/main`. C4B `get_capture` is now independently versioned in a local commit after separate authorization: the public operation resolves latest or historical versions from an Event-proved continuous chain and emits the body through a Store-external disk spool only after fully attesting every target-version Payload. GET-01–GET-16 and the full 197-test suite (182 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions) pass in both ordinary and strict `ResourceWarning` modes. The C4B commit has not been pushed; the next implementation gate is separately authorized C4C `list_captures`. Append and the production Store do not exist. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -168,25 +168,25 @@ knowledge-flow/
 ├── pyproject.toml                    Capture-kernel package and pinned runtime dependency
 ├── src/
 │   └── knowledgeflow_capture/
-│       ├── __init__.py               C0/C3 package identity and public capture surface
-│       ├── errors.py                 C1/C3A public errors, exact receipts, commit states
-│       ├── models.py                 C1/C3A hash, request, and capture-input values
+│       ├── __init__.py               C0/C3/C4B package identity and public capture/read surface
+│       ├── errors.py                 C1/C3A/C4A public errors and write/read results
+│       ├── models.py                 C1/C3A/C4A hash and write/read request values
 │       ├── ids.py                    C1 UUIDv7 and typed prefixes
 │       ├── hashing.py                C1/C3A four-hash and idempotency-digest primitives
-│       ├── codec.py                  C1/C3A restricted YAML and Envelope/Event/Projection schemas
+│       ├── codec.py                  C1/C3A/C4A restricted YAML and Envelope/Event/Projection schemas
 │       ├── config.py                 C2A local-config contract and canonical emission
 │       ├── paths.py                  C2A Windows path-safety policy
 │       ├── manifest.py               C2A Capture Store identity contract
 │       ├── locking.py                C2B/C3B Windows initialization and Store write locks
 │       ├── durability.py             C2B/C3B durable commit and bounded UTF-8 streaming
-│       ├── store.py                  C2B/C3B initialization recovery and Capture staging
-│       └── operations.py             C3 complete capture_text transaction
+│       ├── store.py                  C2B–C4A recovery, staging, and version-chain primitives
+│       └── operations.py             C3 capture_text and C4B get_capture operations
 ├── tests/
 │   ├── capture/
-│   │   ├── fixtures/                 Seven C1–C3A JSON/YAML golden files
-│   │   ├── unit/                     C0–C3B unit and platform tests
-│   │   ├── integration/              C2B/C3 transaction, real-boundary, and concurrency tests
-│   │   └── fault/                    C2B/R0 process-crash recovery tests (141 capture tests total)
+│   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
+│   │   ├── unit/                     C0–C4A unit and platform tests
+│   │   ├── integration/              C2B–C4B transaction, read, boundary, and concurrency tests
+│   │   └── fault/                    C2B/R0 process-crash recovery tests (182 capture tests total)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
@@ -246,10 +246,10 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Public `capture_text` has passed the complete C3 stage acceptance in test-owned temporary Stores, but read, list, append, business-transaction recovery, the restricted CLI, and production initialization are still pending. There is therefore no production-ready save path yet. The implementation order is:
+The complete capture MVP is not implemented yet. Public `capture_text` has passed the complete C3 stage acceptance, and C4B `get_capture` is implemented, validated, and independently versioned locally. List, append, business-transaction recovery, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C3, R0.1/R0.2, D0, D0-F, D0G, C4-0, R0.3D, R0.3F, and C4A are complete and independently versioned. This does not authorize C4B or public `get_capture`/`list_captures` implementation.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C3, R0.1/R0.2, D0, D0-F, D0G, C4-0, R0.3D, R0.3F, C4A, and C4B are complete and independently versioned. C4B completion does not authorize C4C or any other later batch.
 3. Then complete append, recovery, and the restricted adapter through C5–C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 

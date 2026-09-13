@@ -3,24 +3,31 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping
+import codecs
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import StrEnum
 import hashlib
 import hmac
+import ntpath
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import stat
+import tempfile
+from typing import BinaryIO, TypeAlias, cast
 from uuid import UUID
 
 from .codec import (
+    CAPTURE_EVENT_SCHEMA_V1,
     CaptureEventReferenceError,
     dump_capture_event,
     dump_capture_state,
     load_capture_event,
     load_capture_state,
     load_envelope,
+    load_restricted_yaml,
+    parse_restricted_yaml,
 )
 from .config import (
     ConfigLoadError,
@@ -40,6 +47,7 @@ from .errors import (
     CommitState,
     CommittedWriteResult,
     FailureResult,
+    GetCaptureResult,
     OperationError,
     OperationWarning,
     PublicErrorCode,
@@ -67,8 +75,12 @@ from .locking import (
     _acquire_capture_write_lock,
 )
 from .models import (
+    CaptureItemState,
+    CaptureReadMetadata,
     CaptureTextRequest,
+    ChannelMetadata,
     DigestResult,
+    GetCaptureRequest,
     PayloadMetadata,
     PayloadSetEntry,
     RequestFingerprint,
@@ -78,15 +90,22 @@ from .models import (
 )
 from .paths import PathPolicy, PathPolicyError
 from .store import (
+    _CaptureVersionChain,
+    _CaptureVersionChainError,
     _CaptureStaging,
     _InitFailure,
+    _build_capture_version_chain,
     _cleanup_capture_staging,
     _create_capture_staging,
     _inspect_store,
+    _parse_capture_version_directory_name,
+    _rebuild_capture_read_state,
+    _warnings_for_capture_version_chain,
 )
 
 
-CaptureTextOperationResult = CommittedWriteResult | FailureResult
+CaptureTextOperationResult: TypeAlias = CommittedWriteResult | FailureResult
+GetCaptureOperationResult: TypeAlias = GetCaptureResult | FailureResult
 
 _ACTOR = {"type": "user", "actor_id": "local-user"}
 _ENVELOPE_MAXIMUM_BYTES = 1024 * 1024
@@ -102,6 +121,7 @@ _TypedIdFactory = Callable[[], str]
 _UuidFactory = Callable[[], UUID]
 _FaultHook = Callable[[], None]
 _ReplaceFile = Callable[[Path, Path], None]
+_BodySpoolFactory = Callable[[Path], BinaryIO]
 
 
 class _CaptureFaultPoint(StrEnum):
@@ -164,6 +184,31 @@ class _CaptureDependencies:
     )
 
 
+def _default_body_spool_factory(capture_root: Path) -> BinaryIO:
+    """Create a delete-on-close disk spool beside, never inside, the Store."""
+
+    spool_parent = capture_root.parent
+    if ntpath.normcase(str(spool_parent)) == ntpath.normcase(str(capture_root)):
+        raise OSError("Capture Store root has no external spool parent")
+    return cast(
+        BinaryIO,
+        tempfile.TemporaryFile(
+            mode="w+b",
+            prefix=".knowledgeflow-capture-read-",
+            dir=spool_parent,
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _GetCaptureDependencies:
+    spool_factory: _BodySpoolFactory = field(
+        default=_default_body_spool_factory,
+        repr=False,
+        compare=False,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _StoredItem:
     item_path: Path
@@ -204,6 +249,31 @@ class _StoreIoFailure(RuntimeError):
 
 class _IdempotencyConflict(RuntimeError):
     pass
+
+
+class _UnsupportedMachineSchema(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class _LocatedCaptureItem:
+    item_path: Path
+    year: str
+    month: str
+
+
+@dataclass(frozen=True, slots=True)
+class _DiskCaptureVersionChain:
+    item: _LocatedCaptureItem
+    chain: _CaptureVersionChain
+    version_paths: Mapping[int, Path]
+
+
+@dataclass(frozen=True, slots=True)
+class _PayloadFile:
+    metadata: Mapping[str, object]
+    path: Path
+    path_stat: os.stat_result = field(repr=False, compare=False)
 
 
 def _trigger_fault(
@@ -251,6 +321,40 @@ def _io_failure(
     return _failure(
         PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
         state,
+        cause_code=failure.cause_code,
+        details={"stage": failure.stage},
+    )
+
+
+def _read_failure(
+    code: PublicErrorCode,
+    *,
+    retryable: bool = False,
+    cause_code: CauseCode | None = None,
+    details: Mapping[str, object] | None = None,
+) -> FailureResult:
+    """Build a read failure, which deliberately has no commit state."""
+
+    return FailureResult(
+        error=OperationError(
+            code=code,
+            retryable=retryable,
+            cause_code=cause_code,
+            details={} if details is None else details,
+        )
+    )
+
+
+def _read_integrity_failure(failure: _IntegrityFailure) -> FailureResult:
+    return _read_failure(
+        PublicErrorCode.INTEGRITY_CHECK_FAILED,
+        cause_code=failure.cause_code,
+    )
+
+
+def _read_io_failure(failure: _StoreIoFailure) -> FailureResult:
+    return _read_failure(
+        PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
         cause_code=failure.cause_code,
         details={"stage": failure.stage},
     )
@@ -548,6 +652,631 @@ def _verify_primary_payload(stored: _StoredItem) -> DigestResult:
     if not hmac.compare_digest(actual_sha256, primary_sha256):
         raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
     return DigestResult(byte_size=byte_size, sha256=actual_sha256)
+
+
+def _machine_identity_is_unsupported(
+    value: object,
+    *,
+    expected_schema: str,
+) -> bool:
+    if not isinstance(value, Mapping):
+        return False
+    schema_name = value.get("schema")
+    schema_version = value.get("schema_version")
+    return (
+        type(schema_name) is str
+        and schema_name != expected_schema
+    ) or (
+        type(schema_version) is int
+        and schema_version != 1
+    )
+
+
+def _check_machine_identity(
+    source: bytes,
+    *,
+    expected_schema: str,
+    invalid_cause: CauseCode,
+) -> None:
+    try:
+        value = parse_restricted_yaml(source)
+    except (TypeError, ValueError) as exc:
+        raise _IntegrityFailure(invalid_cause) from exc
+    if _machine_identity_is_unsupported(
+        value,
+        expected_schema=expected_schema,
+    ):
+        raise _UnsupportedMachineSchema
+
+
+def _immutable_directory_stat(
+    path: Path,
+    *,
+    missing_cause: CauseCode,
+    invalid_cause: CauseCode,
+    stage: str,
+) -> os.stat_result:
+    try:
+        path_stat = _lstat_if_present(path)
+    except OSError as exc:
+        raise _StoreIoFailure(stage=stage) from exc
+    if path_stat is None:
+        raise _IntegrityFailure(missing_cause)
+    if not stat.S_ISDIR(path_stat.st_mode) or _is_reparse_point(path_stat):
+        raise _IntegrityFailure(invalid_cause)
+    return path_stat
+
+
+def _immutable_directory_entries(
+    path: Path,
+    *,
+    missing_cause: CauseCode,
+    invalid_cause: CauseCode,
+    stage: str,
+) -> tuple[Path, ...]:
+    _immutable_directory_stat(
+        path,
+        missing_cause=missing_cause,
+        invalid_cause=invalid_cause,
+        stage=stage,
+    )
+    try:
+        return tuple(sorted(path.iterdir(), key=lambda item: item.name))
+    except OSError as exc:
+        raise _StoreIoFailure(stage=stage) from exc
+
+
+def _locate_capture_item(
+    capture_root: Path,
+    capture_id: str,
+) -> _LocatedCaptureItem | None:
+    """Locate exactly one canonical Item without trusting a shard or symlink."""
+
+    matches: list[_LocatedCaptureItem] = []
+    items_root = capture_root / "items"
+    for year_path in _directory_entries(items_root, stage="item-locate"):
+        if _YEAR_PATTERN.fullmatch(year_path.name) is None:
+            continue
+        _immutable_directory_stat(
+            year_path,
+            missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            stage="item-locate",
+        )
+        for month_path in _immutable_directory_entries(
+            year_path,
+            missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+            stage="item-locate",
+        ):
+            if _MONTH_PATTERN.fullmatch(month_path.name) is None:
+                continue
+            _immutable_directory_stat(
+                month_path,
+                missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                stage="item-locate",
+            )
+            for item_path in _immutable_directory_entries(
+                month_path,
+                missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                stage="item-locate",
+            ):
+                if ntpath.normcase(item_path.name) != ntpath.normcase(capture_id):
+                    continue
+                if item_path.name != capture_id:
+                    raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+                _immutable_directory_stat(
+                    item_path,
+                    missing_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                    invalid_cause=CauseCode.EVENT_REFERENCE_MISMATCH,
+                    stage="item-locate",
+                )
+                matches.append(
+                    _LocatedCaptureItem(
+                        item_path=item_path,
+                        year=year_path.name,
+                        month=month_path.name,
+                    )
+                )
+    if len(matches) > 1:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    return matches[0] if matches else None
+
+
+def _load_event_without_references(path: Path) -> Mapping[str, object]:
+    source = _read_regular_bytes(
+        path,
+        maximum_bytes=_EVENT_MAXIMUM_BYTES,
+        missing_cause=CauseCode.EVENT_MISSING,
+        invalid_cause=CauseCode.EVENT_SCHEMA_INVALID,
+    )
+    _check_machine_identity(
+        source,
+        expected_schema="knowledgeflow.capture-event",
+        invalid_cause=CauseCode.EVENT_SCHEMA_INVALID,
+    )
+    try:
+        event = load_restricted_yaml(
+            source,
+            CAPTURE_EVENT_SCHEMA_V1,
+            require_canonical=True,
+        )
+    except (TypeError, ValueError) as exc:
+        raise _IntegrityFailure(CauseCode.EVENT_SCHEMA_INVALID) from exc
+    if not isinstance(event, Mapping):
+        raise _IntegrityFailure(CauseCode.EVENT_SCHEMA_INVALID)
+    return event
+
+
+def _load_committed_envelope(path: Path) -> Mapping[str, object]:
+    source = _read_regular_bytes(
+        path,
+        maximum_bytes=_ENVELOPE_MAXIMUM_BYTES,
+        missing_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+        invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+    )
+    _check_machine_identity(
+        source,
+        expected_schema="knowledgeflow.capture-envelope",
+        invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+    )
+    try:
+        envelope = load_envelope(source, require_canonical=True)
+    except (TypeError, ValueError) as exc:
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH) from exc
+    if not verify_envelope(envelope):
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+    return envelope
+
+
+def _payload_relative_parts(value: object) -> tuple[str, ...]:
+    if type(value) is not str or not value or "\\" in value or "\x00" in value:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+    candidate = PurePosixPath(value)
+    parts = candidate.parts
+    drive, _tail = ntpath.splitdrive(value)
+    if (
+        drive
+        or candidate.is_absolute()
+        or candidate.as_posix() != value
+        or len(parts) < 2
+        or parts[0] != "payloads"
+        or any(
+            part in {"", ".", ".."}
+            or ":" in part
+            or part.endswith((" ", "."))
+            for part in parts
+        )
+    ):
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+    return parts
+
+
+def _payload_files(
+    version_path: Path,
+    envelope: Mapping[str, object],
+) -> tuple[_PayloadFile, ...]:
+    entries = _payload_entries(envelope)
+    try:
+        expected_payload_set = payload_set_sha256(entries)
+        stored_payload_set = envelope["payload_set_sha256"]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH) from exc
+    if type(stored_payload_set) is not str or not hmac.compare_digest(
+        expected_payload_set,
+        stored_payload_set,
+    ):
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+
+    result: list[_PayloadFile] = []
+    path_keys: set[str] = set()
+    primary_count = 0
+    for metadata in _payload_mappings(envelope):
+        parts = _payload_relative_parts(metadata.get("path"))
+        key = ntpath.normcase(ntpath.join(*parts))
+        if key in path_keys:
+            raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+        path_keys.add(key)
+
+        is_primary = metadata.get("ordinal") == 0 and metadata.get("role") == "primary"
+        if is_primary:
+            primary_count += 1
+            if (
+                parts != ("payloads", "primary.txt")
+                or metadata.get("kind") != "text"
+                or metadata.get("media_type") != "text/plain; charset=utf-8"
+                or metadata.get("encoding") != "utf-8"
+                or metadata.get("fidelity") != "channel-exact"
+                or metadata.get("original_name") is not None
+            ):
+                raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+
+        parent = version_path
+        for part in parts[:-1]:
+            parent = parent / part
+            _immutable_directory_stat(
+                parent,
+                missing_cause=CauseCode.PAYLOAD_HASH_MISMATCH,
+                invalid_cause=CauseCode.PAYLOAD_HASH_MISMATCH,
+                stage="payload-read",
+            )
+        payload_path = version_path.joinpath(*parts)
+        try:
+            path_stat = _lstat_if_present(payload_path)
+        except OSError as exc:
+            raise _StoreIoFailure(
+                stage="payload-read",
+                cause_code=CauseCode.PAYLOAD_READ_FAILED,
+            ) from exc
+        if path_stat is None or not stat.S_ISREG(path_stat.st_mode) or (
+            _is_reparse_point(path_stat)
+        ):
+            raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+        expected_size = metadata.get("byte_size")
+        if type(expected_size) is not int or path_stat.st_size != expected_size:
+            raise _IntegrityFailure(CauseCode.BYTE_SIZE_MISMATCH)
+        result.append(
+            _PayloadFile(
+                metadata=metadata,
+                path=payload_path,
+                path_stat=path_stat,
+            )
+        )
+    if primary_count != 1:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+    return tuple(result)
+
+
+def _load_disk_capture_version_chain(
+    item: _LocatedCaptureItem,
+) -> _DiskCaptureVersionChain:
+    item_path = item.item_path
+    version_entries = _immutable_directory_entries(
+        item_path / "versions",
+        missing_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+        invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+        stage="version-read",
+    )
+    version_paths: dict[int, Path] = {}
+    version_names: list[str] = []
+    for version_path in version_entries:
+        try:
+            version = _parse_capture_version_directory_name(version_path.name)
+        except _CaptureVersionChainError as exc:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH) from exc
+        _immutable_directory_stat(
+            version_path,
+            missing_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+            invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+            stage="version-read",
+        )
+        if version in version_paths:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        version_paths[version] = version_path
+        version_names.append(version_path.name)
+
+    event_entries = _immutable_directory_entries(
+        item_path / "events",
+        missing_cause=CauseCode.EVENT_MISSING,
+        invalid_cause=CauseCode.EVENT_SCHEMA_INVALID,
+        stage="event-read",
+    )
+    events: list[Mapping[str, object]] = []
+    for event_path in event_entries:
+        if event_path.suffix != ".yaml":
+            raise _IntegrityFailure(CauseCode.EVENT_SCHEMA_INVALID)
+        try:
+            validate_typed_id(event_path.stem, IdKind.EVENT)
+        except (TypeError, ValueError) as exc:
+            raise _IntegrityFailure(CauseCode.EVENT_SCHEMA_INVALID) from exc
+        event = _load_event_without_references(event_path)
+        if event.get("event_id") != event_path.stem:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        events.append(event)
+    if not events:
+        raise _IntegrityFailure(CauseCode.EVENT_MISSING)
+
+    envelopes: dict[int, Mapping[str, object]] = {}
+    for event in events:
+        raw_event_version = event.get("version")
+        if type(raw_event_version) is not int or raw_event_version in envelopes:
+            continue
+        event_version_path = version_paths.get(raw_event_version)
+        if event_version_path is None:
+            continue
+        envelopes[raw_event_version] = _load_committed_envelope(
+            event_version_path / "envelope.yaml"
+        )
+
+    try:
+        chain = _build_capture_version_chain(
+            capture_id=item.item_path.name,
+            version_directory_names=version_names,
+            envelopes_by_version=envelopes,
+            events=events,
+        )
+    except _CaptureVersionChainError as exc:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH) from exc
+
+    first_received_at = chain.versions[0].envelope.get("received_at")
+    if type(first_received_at) is not str or (
+        first_received_at[:4] != item.year
+        or first_received_at[5:7] != item.month
+    ):
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+
+    for committed in chain.versions:
+        committed_version_path = version_paths.get(committed.version)
+        if committed_version_path is None:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        _payload_files(committed_version_path, committed.envelope)
+
+    return _DiskCaptureVersionChain(
+        item=item,
+        chain=chain,
+        version_paths=version_paths,
+    )
+
+
+def _write_all_to_spool(spool: BinaryIO, value: bytes) -> None:
+    offset = 0
+    while offset < len(value):
+        try:
+            written = spool.write(value[offset:])
+        except Exception as exc:
+            raise _StoreIoFailure(stage="body-spool") from exc
+        if type(written) is not int or not 1 <= written <= len(value) - offset:
+            raise _StoreIoFailure(stage="body-spool")
+        offset += written
+
+
+def _verify_target_payloads(
+    disk_chain: _DiskCaptureVersionChain,
+    *,
+    version: int,
+    spool: BinaryIO,
+) -> Mapping[str, object]:
+    committed = disk_chain.chain.version(version)
+    version_path = disk_chain.version_paths.get(version)
+    if committed is None or version_path is None:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    payloads = _payload_files(version_path, committed.envelope)
+    primary: Mapping[str, object] | None = None
+
+    for payload in payloads:
+        is_primary = (
+            payload.metadata.get("ordinal") == 0
+            and payload.metadata.get("role") == "primary"
+        )
+        digest = hashlib.sha256()
+        byte_size = 0
+        prefix = bytearray()
+        decoder = (
+            codecs.getincrementaldecoder("utf-8")("strict")
+            if is_primary
+            else None
+        )
+        try:
+            with payload.path.open("rb") as stream:
+                handle_stat = os.fstat(stream.fileno())
+                if not (
+                    stat.S_ISREG(handle_stat.st_mode)
+                    and handle_stat.st_dev == payload.path_stat.st_dev
+                    and handle_stat.st_ino == payload.path_stat.st_ino
+                    and handle_stat.st_mode == payload.path_stat.st_mode
+                ):
+                    raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+                while True:
+                    chunk = stream.read(DEFAULT_CHUNK_SIZE)
+                    if type(chunk) is not bytes:
+                        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+                    if not chunk:
+                        break
+                    byte_size += len(chunk)
+                    digest.update(chunk)
+                    if is_primary:
+                        if len(prefix) < 3:
+                            prefix.extend(chunk[: 3 - len(prefix)])
+                        try:
+                            assert decoder is not None
+                            decoder.decode(chunk, final=False)
+                        except UnicodeDecodeError as exc:
+                            raise _IntegrityFailure(
+                                CauseCode.PAYLOAD_HASH_MISMATCH
+                            ) from exc
+                        _write_all_to_spool(spool, chunk)
+        except (_IntegrityFailure, _StoreIoFailure):
+            raise
+        except OSError as exc:
+            raise _StoreIoFailure(
+                stage="payload-read",
+                cause_code=CauseCode.PAYLOAD_READ_FAILED,
+            ) from exc
+        if not _same_identity(payload.path, payload.path_stat):
+            raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+        expected_size = payload.metadata.get("byte_size")
+        if type(expected_size) is not int or byte_size != expected_size:
+            raise _IntegrityFailure(CauseCode.BYTE_SIZE_MISMATCH)
+        actual_sha256 = "sha256:" + digest.hexdigest()
+        expected_sha256 = payload.metadata.get("sha256")
+        if type(expected_sha256) is not str or not hmac.compare_digest(
+            actual_sha256,
+            expected_sha256,
+        ):
+            raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+        if is_primary:
+            if byte_size == 0 or bytes(prefix).startswith(b"\xef\xbb\xbf"):
+                raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+            try:
+                assert decoder is not None
+                decoder.decode(b"", final=True)
+            except UnicodeDecodeError as exc:
+                raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH) from exc
+            primary = payload.metadata
+
+    if primary is None:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+    try:
+        spool.flush()
+        spool.seek(0)
+    except Exception as exc:
+        raise _StoreIoFailure(stage="body-spool") from exc
+    return primary
+
+
+def _projection_warning_for_get(
+    disk_chain: _DiskCaptureVersionChain,
+) -> tuple[OperationWarning, ...]:
+    capture_id = disk_chain.chain.capture_id
+    projection_path = disk_chain.item.item_path / "capture.yaml"
+    try:
+        path_stat = _lstat_if_present(projection_path)
+    except OSError:
+        path_stat = None
+    if path_stat is not None and stat.S_ISREG(path_stat.st_mode) and not (
+        _is_reparse_point(path_stat)
+    ):
+        try:
+            source = _read_regular_bytes(
+                projection_path,
+                maximum_bytes=_PROJECTION_MAXIMUM_BYTES,
+                missing_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+                invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+            )
+            _check_machine_identity(
+                source,
+                expected_schema="knowledgeflow.capture-state",
+                invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+            )
+            load_capture_state(
+                source,
+                envelope=disk_chain.chain.current.envelope,
+                require_canonical=True,
+            )
+            return ()
+        except _UnsupportedMachineSchema:
+            raise
+        except (_IntegrityFailure, _StoreIoFailure, TypeError, ValueError):
+            pass
+    return (
+        OperationWarning(
+            code=WarningCode.PROJECTION_NEEDS_REBUILD,
+            details={"capture_id": capture_id},
+        ),
+    )
+
+
+def _capture_read_metadata(
+    disk_chain: _DiskCaptureVersionChain,
+    *,
+    version: int,
+    primary: Mapping[str, object],
+) -> CaptureReadMetadata:
+    committed = disk_chain.chain.version(version)
+    if committed is None:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    envelope = committed.envelope
+    channel = envelope.get("channel")
+    user_intent = envelope.get("user_intent")
+    if not isinstance(channel, Mapping) or not isinstance(user_intent, Mapping):
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+    fidelity = primary.get("fidelity")
+    media_type = primary.get("media_type")
+    encoding = primary.get("encoding")
+    byte_size = primary.get("byte_size")
+    primary_sha256 = primary.get("sha256")
+    payload_set = envelope.get("payload_set_sha256")
+    envelope_hash = envelope.get("envelope_sha256")
+    captured_at = envelope.get("captured_at")
+    channel_type = channel.get("type")
+    channel_instance = channel.get("instance_id")
+    external_ref = channel.get("external_ref")
+    source_created_at = channel.get("source_created_at")
+    target_kb_id = user_intent.get("target_kb_id")
+    processing_mode = user_intent.get("processing_mode")
+    requested_new_kb_name = user_intent.get("requested_new_kb_name")
+    required_strings = (
+        fidelity,
+        media_type,
+        encoding,
+        primary_sha256,
+        payload_set,
+        envelope_hash,
+        captured_at,
+        channel_type,
+        channel_instance,
+    )
+    optional_strings = (
+        external_ref,
+        source_created_at,
+        target_kb_id,
+        processing_mode,
+        requested_new_kb_name,
+    )
+    if (
+        not all(type(value) is str for value in required_strings)
+        or type(byte_size) is not int
+        or not all(value is None or type(value) is str for value in optional_strings)
+    ):
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+    try:
+        return CaptureReadMetadata(
+            capture_id=disk_chain.chain.capture_id,
+            version=version,
+            current_version=disk_chain.chain.current_version,
+            fidelity=cast(str, fidelity),
+            media_type=cast(str, media_type),
+            encoding=cast(str, encoding),
+            byte_size=byte_size,
+            primary_payload_sha256=cast(str, primary_sha256),
+            payload_set_sha256=cast(str, payload_set),
+            envelope_sha256=cast(str, envelope_hash),
+            captured_at=cast(str, captured_at),
+            channel=ChannelMetadata(
+                type=cast(str, channel_type),
+                instance_id=cast(str, channel_instance),
+                external_ref=cast(str | None, external_ref),
+                source_created_at=cast(str | None, source_created_at),
+            ),
+            user_intent=UserIntent(
+                target_kb_id=cast(str | None, target_kb_id),
+                processing_mode=cast(str | None, processing_mode),
+                requested_new_kb_name=cast(str | None, requested_new_kb_name),
+            ),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH) from exc
+
+
+def _emit_verified_body(
+    spool: BinaryIO,
+    sink: object,
+    *,
+    expected_bytes: int,
+) -> bool:
+    emitted = 0
+    writer = getattr(sink, "write", None)
+    if not callable(writer):
+        return False
+    try:
+        while True:
+            chunk = spool.read(DEFAULT_CHUNK_SIZE)
+            if type(chunk) is not bytes:
+                return False
+            if not chunk:
+                break
+            offset = 0
+            while offset < len(chunk):
+                written = writer(chunk[offset:])
+                if type(written) is not int or not 1 <= written <= len(chunk) - offset:
+                    return False
+                offset += written
+                emitted += written
+    except Exception:
+        return False
+    return emitted == expected_bytes
 
 
 def _capture_items(capture_root: Path) -> Iterator[tuple[Path, str, str]]:
@@ -1338,6 +2067,108 @@ def _run_capture_text(
             )
 
 
+def _run_get_capture(
+    request: GetCaptureRequest,
+    *,
+    config_path: str | os.PathLike[str] | None,
+    path_policy: PathPolicy,
+    dependencies: _GetCaptureDependencies,
+) -> GetCaptureOperationResult:
+    if not isinstance(request, GetCaptureRequest):
+        return _read_failure(PublicErrorCode.INVALID_INPUT)
+
+    try:
+        _local_config, capture_root = _load_capture_environment(
+            config_path=config_path,
+            path_policy=path_policy,
+        )
+    except ConfigLoadError as exc:
+        return _read_failure(exc.code)
+    except _InitFailure as exc:
+        return FailureResult(error=exc.error)
+    except (OSError, TypeError, ValueError):
+        return _read_failure(PublicErrorCode.CAPTURE_STORE_UNAVAILABLE)
+
+    spool: BinaryIO | None = None
+    try:
+        item = _locate_capture_item(capture_root, request.capture_id)
+        if item is None:
+            return _read_failure(PublicErrorCode.CAPTURE_NOT_FOUND)
+        disk_chain = _load_disk_capture_version_chain(item)
+
+        target_version = (
+            disk_chain.chain.current_version
+            if request.version is None
+            else request.version
+        )
+        if disk_chain.chain.version(target_version) is None:
+            return _read_failure(PublicErrorCode.VERSION_NOT_FOUND)
+
+        try:
+            spool = dependencies.spool_factory(capture_root)
+        except Exception as exc:
+            raise _StoreIoFailure(stage="body-spool") from exc
+        if not all(
+            callable(getattr(spool, name, None))
+            for name in ("write", "read", "seek", "flush", "close")
+        ):
+            raise _StoreIoFailure(stage="body-spool")
+
+        primary = _verify_target_payloads(
+            disk_chain,
+            version=target_version,
+            spool=spool,
+        )
+        warnings = (
+            _warnings_for_capture_version_chain(disk_chain.chain)
+            + _projection_warning_for_get(disk_chain)
+        )
+        read_state = _rebuild_capture_read_state(disk_chain.chain)
+        metadata = _capture_read_metadata(
+            disk_chain,
+            version=target_version,
+            primary=primary,
+        )
+        result = GetCaptureResult(
+            body_length_bytes=metadata.byte_size,
+            capture=metadata,
+            item_state=CaptureItemState(
+                routing_status=read_state.routing_status,
+                trust_status=read_state.trust_status,
+            ),
+            warnings=warnings,
+        )
+        if not _emit_verified_body(
+            spool,
+            request.body_sink,
+            expected_bytes=metadata.byte_size,
+        ):
+            return _read_failure(
+                PublicErrorCode.OUTPUT_WRITE_FAILED,
+                retryable=True,
+            )
+        return result
+    except _UnsupportedMachineSchema:
+        return _read_failure(PublicErrorCode.UNSUPPORTED_STORE_VERSION)
+    except _IntegrityFailure as exc:
+        return _read_integrity_failure(exc)
+    except _StoreIoFailure as exc:
+        return _read_io_failure(exc)
+    except (TypeError, ValueError):
+        return _read_failure(
+            PublicErrorCode.INTEGRITY_CHECK_FAILED,
+            cause_code=CauseCode.ENVELOPE_HASH_MISMATCH,
+        )
+    except OSError:
+        return _read_failure(PublicErrorCode.CAPTURE_STORE_UNAVAILABLE)
+    finally:
+        if spool is not None:
+            try:
+                spool.close()
+            except Exception:
+                pass
+
+
 def capture_text(
     request: CaptureTextRequest,
     *,
@@ -1351,6 +2182,22 @@ def capture_text(
         config_path=config_path,
         path_policy=path_policy,
         dependencies=_CaptureDependencies(),
+    )
+
+
+def get_capture(
+    request: GetCaptureRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+) -> GetCaptureOperationResult:
+    """Verify and stream one exact or latest committed Capture version."""
+
+    return _run_get_capture(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+        dependencies=_GetCaptureDependencies(),
     )
 
 
@@ -1373,4 +2220,28 @@ def _capture_text_with_dependencies(
     )
 
 
-__all__ = ["CaptureTextOperationResult", "capture_text"]
+def _get_capture_with_dependencies(
+    request: GetCaptureRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+    dependencies: _GetCaptureDependencies,
+) -> GetCaptureOperationResult:
+    """Internal deterministic entry point for bounded-spool tests."""
+
+    if not isinstance(dependencies, _GetCaptureDependencies):
+        raise TypeError("dependencies must be _GetCaptureDependencies")
+    return _run_get_capture(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+        dependencies=dependencies,
+    )
+
+
+__all__ = [
+    "CaptureTextOperationResult",
+    "GetCaptureOperationResult",
+    "capture_text",
+    "get_capture",
+]
