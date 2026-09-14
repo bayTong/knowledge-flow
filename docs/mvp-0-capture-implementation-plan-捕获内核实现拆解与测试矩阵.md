@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5-0 -->
+<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
 
-> 状态：Approved Design；C4C 提交 `231ad09` 已 push；C4V 已由独立本地提交闭合且未 push，下一功能门禁为 C5-0<br>
+> 状态：Approved Design；C4V 提交 `1e38f2f` 已 push；C5-0 内容与本地验证已完成、待独立版本化，下一功能门禁为 C5A<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -23,9 +23,10 @@
 > C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）<br>
 > C4B 完成与版本化收口日期：2026-09-13（独立提交 `666ba18`；已 push 至 `origin/main`）<br>
 > C4C 完成与版本化收口日期：2026-09-13（独立提交 `231ad09`；现已 push 至 `origin/main`）<br>
-> C4V 完成与版本化收口日期：2026-09-14（独立本地提交；未 push）<br>
+> C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）<br>
+> C5-0 内容与本地验证日期：2026-09-14（待独立版本化）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；C4C 已完成并 push，C4V 已按单独授权完成验收并由独立本地提交闭合，但当前不授权 push、C5-0、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；C4V 提交 `1e38f2f` 已 push，C5-0 已按单独授权完成契约内容与本地验证但待独立版本化；当前不授权 C5A、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
 ## 0. 结论先行
 
@@ -58,13 +59,14 @@
 - C4A 已在未公开操作的边界内实现严格追加 Event schema、读取请求/结果、规范游标 codec、Event 证明的连续版本链纯原语、内存状态重建及真实两版本 golden，并由独立提交 `06cff02` 闭环及 push。
 - C4B 已公开 `get_capture` 并闭合 latest/历史版本、目标 Payload 完整证明、Store 外磁盘 spool、sink 失败和投影只读降级；独立提交 `666ba18` 已 push。
 - C4C 已公开 `list_captures`，闭合全 Store 结构验证、内存状态筛选、有界预览、稳定 keyset 分页及 warning 归属，并由独立提交 `231ad09` 完成版本化和 push。
-- C4V 已在不修改生产代码、公共契约或磁盘 schema 的边界内新增 2 项公共 API 组合验收，闭合真实 4/64 MiB 写入—列表—读取、静态分页及页间受控新增证据，并由独立本地提交完成版本化；尚未 push。
+- C4V 已在不修改生产代码、公共契约或磁盘 schema 的边界内新增 2 项公共 API 组合验收，闭合真实 4/64 MiB 写入—列表—读取、静态分页及页间受控新增证据，并由独立提交 `1e38f2f` 完成版本化和 push。
+- C5-0 已冻结追加的请求/结果、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24，内容与本地验证完成、待独立版本化；未修改生产代码或磁盘 schema。
 - 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试，稳定化后为 93 项，C3A 后为 105 项，C3B 后为 122 项，C3C 后为 140 项，C3V 后为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 内容后当前为 214 项。
 
 ### 1.2 尚不存在
 
 - 没有 `package.json`、Node/Bun 应用或桌面前端。
-- `append_capture_version` 尚未实现；`get_capture` 与 `list_captures` 已分别由 C4B、C4C 独立版本化并 push，C4V 验收也已独立版本化但尚未 push。
+- `append_capture_version` 尚未实现；`get_capture` 与 `list_captures` 已分别由 C4B、C4C 独立版本化并 push，C4V 验收也已以 `1e38f2f` push。下一实现门禁 C5A 未授权。
 - 没有追加故障注入、投影与幂等索引恢复或迁移测试；初始化崩溃恢复和 C3 新建事务已验收，但捕获业务崩溃恢复尚未验收。
 - 没有统一 CLI；C3 的 Python 操作边界通过测试不代表机器适配层已经实现。
 - 没有接入 DeepSeek Harness，也没有可调用的 GBrain 适配器。
@@ -539,9 +541,12 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-E8A | C4A 读取侧契约能力 | M0-E6F | **2026-09-13 已完成并由独立提交 `06cff02` 闭环、已 push：追加 Event schema、连续版本发现、请求/结果模型、游标 codec 与真实两版本 golden 闭环；182 项全绿且不公开读取操作** |
 | M0-E8 | `get_capture`（C4B） | E7、E8A | **2026-09-13 已由独立提交 `666ba18` 闭合并 push：先完整验证、再经 Store 外有界磁盘 spool 向调用方 sink 输出；GET-01–GET-16 与当时 197 项全量通过** |
 | M0-E9 | `list_captures`（C4C） | E7、E8A | **2026-09-13 已完成并由独立提交 `231ad09` 闭合且已 push：有界预览、稳定 keyset 游标、投影内存重建和 Global Intake 视图闭环；LIST-01–LIST-19 与 212 项全量通过** |
-| M0-V0 | C4V 读取阶段验收 | E8、E9 | **2026-09-14 已完成并由独立本地提交闭合、尚未 push：GET/LIST 全矩阵、真实 4/64 MiB 公共读取闭环、静态分页和页间受控新增通过；当前全量 214 项** |
-| M0-E10 | `append_capture_version` | E4、E5、E7–E8、M0-D3 | CAS、幂等重试、版本先落盘/Event 后逻辑提交和完整新版本闭环 |
-| M0-E11 | 投影/索引重建和恢复扫描 | E7–E10 | 删除派生投影后可由不可变记录重建 |
+| M0-V0 | C4V 读取阶段验收 | E8、E9 | **2026-09-14 已完成并由独立提交 `1e38f2f` 闭合、已 push：GET/LIST 全矩阵、真实 4/64 MiB 公共读取闭环、静态分页和页间受控新增通过；当前全量 214 项** |
+| M0-D5 | C5-0 追加写入契约冻结 | E4、E5、E7–E9、M0-D3 | **2026-09-14 已完成内容与本地验证、待独立版本化：冻结公开请求/回执、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24** |
+| M0-E10A | C5A 追加契约能力与写入基础 | M0-D5 | 请求/结果模型、版本/投影 schema 泛化、追加 Event writer、staging 与现场探测纯能力通过；不公开 append |
+| M0-E10B | C5B 完整 `append_capture_version` | M0-E10A | 锁内幂等/CAS、版本先落盘、Event 逻辑提交、最终回读、投影和窄续封闭环 |
+| M0-E10V | C5V 追加阶段验收 | M0-E10B | APP-01–APP-24、真实边界、双进程与三态证据全部通过 |
+| M0-E11 | 投影/索引重建和恢复扫描 | E7–E10V | 删除派生投影后可由不可变记录重建 |
 | M0-E12 | JSON/文本流 CLI 适配 | E6–E11 | stdin 使用 JSON 头 + 精确长度正文；stdout 使用 JSON 结果头 + `get_capture` 精确长度正文 |
 | M0-V1 | 全故障注入和并发验证 | E6–E12 | 第 10 节全部自动化场景通过 |
 | M0-V2 | 迁移演练 | E11、V1 | 临时 Store 复制—校验—切换后身份和哈希不变 |
@@ -589,12 +594,20 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 
 ### 9.4 `append_capture_version`
 
-- 必须提供 `expected_current_version` 和幂等键。
-- 保存完整新 Payload，不保存补丁链。
-- 同一基线的并发追加最多一个成功。
-- 版本目录先无覆盖提交，匹配的 `capture.version-appended` Event 后无覆盖提交；Event 是 N>1 的唯一逻辑提交点。
-- 追加 Event 同时绑定 N、N+1 及前后 Envelope 哈希；投影只能在 Event 提交并完成最终回读后推进。
-- 旧版本、旧哈希和旧批准不变，新版本不继承批准。
+- 公开 `AppendCaptureVersionRequest` 使用 `frozen + slots + kw_only`，包含 `capture_id`、`expected_current_version`、完整 `text`/二进制流、`channel`、必填 `idempotency_key` 和可省略 `user_intent`；省略意图归一化为全 `null`。
+- `expected_current_version` 只接受整数 `1..999998`，`bool` 无效；v1 已到 `999999` 返回 `invalid_input`，不分配越界版本。
+- 新增独立、精确字段的 `AppendCaptureVersionResult` 与 `AppendCaptureVersionOperationResult`；不放宽现有 `CommittedWriteResult` 的 capture_text 回执。
+- 保存完整新 Payload，不保存补丁链；输入验证、安全上限、UTF-8/BOM 和有界 staging 复用 C3B 能力。
+- 暂存使用独立内部类型和 `.staging/<tx>/version + events` 固定树；capture-transaction v1 marker 仅增加 append operation，按 operation 分流所有权允许树。部分 rename 后只清理本事务仍在 staging 的对象，marker 最后删除，最终尾部和未知 staging 永不删除；C3 布局/规范字节保持不变。
+- 正文在锁外 staging 并生成 Request Fingerprint；Store 级 Windows 锁覆盖全 Store 不可变扫描、幂等判定、目标链/当前 Payload attestation、CAS、提交、最终回读和投影尝试。
+- 锁内优先级固定为不可变完整性/版本支持 → 幂等命中或冲突 → `capture_not_found` → CAS `version_conflict` → 目标/写入证据。同 key 已提交命中优先于 CAS，即使 Item 后来已推进也返回原版本。
+- 同一基线的不同 key 并发追加最多一个成功；同 key、同请求并发返回同一版本/Event，同 key、不同指纹返回 `idempotency_conflict`。
+- 只有完全规范、全部 Payload 已验证、绑定当前 N 且幂等身份/指纹相同的唯一 N+1 无 Event 尾部可由同 key 续封；采用其既有版本、Event ID 和 Envelope，不生成 N+2。其他尾部不采用、不覆盖、不清理，留给 C6。
+- 版本目录先无覆盖提交，匹配的 `capture.version-appended` Event 后无覆盖提交；Event 是 N>1 的唯一逻辑提交点。版本 rename 结果不明但 Event 被证明不存在时仍是 `not-committed`。
+- Event rename 之后按 source/target 与最终规范字节、引用和 Payload attestation 区分 `not-committed | committed | unknown`；确定损坏为 `integrity_check_failed + unknown`，无法证明为 `atomic_commit_failed + unknown`。
+- 追加 Event 复用同一严格 codec，同时绑定 N、N+1 及前后 Envelope 哈希；投影只能在 Event 提交并完成最终回读后推进，失败只产生成功 warning。
+- state v1 的版本 1 分支保持 `updated_at == durability.verified_at` 与旧调用/golden；版本 >1 的 codec 必须取得当前 Event 和前一 Envelope，严格验证 `updated_at == Event.occurred_at`，验证时间独立采样。
+- 旧版本、旧 Event、旧哈希和旧批准不变，新版本不继承批准；C5 不实现通用恢复、索引、路由、GBrain 或生产初始化。
 
 ## 10. 自动化测试矩阵
 
@@ -778,14 +791,30 @@ R0.3D 特征证据与 R0.3F 实现结果：
 
 | ID | 场景 | 预期 |
 |---|---|---|
-| APP-01 | expected 与当前一致 | 生成 N+1 完整版本 |
-| APP-02 | stale expected | `version_conflict`，零覆盖 |
-| APP-03 | 两个并发 expected=N | 一个成功，一个冲突 |
-| APP-04 | 成功后同 key 重试 | 返回同一个 N+1，不生成 N+2 |
-| APP-05 | 同 key 不同正文 | `idempotency_conflict` |
-| APP-06 | 新正文与旧正文相同 | 用户主动追加时仍生成新版本 |
-| APP-07 | 旧版本已有批准 | 新版本不继承批准 |
-| APP-08 | 版本 1 回读 | 追加后字节和哈希完全不变 |
+| APP-01 | 构造公开请求 | 精确字段、关键字调用、frozen/slots；坏 ID、缺 key、空 key、`bool` expected 和 expected 0/999999 均拒绝 |
+| APP-02 | `str` 与非 seekable 二进制流进入 append staging | 严格 UTF-8、无 BOM、原字符/字节不改写，单块不超过 1 MiB；marker 先写且固定树/operation 正确，C3 marker 与清理回归不变 |
+| APP-03 | 省略意图与显式全 `null` | 归一化对象、scope、key 摘要和 Request Fingerprint 完全相同；golden 精确匹配 |
+| APP-04 | expected=N 且当前为 N | 生成完整 N+1、严格追加 Event、版本 N+1 投影和精确成功回执；投影 updated/verified 时间语义符合 C-041 |
+| APP-05 | stale expected | `version_conflict + not-committed`，带安全 current/expected，零新最终 Event/可见版本 |
+| APP-06 | 不同 key、两个进程同时 expected=N | 恰好一个提交 N+1，另一个版本冲突，无 N+2/重复 Event |
+| APP-07 | 同 key、同请求两个进程竞争 | 两者返回同一 N+1/Event/哈希，只有一组最终原件 |
+| APP-08 | 成功后同 key 重试且 Item 已被其他 key 推进 | 仍返回原 N+1 稳定回执，不误报版本冲突、不生成更高版本 |
+| APP-09 | 同 key、不同正文/渠道/意图/capture/expected | `idempotency_conflict`，且优先于 `capture_not_found`/`version_conflict` |
+| APP-10 | 规范但不存在的 capture ID | `capture_not_found + not-committed`，无 ID 分配或最终残片 |
+| APP-11 | 新正文与旧正文逐字相同 | 不按内容去重；新 key 的主动追加仍生成 N+1 |
+| APP-12 | 旧版本已有批准或意图 | 旧字节/哈希/批准不变；新版本不继承批准或未明确意图 |
+| APP-13 | 当前基线 Payload 等长篡改 | CAS 前 `integrity_check_failed`，不写新最终对象 |
+| APP-14 | 全 Store 扫描遇到坏已提交机器字节、未知 schema/version，或尾部身份读取 I/O 不明 | 前两者分别失败关闭为完整性错误或 `unsupported_store_version`；尾部已知部分字节不保留 key，I/O 无法判定身份则 `capture_store_unavailable + not-committed`，均不得误作已提交 key 未命中 |
+| APP-15 | 唯一 N+1 尾部与本请求身份/指纹完全一致 | 全量验证后采用既有版本/Event ID/Envelope，只续封 Event，不生成 N+2 |
+| APP-16 | 唯一尾部使用其他/缺失幂等身份或无法完全证明 | `atomic_commit_failed + not-committed`、`stage=version-target-conflict`；不采用、不覆盖、不删除；同身份不同指纹仍由 APP-09 处理 |
+| APP-17 | 多尾部、版本缺口或 Event 引用矛盾 | `integrity_check_failed`，不回退或自动清理 |
+| APP-18 | 版本 rename 抛错或现场不明，但 Event 目标确定不存在；同时存在未知 staging | `atomic_commit_failed + not-committed`；最终尾部保持不可见且不被本事务清理，未知 staging 逐字节不变 |
+| APP-19 | Event 目标在首次逻辑提交尝试前冲突 | 不覆盖、不冒认；可证明未提交时为 `atomic_commit_failed + not-committed` |
+| APP-20 | Event rename 分别形成 source 存在/target 不存在、source 消失/target 精确匹配、现场不可判定 | 依次为 `not-committed`、继续 `committed`、`unknown` |
+| APP-21 | Event 已出现且最终回读确定损坏或只因 I/O 无法证明 | 分别为 `integrity_check_failed + unknown`、`atomic_commit_failed + unknown`，绝不返回成功 |
+| APP-22 | Event/Version 最终有效而投影更新失败 | `ok=true + saved=true + committed`，warning 为 `projection_needs_rebuild` |
+| APP-23 | 成功回执字段、值域及同 key 动态 warning | 追加类型精确；稳定字段不变，warning 反映当前投影/尾部且不触发修复 |
+| APP-24 | 真实 4 MiB/64 MiB 追加后经 C4 list/get 读取新旧版本 | 新版字节/哈希精确、有界 I/O；旧版不变；唯一未完成尾部仍按 C4 规则隐藏 |
 
 ### 10.8 恢复和迁移
 
@@ -848,6 +877,15 @@ after_version_renamed
 after_event_appended
 after_projection_replaced
 before_receipt_returned
+
+# append 专用边界（只允许内部测试依赖注入）
+before_append_version_rename
+after_append_version_rename
+before_append_event_rename
+after_append_event_rename
+after_append_final_readback
+before_append_projection_replace
+before_append_receipt_returned
 ```
 
 每个捕获/追加故障点至少验证：
@@ -857,6 +895,8 @@ before_receipt_returned
 - 是否产生重复 Item/Version/Event。
 - 是否有不完整目录被误认为成功。
 - 回执中的 `saved` 是否与磁盘事实一致。
+- 追加 Event rename 抛错后，分别伪造“source 仍在且 target 不在”“source 已消失且 target 精确匹配”“source/target 无法可靠读取”“target 确定损坏”四类现场，验证 APP-20/APP-21 的三态和错误码。
+- 版本 rename 后、Event 前的所有现场都不得让 C4 读取 N+1；同 key 只接管 APP-15 的完全匹配尾部，任何其他尾部均保持原样。
 
 ### 11.4 无法仅靠自动化证明的部分
 
@@ -896,7 +936,7 @@ before_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C4V 已逐批通过并独立版本化；C4C 及此前已 push，C4V 尚未 push，下一功能门禁为 C5-0** | C4V push、C5-0 及后续未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C4V 已逐批通过、版本化并 push；C5-0 契约内容与本地验证已完成、待独立版本化，下一功能门禁为 C5A** | C5A 及后续未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | **已于 2026-09-04 通过：LOCK/DUR/INIT/FI 全绿，自动发现总计 85 项测试** | 使用真实生产 root |
@@ -919,4 +959,4 @@ before_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后当前为 214 项。安全 Store 初始化、初始化崩溃恢复、C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 及 C4V 读取阶段验收均已实现或验收并独立版本化；C4V 尚未 push。下一功能门禁为 C5-0，仍需另行明确授权；追加和业务事务恢复尚未实现。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后当前为 214 项。安全 Store 初始化、初始化崩溃恢复、C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 及 C4V 读取阶段验收均已实现或验收并独立版本化，C4V `1e38f2f` 已 push。C5-0 已完成契约内容与本地验证、待独立版本化；下一功能门禁为 C5A，仍需另行明确授权。追加和业务事务恢复尚未实现。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。

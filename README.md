@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5-0 -->
+<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-14):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C4C commit `231ad09` is synchronized with `origin/main`; C4V read-stage acceptance is closed by an independent local commit that has not been pushed. The complete GET-01–GET-16 and LIST-01–LIST-19 matrices remain green, while two additional public-API acceptance tests prove exact 4 MiB/64 MiB `capture_text → list_captures → get_capture` round trips, stable receipts, bounded I/O, static keyset traversal, and controlled creation between pages. The full 214-test suite (199 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions) passes in ordinary and strict `ResourceWarning` modes. The next functional gate is separately authorized C5-0; append and the production Store remain outside C4V. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-14):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C4V read-stage acceptance commit `1e38f2f` is synchronized with `origin/main`. The complete GET-01–GET-16 and LIST-01–LIST-19 matrices remain green, while two additional public-API acceptance tests prove exact 4 MiB/64 MiB `capture_text → list_captures → get_capture` round trips, stable receipts, bounded I/O, static keyset traversal, and controlled creation between pages. C5-0 has now frozen the append request/result, idempotency-before-CAS order, narrow same-request tail completion, Event-rename commit evidence, failure priority, and APP-01–APP-24; it changed no production code or disk schema and awaits an independent documentation commit. The full 214-test suite (199 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions) passes in ordinary and strict `ResourceWarning` modes. The next functional gate is separately authorized C5A; append and the production Store remain unimplemented. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -246,10 +246,10 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, and `list_captures` are implemented and independently versioned; C4C commit `231ad09` has been pushed, and C4V is closed by an independent local commit that has not been pushed. Append, business-transaction recovery, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
+The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, and `list_captures` are implemented and independently versioned; C4V commit `1e38f2f` has been pushed. C5-0 append-contract closure is complete in the worktree and awaits an independent commit, but append, business-transaction recovery, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C4V are complete and independently versioned; C4V has not been pushed. This does not authorize C5-0 or any later batch.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C4V are complete, versioned, and pushed; C5-0 content and local verification are complete but not yet independently committed. This does not authorize C5A or any later batch.
 3. Then complete append, recovery, and the restricted adapter through C5–C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 

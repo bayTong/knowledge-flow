@@ -1,6 +1,6 @@
 # Capture Envelope v1：捕获信封数据契约与原子保存事务
 
-> 状态：Approved Design；C0–C3 与 C4-0 已完成，`capture_text` Item 事务已实现并通过本阶段验收；读取与追加实现尚未完成<br>
+> 状态：Approved Design；`capture_text` 与 C4 读取能力已实现并验收，C5-0 追加事务契约已收口，追加实现尚未开始<br>
 > 整理日期：2026-09-01<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-02<br>
@@ -11,8 +11,10 @@
 > C3V 完成日期：2026-09-11<br>
 > 原子 Event 补充确认日期：2026-09-08<br>
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
+> C4V 完成与远端同步日期：2026-09-14（提交 `1e38f2f` 已 push 至 `origin/main`）<br>
+> C5-0 追加写入契约收口日期：2026-09-14（内容与本地验证完成，待独立版本化）<br>
 > 适用范围：MVP-0 的文本捕获，以及未来 URL、文件 Payload 必须保持的身份与事务语义<br>
-> 边界：本文定义完整数据和事务契约；C3 只实现并验收新建文本 Capture 的事务，追加、业务崩溃恢复和本文其余远期能力尚未完成
+> 边界：本文定义完整数据和事务契约；新建与读取已实现，C5-0 只冻结追加契约，追加生产代码、业务崩溃恢复和本文其余远期能力尚未完成
 
 ## 0. 结论先行
 
@@ -205,6 +207,7 @@ job_id:     job_01991a7e-7b23-7eba-b6e4-0f4d5eb03862
 - 新版本只能是当前最大版本加一。
 - 追加版本必须提供 `expected_current_version` 或等价的前一版本哈希。
 - 当前版本不匹配时返回 `version_conflict`，不得覆盖或自动合并。
+- v1 目录只表达 `000001..999999`；因此公开追加请求的 `expected_current_version` 只接受整数 `1..999998`，`bool` 无效。当前已为 `999999` 时返回 `invalid_input`，不分配越界版本。
 
 ### 5.3 幂等键
 
@@ -219,11 +222,11 @@ idempotency_identity = (scope, key_sha256)
 规则：
 
 - `channel.type` 和 `channel.instance_id` 必须分别为 1–64 个小写 ASCII 字母、数字、点、下划线或连字符，不允许冒号、斜杠、反斜杠、空白或换行；`operation` 来自固定枚举，因此 scope 分段无歧义。
-- `idempotency_key` 可以省略；提供时必须是非空字符串，UTF-8 编码不超过 512 bytes。
+- `capture_text` 可以省略 `idempotency_key`；`append_capture_version` 必须提供。提供时必须是非空字符串，UTF-8 编码不超过 512 bytes。
 - 同一作用域、同一幂等身份且请求指纹相同，必须验证最终不可变 Envelope、Payload 与 Event 后，返回原 `event_id + capture_id + version` 以及相同的 Payload/Envelope 哈希字段。
 - 同一幂等键若对应不同请求指纹，即使 Payload 字节相同但明确用户意图不同，也返回 `idempotency_conflict`，不能静默采用任一请求。
 - 原始幂等键默认不落盘，只保存哈希；外部消息 ID 如需审计，单独存放在来源字段中。
-- 入口不提供幂等键时，每次请求按新的主动保存处理。
+- 只有 `capture_text` 在入口不提供幂等键时，才把每次请求按新的主动保存处理；追加不允许进入这个分支。
 - 内容哈希不是幂等键，不能单独用来吞掉 Capture Event。
 
 成功回执中的 `warnings` 是当前派生状态，不属于幂等身份。幂等命中时只读检查 `capture.yaml`：投影有效则返回空警告，投影缺失、损坏或不一致则返回 `projection_needs_rebuild`；C3 不在该路径自动重建投影。不可变原件验证失败时必须返回完整性错误，不能仅凭幂等字段返回成功。
@@ -479,6 +482,10 @@ MVP-0 两个写操作先构造以下固定键顺序的 JSON 对象；所有可�
 {"operation":"capture_text","payload_set_sha256":"sha256:...","channel":{"type":"app","instance_id":"local-desktop","external_ref":null,"source_created_at":null},"payload_metadata":[{"ordinal":0,"original_name":null}],"user_intent":{"target_kb_id":null,"processing_mode":null,"requested_new_kb_name":null},"capture_id":null,"expected_current_version":null}
 ```
 
+```json
+{"operation":"append_capture_version","payload_set_sha256":"sha256:...","channel":{"type":"app","instance_id":"local-desktop","external_ref":null,"source_created_at":null},"payload_metadata":[{"ordinal":0,"original_name":null}],"user_intent":{"target_kb_id":null,"processing_mode":null,"requested_new_kb_name":null},"capture_id":"cap_...","expected_current_version":1}
+```
+
 - `operation` 只能是 `capture_text` 或 `append_capture_version`。
 - `payload_metadata` 按 `ordinal` 升序；文本入口的 `original_name` 固定为 `null`。
 - `capture_text` 的 `capture_id` 与 `expected_current_version` 固定为 `null`。
@@ -569,7 +576,9 @@ updated_at: "2026-09-01T02:10:12.456Z"
 - 每次更新使用“写临时文件—flush—原子替换”。
 - 投影中的版本和哈希必须能在不可变版本目录中找到。
 - 投影与事件不一致时，以不可变版本和追加事件为准，投影标记 `needs-rebuild` 后重建。
-- `current_version` 与 `current_envelope_sha256` 只能指向最高连续已提交版本；不得因为发现更高版本目录而提前推进。`updated_at` 取该版本唯一匹配版本建立 Event 的 `occurred_at`。
+- `current_version` 与 `current_envelope_sha256` 只能指向最高连续已提交版本；不得因为发现更高版本目录而提前推进。C5A 把同一 `capture-state` v1 的 `current_version` 从初始专用值 `1` 向后兼容地泛化为整数 `1..999999`，不提升 schema version、不改变现有版本 1 golden 字节。
+- 对 C5 新写的追加投影，`updated_at` 取当前版本唯一匹配版本建立 Event 的 `occurred_at`；`durability.verified_at` 取该版本/Event 最终回读通过后、写投影前的独立规范 UTC 样本，两者不要求相等，且不得把较晚的投影验证时间伪装成业务 Event 时间。现有 C3 初始投影继续使用兼容分支：`current_version == 1` 时要求两个字段相等，其既有 golden 字节不变，即使该时间晚于创建 Event。
+- C5A 将 `validate/dump/load_capture_state` 的 Event 交叉验证参数设计为向后兼容的可选关键字：版本 1 调用不新增必填参数并保持原校验；`current_version > 1` 时必须同时提供当前追加 Event 和前一 Envelope，复用严格 Event 引用校验，并要求 `updated_at == current_event.occurred_at`。不得简单删除旧相等校验后让任意投影时间通过。C4 返回值仍从不可变 Event 内存重建，不信任投影时间。
 - GBrain page ID、Git commit 和错误次数等异步信息只能进入投影或事件，不能回写旧 Envelope。
 - C3 初始投影固定使用第 9.1 节的完整字段和值域：`durable`、`unassigned`、`unreviewed-capture`、`not-requested` 与 `uncommitted`；此时不执行路由、GBrain 或 Git。
 - `capture.yaml` 使用受限 YAML、严格 `knowledgeflow.capture-state` v1 schema 和 schema-defined 字段顺序。缺失或损坏只产生重建需求，不代表不可变原件丢失。
@@ -603,7 +612,7 @@ actor:
 
 ### 9.4 `capture.version-appended` State Event v1
 
-C4-0 为读取侧和未来 C5 冻结最小追加事件；不在本批实现 writer：
+C4-0 为读取侧和未来 C5 冻结最小追加事件；C5-0 继续冻结 writer 的复用边界，但不在契约批实现 writer：
 
 ```yaml
 schema: "knowledgeflow.capture-event"
@@ -630,6 +639,7 @@ actor:
 - 每个版本恰好一个版本建立 Event。同一 Item 中重复、孤立或交叉引用矛盾的创建/追加 Event 均是完整性失败，不按“最新文件获胜”。
 - 追加 Event 必须以目标不存在的无覆盖提交进入 `events/<event-id>.yaml`；它的最终提交是版本 N>1 的逻辑提交点。Event 进入最终路径之前，即使版本目录已经存在，也不得被读取、投影或列表视为新版本。
 - 读取遇到不支持的 Event schema/schema version 返回 `unsupported_store_version`；已知 schema 的非法字段、非规范字节或引用矛盾返回 `integrity_check_failed`。
+- C5 writer 必须调用同一严格 schema、规范发射和 `dump/load_capture_event` 引用校验能力，不得复制或放宽一套只写不读的 Event schema。首次新写时 Event 与新 Envelope 在事务 staging 内预封存；若同 key 重试接管一个完全可证明的唯一 N+1 尾部，可以从该不可变 Envelope 的 `event_id`、actor、版本和前后哈希重建 Event，并在本次真正逻辑提交前采样新的规范 `occurred_at`。未提交 staging Event 的时间不构成持久事实。
 
 ## 10. 创建捕获的原子事务
 
@@ -741,28 +751,50 @@ warnings: []
 - `capture_id`
 - `expected_current_version`
 - 新 Payload
-- 新的 `idempotency_key` 或明确版本请求 ID
+- 必填的 `idempotency_key`
+- 可省略并归一化为全 `null` 的 `user_intent`
 
-MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒度 Item 锁。正文可在锁外有界写入本事务 staging；从当前版本判定开始，锁必须持有到 Event 提交后的最终回读与投影更新尝试结束。
+MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒度 Item 锁、数据库或持久幂等索引。正文先在锁外有界写入本事务 staging，回读形成 Payload Set、Request Fingerprint 和幂等身份；进入不可变扫描后持锁，直到 Event 提交后的最终回读与投影更新尝试结束。
+
+追加 staging 不复用 C3 的完整 `item/versions/000001` 候选，而使用可直接提交单一版本目录与单一 Event 的固定树：
+
+```text
+.staging/<transaction-id>/
+├── transaction.yaml
+├── version/
+│   ├── envelope.yaml
+│   └── payloads/primary.txt
+└── events/<event-id>.yaml
+```
+
+内部事务 marker 继续使用 `knowledgeflow.capture-transaction` v1 的四字段规范形状；C5A 只增加 `operation: "append_capture_version"`，不改变已有 `capture_text` marker 字节。marker 必须先于内容耐久写入和回读，清理按 marker operation 选择互不混用的固定允许树，并校验事务根/每个对象身份、普通对象类型、非 reparse 与 root 包含关系。提交导致 `version/` 或 Event 文件缺失是允许的部分树；未知额外对象或身份变化必须拒绝清理。清理只触及当前调用拥有的 staging，marker 最后删除，不能枚举、采用或删除最终 Item 尾部；通用残留扫描属于 C6。
 
 逻辑提交顺序固定为：
 
-1. 在写锁内按第 9.3、9.4 节扫描并验证连续已提交前缀，确认当前版本严格等于 `expected_current_version`；投影不能代替该判定。
-2. 分配新 `event_id`，令新版本为 N+1。新 Envelope 的 `previous_version` 只写整数 N；第 9.4 节 Event 写入 `previous_version: N`、前一 Envelope 哈希和新 Envelope 哈希。
-3. 在 staging 中写完整新版本和规范追加 Event；flush 并回读验证全部 Payload、Payload Set、Envelope 自哈希、Event schema 及前后版本交叉引用。
-4. 以目标不存在的同盘原子 rename 提交 `versions/<N+1>/`，并在平台允许时 flush `versions/`。此刻只是不可变候选，尚未对读者可见。
-5. 再以目标不存在的原子提交把 Event 放入 `events/<event-id>.yaml`，并在平台允许时 flush `events/`。这是唯一逻辑提交点；不能先更新 `capture.yaml`，也不能把版本目录 rename 当作成功回执边界。
-6. 从最终路径回读版本、前一版本和 Event。只有连续链、全部哈希及交叉引用都通过，才能返回 `saved: true + commit_state: committed`。
-7. 最后原子更新投影到 N+1。该步失败只返回 `projection_needs_rebuild` 警告，不撤销已经提交的 Event/Version；只有显式启用异步投递目标时才登记对应新版本请求，MVP-0 不请求 GBrain 镜像。
+1. 在写锁内扫描全部唯一规范 Item、已提交版本/Envelope/版本建立 Event，以及每个 Item 至多一个无 Event 的 N+1 尾部；已提交结构、规范字节、引用或受支持版本任一无法可靠判断时失败关闭。尾部允许尚未写全，其已知缺失/部分机器字节本身不污染已提交链。普通扫描不全量重哈希 Store 中每份历史正文；对幂等命中的版本、可接管尾部以及目标 Item 当前基线必须完成其全部 Payload attestation。
+2. 先按 `scope + key_sha256` 解析幂等：同身份、同指纹的已提交版本经最终验证后返回原稳定回执，即使目标 Item 当前已超过请求中的 expected；同身份、不同指纹返回 `idempotency_conflict`。唯一尾部只有规范、可读、自哈希有效且绑定其 Item/版本的 Envelope 才贡献未提交身份；同身份同指纹只命中尾部时记录候选并继续目标/CAS/完整采用证明，绝不直接返回成功。已知缺失/部分/非规范尾部不保留全 Store key，I/O 导致身份事实不可判断则在写最终对象前返回 `capture_store_unavailable + not-committed`。该顺序必须先于目标查找和 CAS。
+3. 幂等未命中后定位唯一 `capture_id`，验证 Event 证明的连续已提交前缀，并以该前缀的 N 比较 `expected_current_version`；投影、最高目录名和目录时间不能代替该判定。
+4. 若目标存在唯一无 Event 的 N+1 尾部，只有其普通目录身份、完整 Payload/Envelope、前一版本绑定、幂等身份和请求指纹都与本请求完全一致时才采用；仅在步骤 2 读取到身份不等于完成采用证明。采用时保留既有 N+1、`event_id` 和 Envelope，丢弃本次未提交版本候选并直接进入 Event 预封存。其他目标尾部不采用、不覆盖、不删除，返回 `atomic_commit_failed + not-committed`，通用隔离留给 C6。
+5. 无可采用尾部时分配新 `event_id`，令新版本为 N+1。新 Envelope 的 `previous_version` 只写整数 N；第 9.4 节 Event 写入 `previous_version: N`、前一 Envelope 哈希和新 Envelope 哈希。
+6. 在 staging 中写完整新版本和规范追加 Event；flush 并回读验证全部新 Payload、Payload Set、Envelope 自哈希、Event schema 及前后版本交叉引用。
+7. 以目标不存在的同盘原子 rename 提交 `versions/<N+1>/`，并在平台允许时 flush `versions/`。此刻只是不可变候选，尚未对读者可见。
+8. 再以目标不存在的原子提交把 Event 放入 `events/<event-id>.yaml`，并在平台允许时 flush `events/`。这是唯一逻辑提交点；不能先更新 `capture.yaml`，也不能把版本目录 rename 当作成功回执边界。
+9. 从最终路径回读版本、前一版本和 Event。只有连续链、全部新版本哈希及交叉引用都通过，才能返回 `saved: true + commit_state: committed`。
+10. 最后原子更新投影到 N+1。该步失败只返回 `projection_needs_rebuild` 警告，不撤销已经提交的 Event/Version；只有显式启用异步投递目标时才登记对应新版本请求，MVP-0 不请求 GBrain 镜像。
+
+锁内公共错误优先级为“不可变结构/版本支持 → 幂等命中或冲突 → `capture_not_found` → `version_conflict` → 版本/Event 目标与写入证据”。请求模型的机械错误和正文 staging/超限发生在此之前；因此正文超限可以先于锁内查找返回。已经取得确定损坏证据时必须使用 `integrity_check_failed`，不能退化成普通冲突或未知 I/O。
 
 故障与读取责任固定为：
 
 - 版本目录提交前失败：`not-committed`，没有新可见版本。
 - 版本目录已经提交但 Event 可以证明未提交：仍为 `not-committed`；留下的唯一 N+1 目录是未完成事务残留。C4 latest/list 忽略它并警告，显式读取 N+1 返回 `version_not_found`；C4 不删除或补全它。
-- Event rename 附近无法证明是否提交：返回 `unknown`；不得生成新幂等键。后续同 key 重试先按最终 Event/Version 事实判定，不能盲目创建 N+2。
-- Event 已提交但最终回读无法证明内容有效：不能报告成功；返回 `unknown` 或稳定完整性错误取决于是否已取得确定磁盘证据。读取侧看到 Event/Version 矛盾时一律 fail-closed。
+- 版本 rename 自身的结果即使无法判断，只要 Event 最终目标在逻辑提交尝试前仍被证明不存在，公共提交状态仍为 `not-committed`；不得把“可能留下不可见尾部”误报为逻辑提交未知。
+- Event rename 抛错后，若 staging 候选仍存在且目标不存在，则为 `not-committed`；若候选已不存在且最终 Event、前后版本与全部新 Payload 完全匹配，则提交事实为 `committed`，继续最终回读；其余无法形成唯一结论的现场返回 `unknown`。不得生成新幂等键。
+- Event 最终目标在首次尝试前已存在且没有先前同请求幂等证明时，不覆盖、不冒认；可证明本请求尚未逻辑提交时返回 `atomic_commit_failed + not-committed`。
+- Event 已提交但最终回读无法证明内容有效：不能报告成功；确定的规范字节、引用或哈希损坏返回 `integrity_check_failed + unknown`，I/O 使事实不可证明则返回 `atomic_commit_failed + unknown`。读取侧看到 Event/Version 矛盾时一律 fail-closed。
 - Event 和版本最终回读有效而投影失败：提交已成立，返回成功加 `projection_needs_rebuild`。
-- C5 只实现其精确幂等回执与写入事务；通用启动恢复、残留隔离/清理和投影重建仍属于 C6。
+- 同 key 重试若发现可证明一致的唯一未提交 N+1 尾部，复用其版本、Event ID 和 Envelope 续封 Event；发现已提交匹配版本则返回原稳定回执。其他残留不自动处理。
+- C5 只实现上述请求专属的精确幂等回执和窄续封；通用启动恢复、未知残留隔离/清理和投影重建仍属于 C6。
 
 约束：
 
@@ -770,6 +802,7 @@ MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒
 - 不允许对旧版本做 in-place patch。
 - 可以在 UI 中显示 diff，但版本文件保存完整 Payload，避免恢复依赖补丁链。
 - 已批准旧版本时，新版本不会继承批准；旧批准继续只绑定旧哈希。
+- C5 新增独立的追加成功结果类型，不放宽 C3 `capture_text` 已冻结的精确回执字段。
 
 ## 12. 崩溃与重试语义
 
@@ -1037,8 +1070,8 @@ v1 推荐暂不引入新的业务数据库：
 本文虽已获批，仍不应立即开发完整捕获系统。当前推荐顺序：
 
 1. C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A/C3B 完成后为 122 项，C3C 完成后为 140 项，C3V 完成后为 144 项，R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 内容与本地验证后当前全量 214 项测试通过。Envelope/Event/Projection schema、受限 YAML、自哈希、配置/Store 初始化、Store 写锁、有界写入、staging 清理、真实 4/64 MiB 边界、完整新建 Item 事务、追加 Event/版本链读取原语、精确读取、列表读取、公共读取闭环、R0 回归及文档护栏均已有测试。
-2. 当前实现已包含公开 `capture_text`、C4B `get_capture` 和 C4C `list_captures`，三者均已独立版本化并 push；C4V 读取阶段验收已由独立本地提交闭合但尚未 push，追加、业务崩溃恢复、重建与迁移尚未实现，因此本文整体仍不是 `Effective`。
+2. 当前实现已包含公开 `capture_text`、C4B `get_capture` 和 C4C `list_captures`，三者均已独立版本化并 push；C4V 读取阶段验收提交 `1e38f2f` 也已 push。C5-0 只完成追加契约内容与本地验证，追加、业务崩溃恢复、重建与迁移尚未实现，因此本文整体仍不是 `Effective`。
 3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，C3A/C3B 已于 2026-09-10 分别完成，C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 在测试持有的 Store 中先后完成，D0-F、D0G 与 C4-0 也已闭合；后续 C4A/C4B/C4C 均另行获得逐批授权。任何这些授权都不包含生产 Store。
-4. 截至 C4C 提交 `231ad09` 的稳定基线已同步至 `origin/main`；C4V 已由独立本地提交闭合但尚未 push。下一步先决定是否 push C4V，再另行授权 C5-0，并按 C5、C6 逐批验收追加、迁移和业务事务崩溃恢复。上述阶段均不接 GBrain。
+4. 截至 C4V 提交 `1e38f2f` 的稳定基线已同步至 `origin/main`；C5-0 已完成 C-035–C-042 与 APP-01–APP-24 的内容/本地验证，当前待独立版本化。下一步先复核并提交 C5-0，再另行授权 C5A，并按 C5A/C5B/C5V、C6 逐批验收追加、迁移和业务事务崩溃恢复。上述阶段均不接 GBrain。
 5. 本地链路验收后，再把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. 最后分别设计 URL 和文件 Payload 的入口门禁。

@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5-0 -->
+<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-14）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4C 提交 `231ad09` 已同步到 `origin/main`；C4V 读取阶段验收已由独立本地提交闭合但尚未 push。GET-01–GET-16、LIST-01–LIST-19 全矩阵保持通过，两项公共 API 验收证明真实 4 MiB/64 MiB `capture_text → list_captures → get_capture` 字节闭环、稳定回执、有界 I/O、静态 keyset 遍历及页间受控新增。全量 214 项测试（捕获内核 199 项、维护脚本回归 7 项、文档护栏回归 8 项）在普通与严格 `ResourceWarning` 模式均通过。下一功能门禁为需另行授权的 C5-0；追加操作与生产 Store 均不在 C4V 范围。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-14）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f` 已同步到 `origin/main`。GET-01–GET-16、LIST-01–LIST-19 全矩阵保持通过，两项公共 API 验收证明真实 4 MiB/64 MiB `capture_text → list_captures → get_capture` 字节闭环、稳定回执、有界 I/O、静态 keyset 遍历及页间受控新增。C5-0 已冻结追加请求/结果、幂等先于 CAS、同请求尾部窄续封、Event rename 提交证据、错误优先级和 APP-01–APP-24；它没有修改生产代码或磁盘 schema，当前待独立文档提交。全量 214 项测试（捕获内核 199 项、维护脚本回归 7 项、文档护栏回归 8 项）在普通与严格 `ResourceWarning` 模式均通过。下一功能门禁为需另行授权的 C5A；追加操作与生产 Store 仍未实现。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -246,10 +246,10 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture` 与 `list_captures` 已实现并独立版本化；C4C 提交 `231ad09` 已 push，C4V 也已由独立本地提交闭合但尚未 push。追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture` 与 `list_captures` 已实现并独立版本化；C4V 提交 `1e38f2f` 已 push。C5-0 追加契约内容已在工作树闭合并待独立提交，但追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 已完成并独立版本化，C4V 尚未 push；这不授权 C5-0 或其他后续批次。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 已完成、版本化并 push，C5-0 内容与本地验证已完成但尚未独立提交；这不授权 C5A 或其他后续批次。
 3. 再按 C5–C8 闭合追加、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 

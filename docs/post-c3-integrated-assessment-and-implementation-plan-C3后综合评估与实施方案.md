@@ -1,21 +1,22 @@
 # KnowledgeFlow C3 后综合评估与后续实施方案
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5-0 -->
+<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
 
-> 状态：Draft，待用户逐批授权；C4C 提交 `231ad09` 已 push；C4V 已由独立本地提交闭合且未 push，下一功能门禁为 C5-0
+> 状态：Draft，待用户逐批授权；C4V 提交 `1e38f2f` 已 push；C5-0 内容与本地验证已完成、待独立版本化，下一功能门禁为 C5A
 > 形成日期：2026-09-11
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
 > R0.3D 诊断与裁决完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
 > R0.3F 完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
-> 稳定基线同步日期：2026-09-14（截至 C4C 提交 `231ad09` 已 push 至 `origin/main`）
+> 稳定基线同步日期：2026-09-14（截至 C4V 提交 `1e38f2f` 已 push 至 `origin/main`）
 > C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）
 > C4B 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）
 > C4B 远端同步日期：2026-09-13（提交 `666ba18` 已 push 至 `origin/main`）
 > C4C 完成与版本化收口日期：2026-09-13（独立提交 `231ad09`；现已 push 至 `origin/main`）
-> C4V 完成与版本化收口日期：2026-09-14（独立本地提交；未 push）
+> C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）
+> C5-0 内容与本地验证日期：2026-09-14（待独立版本化）
 > 作用：综合当前仓库事实、既有评估、实施方案及其复核意见，确定 C3 之后的建议执行顺序、批次边界和验收门禁
-> 权威边界：本文是分析与计划，不自动修改任何 `Approved Design`；C4V 已按单独授权完成读取阶段验收并由独立本地提交闭合，但当前不代表 push、C5-0 或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
+> 权威边界：本文是分析与计划，不自动覆盖任何 `Approved Design`；C4V 已 push，C5-0 已按单独授权同步进主题权威并完成本地验证，但当前不代表 C5A 或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
 
 ---
 
@@ -24,8 +25,8 @@
 项目当前方向没有根本性错误，不需要更换文件型 Capture Store、引入数据库或重写 C0–C3。C3 已形成真实可验收的本地文本写入内核，R0.1/R0.2 已闭合此前发现的两个初始化所有权缺陷；当前主要问题是：
 
 1. 初始化事务 marker 顺序和配置临时文件身份问题已分别以 `92a37b3`、`79515ed` 修复并回归验证，不再阻塞读取主线。
-2. C4A 已把读取与分页裁决落实为内部 schema、模型、codec、版本链纯原语和 golden，并以提交 `06cff02` 推送；C4B `get_capture` 已以 `666ba18` 推送；C4C `list_captures` 已以 `231ad09` 推送；C4V 已完成公共 API 组合验收和 214 项验证，并由独立本地提交闭合但尚未 push。
-3. C4-0 已解决 C5 “版本目录提交”和追加 Event 分离造成的读取可见性冲突；C5 编码前仍需在 C5-0 收口写侧幂等恢复和故障优先级。
+2. C4A 已把读取与分页裁决落实为内部 schema、模型、codec、版本链纯原语和 golden，并以提交 `06cff02` 推送；C4B `get_capture` 已以 `666ba18` 推送；C4C `list_captures` 已以 `231ad09` 推送；C4V 已完成公共 API 组合验收和 214 项验证，并以独立提交 `1e38f2f` 推送。
+3. C4-0 已解决 C5 “版本目录提交”和追加 Event 分离造成的读取可见性冲突；C5-0 又完成写侧幂等恢复、尾部续封、三态证据和故障优先级收口，当前待独立版本化，下一实现门禁为 C5A。
 4. 策展提示词存在真实漂移和方法论矛盾，但其权威状态仍是 `Draft，待重构`，不应整体阻塞 C4。
 5. 人工审核成本是产品风险，需要实验；它应阻塞后续 SOP/审核工作流定型，而不是阻塞基本读取能力。
 
@@ -43,8 +44,9 @@ R0.1 初始化清理所有权修复（已完成）
   -> C4A 契约能力（已完成）
   -> C4B get_capture（已完成、版本化并 push）
   -> C4C list_captures（已完成、版本化并 push）
-  -> C4V 独立验收（已由独立本地提交闭合，未 push）
-  -> C5-0/C5A/C5B/C5V
+  -> C4V 独立验收（`1e38f2f` 已 push）
+  -> C5-0 写入契约（内容/本地验证已完成，待提交）
+  -> C5A/C5B/C5V
   -> C6A/C6B/C6C
   -> C7
   -> C8
@@ -83,11 +85,11 @@ R0.1 初始化清理所有权修复（已完成）
 
 | 项目 | 当前事实 | 结论 |
 |---|---|---|
-| Git | C4C 提交 `231ad09` 已与 `origin/main` 同步；C4V 已独立本地提交但尚未 push | C4V push 需用户另行授权 |
+| Git | C4V 提交 `1e38f2f` 已与 `origin/main` 同步；C5-0 当前是待独立版本化的工作树文档批次 | C5-0 commit/push 仍需用户另行授权 |
 | 捕获内核 | C0–C3 已完成 | `capture_text` 已实现并通过当前阶段验收 |
 | 测试 | C4V 新增 2 项后为 214 项，其中捕获内核 199 项、维护脚本 7 项、文档护栏 8 项；普通与严格 `ResourceWarning` 模式均通过 | 当前绿线不得因后续批次下降 |
 | 源码 | C4C 完成后，`src/knowledgeflow_capture/` 共 13 个 Python 模块、9,118 个物理行 | 未新增模块，只扩大经批准的公开列表入口 |
-| 下一动作 | 决定是否 push C4V；另行裁定并授权 C5-0 | C4V 完成不自动授权 C5-0 |
+| 下一动作 | 复核并独立提交 C5-0；之后另行授权 C5A | C5-0 完成不自动授权 C5A |
 | 生产环境 | 生产配置和生产 Capture Store 未创建 | 后续开发继续只使用测试持有的临时 Store |
 | 外部系统 | GBrain、模型、账号/API key、QQ 均未接入 | 不属于 MVP-0 当前热路径 |
 | 提示词/SOP | 策展地图和覆盖审计方法为 `Draft，待重构` | 可登记问题，但不能反向覆盖 Capture 权威契约 |
@@ -480,9 +482,9 @@ C4-0 完成记录（2026-09-13）：上述 A–H 已同步进操作契约、Enve
 - `compileall`、`pip check`、diff 和工作树检查通过。
 - 验收前后生产配置和生产 Store 状态不变。
 - 同步 README、CHANGELOG、实施计划和冲突登记。
-- 只声明 C4 已完成，不自动授权 C5-0。
+- 只声明 C4 已完成，不自动授权 C5-0；C5-0 后续已由单独用户指令授权。
 
-完成记录（2026-09-14；独立本地提交，未 push）：没有修改生产源代码、公共契约、磁盘 schema 或 golden fixture。新增 2 项公共 API 组合验收，以真实 4 MiB/64 MiB 运行时生成正文闭合 `capture_text → list_captures → get_capture` 的身份、哈希、字节、稳定幂等回执和有界 I/O，并以 7 个公开写入 Item 验证静态多页无重复/遗漏及页间受控新增后的 keyset 边界/新鲜视图。GET-01–GET-16、LIST-01–LIST-19 与 C3V 目标矩阵 34 项先行通过，并与新增组合验收共同组成 36 项 C4V 定向验证；普通与严格 `ResourceWarning` 全量均增至 214 项（捕获内核 199 项、维护与文档脚本 15 项）。固定工程检查与生产路径前后核对均通过。C4V 已完成独立版本化，C5-0 未获授权。
+完成记录（2026-09-14；独立提交 `1e38f2f`，已 push 至 `origin/main`）：没有修改生产源代码、公共契约、磁盘 schema 或 golden fixture。新增 2 项公共 API 组合验收，以真实 4 MiB/64 MiB 运行时生成正文闭合 `capture_text → list_captures → get_capture` 的身份、哈希、字节、稳定幂等回执和有界 I/O，并以 7 个公开写入 Item 验证静态多页无重复/遗漏及页间受控新增后的 keyset 边界/新鲜视图。GET-01–GET-16、LIST-01–LIST-19 与 C3V 目标矩阵 34 项先行通过，并与新增组合验收共同组成 36 项 C4V 定向验证；普通与严格 `ResourceWarning` 全量均增至 214 项（捕获内核 199 项、维护与文档脚本 15 项）。固定工程检查与生产路径前后核对均通过。C4V 已完成独立版本化和远端同步；后续 C5-0 由单独用户指令授权。
 
 ## 7.10 X：人工审核可行性实验
 
@@ -529,38 +531,36 @@ C4-0 完成记录（2026-09-13）：上述 A–H 已同步进操作契约、Enve
 
 ### C5-0：写入契约收口
 
-在 C4-0 已冻结追加 Event、前后哈希和逻辑提交点的基础上，C5-0 继续冻结写侧细节：
+在 C4-0 已冻结追加 Event、前后哈希和逻辑提交点的基础上，C5-0 已于 2026-09-14 完成内容与本地验证、待独立版本化，冻结以下写侧细节：
 
-- append 请求、回执、幂等 scope 和 request fingerprint。
-- `expected_current_version` 的锁内检查语义。
-- 新版本 Event schema 与哈希绑定的 writer 校验和复用规则。
-- 已冻结“版本目录先、Event 逻辑提交、投影后”的状态机在各故障点的确定结果。
-- rename/event 写入附近的 `not-committed | committed | unknown` 判定。
-- 同 key 重试和不同 key 竞争行为。
+- 公开请求是关键字、不可变 `AppendCaptureVersionRequest`；幂等 key 必填，`user_intent` 可省略并归一化，`expected_current_version` 只接受 `1..999998`。追加使用独立精确成功结果，不放宽 capture_text 回执。
+- append scope 与 Request Fingerprint 的精确字段/键序固定；锁内先做不可变完整性和版本支持检查，再做幂等，随后才是目标存在性与 CAS。已提交同 key 命中即使当前版本后来推进也返回原稳定版本；同 key 不同指纹优先返回冲突。
+- 目标当前版本由 Event 证明的连续链决定，并在写前完整 attestation 当前 Payload；投影和最高目录名都不能参与 CAS。
+- 版本目录先成为不可见候选，Event 后成为唯一逻辑提交。Event rename 后以 source/target 和最终 attestation 证据区分三态；确定损坏与 I/O 无法证明使用不同错误码。
+- 只有全部 Payload、Envelope、前一版本及幂等身份/指纹都完全匹配的唯一 N+1 尾部，才允许同 key 采用既有版本/Event ID/Envelope 续封；其他尾部保持原样并等待 C6。
+- 追加使用独立 `version/ + events/` staging 类型和允许树；capture-transaction v1 marker 只增加 append operation，C3 marker/清理字节不变。已知部分尾部不保留全 Store key，I/O 无法判断身份则在写前失败关闭。
+- 同一 `capture-state` v1 向后兼容支持多版本；`updated_at` 取当前版本 Event 时间，`durability.verified_at` 取最终回读后的独立时间。
+- APP-01–APP-24 分别覆盖公共契约、幂等/CAS、完整性、尾部、三态证据、投影、双进程及真实 4/64 MiB 边界。
 
-Envelope 文档已在 C4-0 改成完整状态机；C5-0 不得重新把“最高版本目录”降级为提交事实，也不得改变 C4 的读取可见性。
+Envelope、操作契约、实现矩阵、编码批次和 C-035–C-042 已同步。C5-0 没有修改生产代码、磁盘 schema/golden 或公开 API；不得重新把“最高版本目录”降级为提交事实，也不得改变 C4 的读取可见性。下一功能门禁是需另行授权的 C5A。
 
 ### C5A：追加写入基础
 
-- Item 级或符合当前设计的写锁范围。
-- 新版本 staging 和完整正文写入。
-- previous-version 链和 Envelope/Event 预封存。
-- 无覆盖提交与现场探测。
+- 新增请求/结果类型、版本 2 投影能力和严格 Event writer，保持旧 golden 与 capture_text 回执不变。
+- 复用现有 Store 级 Windows 锁，不引入 Item 锁；新增独立 append staging、按 marker operation 分流的固定树安全清理、完整正文、previous-version 链和 Envelope/Event 预封存。
+- 新增无覆盖提交、source/target 现场探测与最终 attestation 的内部纯能力，但不公开 append、不写最终 Item。
 
 ### C5B：完整操作
 
-- 幂等扫描。
-- 当前版本校验。
-- 版本目录提交、Event 封存、最终回读和投影更新。
-- 回执丢失后的同 key 恢复。
+- 按“不可变扫描 → 幂等 → 目标 → 当前 Payload attestation → CAS”固定优先级闭合锁内判定。
+- 完成版本目录提交、Event 逻辑提交、最终回读、投影更新与精确回执。
+- 闭合已提交同 key 回执恢复和完全匹配 N+1 尾部的窄续封；未知/外来残留不清理。
 
 ### C5V：验收
 
-- 两进程同 Item、同 expected version 竞争。
-- 同 key 和不同 key 行为。
-- 版本目标冲突、Event 失败、投影失败、rename unknown。
-- 旧版本字节不变，新版本不继承批准。
-- C4 能正确忽略未完成版本，并读取完整已提交版本。
+- 完整 APP-01–APP-24；两进程同 Item、同 expected version 下的同 key 和不同 key 行为。
+- 版本目标冲突、Event preflight/rename 三态、确定损坏、投影失败、同请求尾部续封和外来尾部保留。
+- 真实 4 MiB/64 MiB 新版本；旧版本字节不变、新版本不继承批准，C4 正确隐藏未完成尾部并读取完整已提交版本。
 
 ## 7.12 C6：恢复、重建和迁移
 
@@ -700,11 +700,11 @@ Git 状态：
 
 ## 13. 下一项应完成的工作
 
-截至 C4C 提交 `231ad09` 的稳定基线已同步到 `origin/main`。C4V 已按独立授权完成 2 项公共 API 组合验收、GET/LIST/C3V 目标矩阵复核、214 项验证和独立本地提交，但尚未 push。当前下一项是决定是否 push C4V，并另行裁定和授权 C5-0；不能自动进入 C5-0，也不能启动提示词或 UI 重构。
+截至 C4V 提交 `1e38f2f` 的稳定基线已同步到 `origin/main`。C5-0 已按独立授权完成 C-035–C-042、APP-01–APP-24 和相关主题权威的内容/本地验证，当前差异只包含文档与文档护栏期望值，待独立版本化。不能自动进入 C5A，也不能启动提示词或 UI 重构。
 
 建议执行步骤：
 
-1. 由用户决定是否 push C4V 的独立本地提交。
-2. 单独完成 C5-0 写入契约收口的范围复核与授权，再决定是否进入 C5A。
+1. 复核 C5-0 的文档范围、权威一致性和 214 项基线，并由用户决定是否独立 commit/push。
+2. C5-0 版本化后，再单独请求 C5A 授权；C5A 只实现类型、codec/writer、投影泛化、staging 与现场探测原语，不公开 append。
 
-本文仍是 Draft；C4V 本地版本化完成不等于 push、C5-0 或任何后续批次已获授权。
+本文仍是 Draft；C5-0 内容完成不等于已 commit/push，也不表示 C5A 或任何后续批次已获授权。

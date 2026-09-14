@@ -1,6 +1,6 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；C0–C3 与 C4-0 已完成，`capture_text` 已实现并通过本阶段验收，读取与追加操作仍未实现<br>
+> 状态：Approved Design；`capture_text`、`get_capture`、`list_captures` 与 C4V 已完成，C5-0 追加契约已收口，追加实现尚未开始<br>
 > 确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
 > C3 编码前收口日期：2026-09-09<br>
@@ -8,8 +8,10 @@
 > C3C 完成日期：2026-09-11<br>
 > C3V 完成日期：2026-09-11<br>
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
+> C4V 完成与远端同步日期：2026-09-14（提交 `1e38f2f` 已 push 至 `origin/main`）<br>
+> C5-0 追加写入契约收口日期：2026-09-14（内容与本地验证完成，待独立版本化）<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
-> 边界：本文定义调用方可见的完整操作；C3 只实现并验收了 `capture_text`，其余三个公开操作尚未完成，也未创建生产目录
+> 边界：本文定义调用方可见的完整操作；前三个公开操作已经实现和验收，`append_capture_version` 目前只有 C5-0 契约、尚无生产实现，也未创建生产目录
 
 ## 0. 结论先行
 
@@ -463,12 +465,47 @@ user_intent:
 
 | 字段 | 必填 | 规则 |
 |---|---:|---|
-| `capture_id` | 是 | 必须指向已存在的 Capture Item |
-| `expected_current_version` | 是 | 必须等于调用时看到的当前版本 |
-| `text` | 是 | 新版本的完整文本，不接受只保存 patch |
-| `channel` | 是 | 记录本次追加来源 |
-| `idempotency_key` | 是 | 本次追加请求的稳定身份 |
-| `user_intent` | 是 | MVP-0 可以全部为 `null`；不继承或制造批准 |
+| `capture_id` | 是 | 规范 `cap_` UUIDv7；不得参与未校验路径拼接，目标必须是 Store 中唯一的既有 Item |
+| `expected_current_version` | 是 | `1..999998` 的整数且 `bool` 无效；锁内必须等于 Event 证明的当前已提交版本。`999999` 已无 v1 可追加版本，返回 `invalid_input` |
+| `text` 或二进制 UTF-8 流 | 二选一 | 与 `capture_text` 使用相同的非空、严格 UTF-8、无 BOM、4/64 MiB 配置边界和有界流式写入规则；保存完整文本，不接受 patch |
+| `channel` | 是 | 与 `capture_text` 相同的规范渠道对象，记录本次追加来源 |
+| `idempotency_key` | 是 | 非空且最多 512 UTF-8 bytes；本次追加请求的稳定身份，不允许省略 |
+| `user_intent` | 否 | 省略归一化为三个字段均为 `null`；不从旧版本继承，也不制造批准 |
+
+Python 公共边界在 C5A 固定为关键字请求模型和与现有三个操作一致的函数形状；测试依赖与故障点不得进入公共签名：
+
+```python
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AppendCaptureVersionRequest:
+    capture_id: str
+    expected_current_version: int
+    text: str | BinaryReadable
+    channel: ChannelMetadata
+    idempotency_key: str
+    user_intent: UserIntent | None = None
+
+def append_capture_version(
+    request: AppendCaptureVersionRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+) -> AppendCaptureVersionOperationResult: ...
+```
+
+省略 `user_intent` 与显式全 `null` 必须产生同一 Request Fingerprint；最终 Envelope 仍写完整 `user_intent` 与绑定本次 `event_id + primary payload_id` 的 evidence。`received_at`、缺省 `captured_at`、actor、`event_id`、哈希和版本 N+1 均由服务端生成，调用方不可覆盖。
+
+幂等作用域与指纹固定为：
+
+```text
+scope = <channel.type>:<channel.instance_id>:append_capture_version
+idempotency_identity = (scope, key_sha256)
+```
+
+```json
+{"operation":"append_capture_version","payload_set_sha256":"sha256:...","channel":{"type":"app","instance_id":"local-desktop","external_ref":null,"source_created_at":null},"payload_metadata":[{"ordinal":0,"original_name":null}],"user_intent":{"target_kb_id":null,"processing_mode":null,"requested_new_kb_name":null},"capture_id":"cap_...","expected_current_version":1}
+```
+
+JSON 键序、字节、领域前缀和 SHA256 规则完全复用 Capture Envelope v1 第 8.6 节；原始幂等键、服务端时间、新 `event_id` 与新版本号不进入指纹。
 
 ### 7.3 成功回执
 
@@ -490,13 +527,71 @@ gbrain_sync_status: "not-requested"
 warnings: []
 ```
 
-规则：
+C5A 新增独立 `AppendCaptureVersionResult`，精确验证上述字段；`AppendCaptureVersionOperationResult = AppendCaptureVersionResult | FailureResult`。现有 `CommittedWriteResult` 的 `capture_text` 精确字段和值域保持不变，不扩成两种可混淆的回执。
 
-- 当前版本不是 `expected_current_version` 时返回 `version_conflict`，不覆盖、不自动合并。
+稳定字段是 `capture_id`、`event_id`、`previous_version`、`version` 和三个 SHA256；`version` 必须是 `2..999999`，`previous_version == version - 1`。`durability` 与三个状态字段在 MVP-0 也是上述固定常量，不随幂等重试改写；以后若开放路由/信任/镜像状态，不得借 C5 静默扩大本结果值域。同 key、同请求的已提交重试返回第一次提交的相同稳定字段，即使 Item 后来又有更高已提交版本，也不能变成 `version_conflict` 或生成下一版本。`warnings` 必须按该 Item **当前完整版本链**的投影和唯一未完成尾部事实重新生成，不能只检查被命中的历史 Envelope；幂等命中本身不静默重建投影、清理尾部或改写任何原件。
+
+### 7.4 锁内判定顺序与错误优先级
+
+正文先在事务 staging 中按安全上限写入、回读并形成 Payload Set 与 Request Fingerprint；随后复用 Store 级 Windows 内核写锁，并持有到 Event 最终回读和投影更新尝试结束。锁内顺序固定为：
+
+1. 扫描唯一规范 Item、已提交版本/Event/Envelope 结构和每个 Item 至多一个无 Event 的 N+1 尾部；已提交事实的已知损坏返回 `integrity_check_failed`，未知 schema/version 返回 `unsupported_store_version`，不得把扫描失败当成 key 未命中。C4 已允许尾部内部尚未写全，因此仅“尾部缺文件或机器字节已知不完整”本身不升级为已提交链损坏。
+2. 在全部已提交版本中解析幂等身份；只有规范、可读、自哈希有效且与所在 Item/版本绑定的 N+1 尾部 Envelope 才可额外贡献一个未提交身份。同身份、同指纹的**已提交**版本先验证其全部 Payload 并返回原回执；此命中优先于当前版本 CAS。同身份、不同指纹返回 `idempotency_conflict`，也优先于 `capture_not_found` 和 `version_conflict`。同身份、同指纹只命中尾部时不得返回成功，只记录该候选并继续目标/CAS 与第 7.6 节完整采用证明。尾部 Envelope 缺失、已知部分写入或非规范时不形成全 Store key 保留；若 I/O 使其是否存在或身份无法判断，则在任何最终写入前以 `capture_store_unavailable + not-committed` 失败关闭。
+3. 没有幂等命中时定位唯一 `capture_id`；不存在返回 `capture_not_found`。
+4. 完整验证目标 Item 的连续已提交链，并对当前版本的全部 Payload 做大小、SHA256、UTF-8 和 Payload Set attestation；不要求顺带重哈希更早历史版本的全部 Payload。
+5. 以 Event 证明的当前版本比较 `expected_current_version`；不相等返回带安全 `current_version + expected_current_version` 诊断的 `version_conflict`。投影、最高目录名和目录时间都不能参与 CAS。
+6. 只有上述检查通过后，才允许分配或采用新版本身份并尝试最终写入。
+
+因此，两个不同 key、同一 `expected_current_version=N` 的并发请求中，先获得锁并提交者生成 N+1，后一个在锁内得到 `version_conflict`；同 key、同请求的并发调用最终都返回同一个 N+1/Event。
+
+直接构造 Python 请求模型时，缺字段、未知关键字或非法字段值按语言边界抛出 `TypeError`/`ValueError`；入口适配器必须把这些机械错误映射为公共 `invalid_input`。已经调用 `append_capture_version` 时，传入错误请求对象也返回 `invalid_input + not-committed`。配置/Store 打开错误先于锁内语义。为形成指纹，正文 staging 与大小检查发生在目标查找之前，所以超限正文可以先于 `capture_not_found`、`version_conflict` 或幂等判定返回 `text_too_large`。这套顺序是公共可测试行为，不得随实现分支偶然变化。
+
+### 7.5 追加 staging 所有权与固定树
+
+C5A 不得把 C3 的整 Item staging 假装成追加版本。追加使用独立内部类型和固定树；同一个现有 `knowledgeflow.capture-transaction` v1 marker 在 C5A 只向后兼容地增加 `append_capture_version` 这一种 `operation` 值，四个字段、键序和 C3 `capture_text` marker 规范字节保持不变：
+
+```text
+<capture-root>/.staging/<transaction-id>/
+├── transaction.yaml
+├── version/
+│   ├── envelope.yaml
+│   └── payloads/
+│       └── primary.txt
+└── events/
+    └── <event-id>.yaml
+```
+
+事务根创建后先耐久写入并回读 marker，再创建 `version/payloads/` 和 `events/`；正文始终先写 `version/payloads/primary.txt`。全新追加把整个 `version/` 无覆盖 rename 到最终 `versions/<N+1>/`，再把单个暂存 Event 文件无覆盖 rename 到最终 `events/<event-id>.yaml`。采用既有尾部时丢弃本次尚未提交的 `version/` 候选，只在本事务的 `events/` 中按尾部不可变 Envelope 重建待提交 Event。
+
+清理必须先以调用持有的事务根对象身份、规范 marker 的 `transaction_id + operation` 和 capture-root 包含关系证明所有权，再按 `operation` 选择各自的固定允许树。允许提交后缺少已经 rename 的 `version/` 或 Event 文件；出现额外名字、第二个 Event、非普通对象、reparse point 或对象身份变化时拒绝清理。只删除本次事务根内仍存在的内容，marker 最后删除，绝不跟随或删除最终 Item 中的 N+1 尾部。C3 `capture_text` 的 `_CaptureStaging`、允许树、marker 字节和清理行为必须保持回归不变；C6 才能枚举和处理其他进程遗留事务。
+
+### 7.6 唯一 N+1 尾部与同 key 续封
+
+C4 定义的唯一无 Event 的 N+1 目录仍不可见。C5 只允许一种窄恢复：该尾部必须是普通、非 reparse 的规范完整版本，全部 Payload 和哈希通过验证，前一版本/Envelope 绑定当前 N，且其 Envelope 中的幂等身份与 Request Fingerprint 和本请求完全相同。此时同 key 重试必须采用尾部既有 `capture_id + version + event_id + Envelope`，重建并无覆盖提交与该 Envelope 严格匹配的 `capture.version-appended` Event；不得分配 N+2。全 Store 扫描阶段能够读取尾部身份不等于可以采用它，采用始终要求这里列出的完整 attestation。因为此前没有逻辑提交，`occurred_at` 在本次续封时采样；它不属于稳定公共回执。
+
+若尾部带**同一幂等身份但不同指纹**，按第 7.4 节先返回 `idempotency_conflict`。若尾部使用其他/缺失身份、无法完整证明或其最终目标与候选冲突，C5 不采用、不覆盖、不删除，也不创建 N+2；返回可重试 `atomic_commit_failed + commit_state: not-committed`，安全阶段固定为 `version-target-conflict`，等待同 key 重试前的人工修复或 C6 恢复/隔离。多尾部、缺口、已有 Event 的引用矛盾或其他超出 C4 唯一尾部规则的状态仍是 `integrity_check_failed`。
+
+### 7.7 提交证据与三态结果
+
+版本目录 rename 只建立不可见候选；`events/<event-id>.yaml` 的最终无覆盖 rename 是唯一逻辑提交尝试。判定固定为：
+
+| 现场证据 | 公共结果 |
+|---|---|
+| Event rename 尚未尝试，或已证明 Event 目标不存在且候选仍在 staging | `atomic_commit_failed + not-committed`；版本尾部可能存在但不可见 |
+| Event rename 抛错后，候选仍存在且目标不存在 | `atomic_commit_failed + not-committed` |
+| Event rename 抛错后，候选已不存在，且最终 Event/版本/前一版本可规范解析、完整 attestation 并与本请求完全一致 | 按 `committed` 继续最终回读和投影；不能因异常本身倒置已证明事实 |
+| Event rename 后无法读取现场、源/目标状态不能形成唯一结论，或目标存在但不能证明为本请求 | `atomic_commit_failed + unknown`；保留同一 key 重试/查询 |
+| Event 已存在但取得确定证据表明其规范字节、引用或已提交版本损坏 | `integrity_check_failed + unknown`；绝不返回成功或覆盖 |
+| Event、前后版本和全部新 Payload 最终回读有效，但投影更新失败 | 成功 `committed`，附 `projection_needs_rebuild` warning |
+
+Event ID 最终目标在第一次逻辑提交尝试前已存在时，不得采用或覆盖：若可证明本请求尚未提交，返回 `atomic_commit_failed + not-committed`。Event 尝试后的同 key 重试必须先探测最终不可变事实；不得盲目重写、换 key 或推进到 N+2。
+
+### 7.8 不变量
+
 - 新版本目录保存完整正文；UI 可以显示 diff，但恢复不能依赖补丁链。
-- 同一幂等键重试必须返回第一次成功生成的同一版本，不能再生成下一个版本。
-- 新版本不继承任何针对旧版本的批准；以后所有语义批准仍必须绑定精确版本和哈希。
-- 追加版本不等于路由、归档或可信知识写入。
+- Event writer 必须复用既有严格 `capture.version-appended` schema/codec，并同时校验新 Envelope 的 `event_id`、actor、版本、前一版本及前后 Envelope 哈希；不得维护第二套宽松 writer schema。
+- 已提交旧版本、旧 Event、旧哈希和旧批准字节完全不变；新版本不继承任何批准。
+- 追加版本不等于路由、归档、可信知识写入、GBrain 镜像或通用崩溃恢复。
 
 ## 8. 错误码
 
@@ -525,9 +620,9 @@ warnings: []
 | 警告码 | 适用操作 | 含义 |
 |---|---|---|
 | `projection_needs_rebuild` | 全部 | 当前状态投影缺失、损坏或提交后更新失败；不可变原件仍有效 |
-| `incomplete_version_ignored` | 两个读取操作 | 唯一无版本建立 Event 的 N+1 尾部目录不可见；固定消息 `incomplete capture version was ignored` |
+| `incomplete_version_ignored` | 两个读取操作；append 已提交幂等命中 | 唯一无版本建立 Event 的 N+1 尾部目录不可见；固定消息 `incomplete capture version was ignored` |
 
-读取 warning 的 `details` 至少包含受影响的 `capture_id`；`incomplete_version_ignored` 还必须包含整数 `version`。警告不授权 C4 修复或清理磁盘状态。
+读取 warning 及 append 幂等命中返回的当前事实 warning，其 `details` 至少包含受影响的 `capture_id`；`incomplete_version_ignored` 还必须包含整数 `version`。警告不授权读取或追加操作修复、接管不匹配尾部或清理磁盘状态。
 
 底层 `projection_update_failed` 只作为内部原因，不作为公共失败码。不可变版本是否已提交，是判断保存成功与否的边界。
 
@@ -600,4 +695,4 @@ warnings: []
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 契约能力和 C3B 写入基础已于 2026-09-10 分别完成；C3C 与 C3V 已于 2026-09-11 在测试持有的 Store 中先后实现并验收完整 `capture_text` 事务，C3V 当时全量为 144 项。R0.1/R0.2 随后完成初始化所有权加固，R0 后全量为 148 项；D0-F、D0G、C4-0、R0.3D 与 R0.3F 也已闭合。C4A、C4B `get_capture` 与 C4C `list_captures` 已分别以 `06cff02`、`666ba18`、`231ad09` 完成并 push；C4V 已完成 GET-01–GET-16、LIST-01–LIST-19、2 项公共 API 组合验收及当前全量 214 项验证，并由独立本地提交闭合但尚未 push。追加、生产 Store、GBrain 与路由仍未实现，C5-0 未授权。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 契约能力和 C3B 写入基础已于 2026-09-10 分别完成；C3C 与 C3V 已于 2026-09-11 在测试持有的 Store 中先后实现并验收完整 `capture_text` 事务，C3V 当时全量为 144 项。R0.1/R0.2 随后完成初始化所有权加固，R0 后全量为 148 项；D0-F、D0G、C4-0、R0.3D 与 R0.3F 也已闭合。C4A、C4B `get_capture` 与 C4C `list_captures` 已分别以 `06cff02`、`666ba18`、`231ad09` 完成并 push；C4V 已完成 GET-01–GET-16、LIST-01–LIST-19、2 项公共 API 组合验收及当前全量 214 项验证，并以 `1e38f2f` push。C5-0 已冻结追加的 C-035–C-042 与 APP-01–APP-24 并完成本地验证，待独立版本化；追加、生产 Store、GBrain 与路由仍未实现，C5A 未授权。
