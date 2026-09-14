@@ -6,3 +6,4 @@
 # Preserve archived research inputs byte-for-byte; their Markdown hard breaks are historical data.
 /docs/research/2026-09-11/* -text whitespace=-trailing-space
 /docs/research/2026-09-13/* -text whitespace=-trailing-space
+/docs/research/2026-09-14/* -text whitespace=-trailing-space
