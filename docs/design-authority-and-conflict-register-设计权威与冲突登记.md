@@ -1,8 +1,8 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-<!-- knowledgeflow-doc-status tests=212 capture_tests=197 script_tests=15 next_gate=C4V -->
+<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5-0 -->
 
-> 状态：Approved Design；C4B 提交 `666ba18` 已 push；C4C 已完成并由独立本地提交闭合、尚未 push；当前门禁为 C4V<br>
+> 状态：Approved Design；C4C 提交 `231ad09` 已 push；C4V 已由独立本地提交闭合且未 push，下一功能门禁为 C5-0<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -19,10 +19,11 @@
 > R0.3F 完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）<br>
 > C4B 完成与版本化收口日期：2026-09-13（独立提交 `666ba18`；已 push 至 `origin/main`）<br>
-> C4C 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）<br>
-> 当前状态同步日期：2026-09-13<br>
+> C4C 完成与版本化收口日期：2026-09-13（独立提交 `231ad09`；现已 push 至 `origin/main`）<br>
+> C4V 完成与版本化收口日期：2026-09-14（独立本地提交；未 push）<br>
+> 当前状态同步日期：2026-09-14<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件把 C3 `capture_text`、C4B `get_capture` 与 C4C `list_captures` 记为已实现并独立版本化；C4C 尚未 push。C4V–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
+> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 读取阶段验收记为已实现或验收并独立版本化；C4V 尚未 push。C5-0–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
 
 ## 1. 为什么需要本文件
 
@@ -43,7 +44,7 @@
 | `Superseded` | 对应主题已经被新规范取代，仅供迁移和历史追溯 |
 | `Historical` | 完整历史版本，不再参与当前设计决策 |
 
-当前项目已完成并独立版本化 C3 写入内核、C4B 精确读取与 C4C 列表读取；完整 MVP-0 仍缺 C4V 读取阶段验收、追加、业务恢复、CLI 与全量验收，因此本轮新规范最高状态仍为 `Approved Design`，不标记为 `Effective`。
+当前项目已完成并独立版本化 C3 写入内核、C4B 精确读取、C4C 列表读取与 C4V 读取阶段验收；完整 MVP-0 仍缺追加、业务恢复、CLI 与全量验收，因此本轮新规范最高状态仍为 `Approved Design`，不标记为 `Effective`。
 
 ## 3. 主题级权威矩阵
 
@@ -56,9 +57,9 @@
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 又冻结读取 sink、可见性、完整性、游标、时间/快照和 warning 语义 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 内容后当前 212 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C4B 已以 `666ba18` 推送；C4C 已由独立本地提交闭合且未 push，当前门禁是另行授权的 C4V |
-| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C4V 及后续实现 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 内容后当前 214 项通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C4C 已以 `231ad09` 推送；C4V 已由独立本地提交闭合且未 push，下一功能门禁 C5-0 未授权 |
+| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C5-0 及后续实现 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
@@ -257,7 +258,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | 要实现的能力 | 必须先完成 |
 |---|---|
 | 本地文本捕获 | 本文件、Capture Envelope、捕获与路由规范及已批准的 MVP-0 操作契约 |
-| 本地文本读取与列表 | C4A 内部契约能力、C4B `get_capture` 与 C4C `list_captures` 已独立版本化，GET-01–GET-16、LIST-01–LIST-19 及 212 项全量均通过；C4C 尚未 push，C4V 仍待后续授权 |
+| 本地文本读取与列表 | C4A 内部契约能力、C4B `get_capture` 与 C4C `list_captures` 已独立版本化，C4V 已重跑 GET-01–GET-16、LIST-01–LIST-19 并新增 2 项公共 API 组合验收，当前 214 项全量通过；C4V 已由独立本地提交闭合且未 push |
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
@@ -285,6 +286,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4B 提交 `666ba18` 已同步到 `origin/main`，C4C 已完成公开 `list_captures`、LIST-01–LIST-19、212 项本地验证和独立本地提交。下一步是决定是否 push C4C，并另行授权 C4V；在明确授权前不能 push，也不能进入 C4V 或 C5。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4C 提交 `231ad09` 已同步到 `origin/main`，C4V 已完成 2 项公共 API 组合验收、GET/LIST 全矩阵复核、214 项验证及独立本地提交。下一步是决定是否 push C4V，并另行授权 C5-0；在明确授权前不能 push 或进入 C5-0。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。

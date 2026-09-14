@@ -65,7 +65,7 @@
 | 项目文档 | `README.md`, `README-zh.md`, `CHANGELOG.md` | 中英双语 |
 | 战略愿景 | `docs/second-brain-vision.md` | 核心原则 + 架构总览 + LLM 局限分析 |
 | 开源基础 | `LICENSE`, `.gitignore` | MIT 许可 |
-| 捕获内核 C0–C4C + R0 | `src/knowledgeflow_capture/`, `tests/capture/` | C0–C4C 已完成并版本化；公开 `capture_text`、`get_capture` 与 `list_captures` 已交付，当前全量 212 项通过，C4C 独立本地提交尚未 push。`append_capture_version`、C4V 与生产初始化仍未完成 |
+| 捕获内核 C0–C4V + R0 | `src/knowledgeflow_capture/`, `tests/capture/` | C0–C4C 已完成、版本化并 push；公开 `capture_text`、`get_capture` 与 `list_captures` 已交付，C4V 已由独立本地提交闭合且未 push，当前全量 214 项通过。`append_capture_version` 与生产初始化仍未完成 |
 
 ### 当前缺失的
 
@@ -723,7 +723,7 @@ SCHEMA.md 新增：
 ## 十三、实施建议
 
 1. 旧 P0/P1 交付了 prompt、参考脚本和一次长文样例验证；它们是可复用资产，不代表新捕获、路由、批准和回滚链路已经实现。
-2. 新治理链路已完成并版本化 C0–C4C，C4B 提交 `666ba18` 已 push，C4C 已独立本地提交、尚未 push；LIST-01–LIST-19 与当前全量 212 项通过。下一步是决定是否 push C4C，并另行授权 C4V；不能自动进入 C4V/C5、MC-001、GBrain 集成、人工路由或 UI。
+2. 新治理链路已完成并版本化 C0–C4V，C4C 提交 `231ad09` 已 push，C4V 已由独立本地提交闭合但尚未 push；GET/LIST 全矩阵、2 项公共 API 组合验收和当前全量 214 项均通过。下一功能门禁是需另行授权的 C5-0，不能自动进入 C5-0、MC-001、GBrain 集成、人工路由或 UI。
 3. 四种提取模式（Mode A/A-fast/B/C）已存在于 `prompts/`，但当前只作为待重构的策展地图生成方法，不得自动触发旧 SOP-002。
 4. MC-001 保留为远期候选；应在捕获、人工路由、SOP-000A/000B 和可信写入协议稳定后，再用独立提案确定范围与运行时。
 5. 命名变更（阅读地图→策展地图）已在 v2.1 阶段一次性完成。

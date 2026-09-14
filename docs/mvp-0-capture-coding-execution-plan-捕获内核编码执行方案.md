@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=212 capture_tests=197 script_tests=15 next_gate=C4V -->
+<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5-0 -->
 
-> 状态：Approved Design；C4B 提交 `666ba18` 已 push；C4C 已完成并由独立本地提交闭合、尚未 push；停在 C4V 授权门禁<br>
+> 状态：Approved Design；C4C 提交 `231ad09` 已 push；C4V 已由独立本地提交闭合且未 push，下一功能门禁为 C5-0<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -23,15 +23,16 @@
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > R0.3D 诊断与裁决完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
 > R0.3F 完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）<br>
-> 稳定基线同步日期：2026-09-13（截至 C4A 提交 `06cff02` 已 push 至 `origin/main`）<br>
+> 稳定基线同步日期：2026-09-14（截至 C4C 提交 `231ad09` 已 push 至 `origin/main`）<br>
 > C4A 完成日期：2026-09-13（独立提交 `06cff02`；已 push 至 `origin/main`）<br>
 > C4B 完成与版本化收口日期：2026-09-13（独立提交 `666ba18`；已 push 至 `origin/main`）<br>
-> C4C 完成与版本化收口日期：2026-09-13（独立本地提交；未 push）<br>
-> 当前状态同步日期：2026-09-13<br>
+> C4C 完成与版本化收口日期：2026-09-13（独立提交 `231ad09`；现已 push 至 `origin/main`）<br>
+> C4V 完成与版本化收口日期：2026-09-14（独立本地提交；未 push）<br>
+> 当前状态同步日期：2026-09-14<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 新增 15 项 LIST 回归后当前全量为 212 项，内容与本地验证已完成<br>
-> 当前授权：C4C 已完成并由独立本地提交闭合；当前只允许决定是否 push C4C，C4V、真实 Capture Store 和外部系统接入均未授权
+> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 后为 212 项并以 `231ad09` 推送；C4V 新增 2 项组合验收后当前全量为 214 项，并由独立本地提交闭合但未 push<br>
+> 当前授权：C4V 已完成并独立版本化；当前只允许决定是否 push C4V，C5-0、真实 Capture Store 和外部系统接入均未授权
 
 ## 0. 结论先行
 
@@ -41,9 +42,9 @@
 
 C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。
 
-C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 新增 15 项列表回归后当前为 212 项。
+C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 后为 212 项并以 `231ad09` 推送；C4V 新增 2 项公共 API 组合验收后当前为 214 项。
 
-公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；C4B `get_capture` 与 C4C `list_captures` 均已独立版本化，后者闭合 Event 证明的全 Store 扫描、内存状态筛选、稳定 keyset 分页和至多 640 byte 的预览读取，当前本地提交尚未 push。追加仍留在 C5，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。
+公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；C4B `get_capture` 与 C4C `list_captures` 均已独立版本化并 push。C4V 又以公开 API 闭合真实 4/64 MiB 写入—列表—读取、静态分页和页间受控新增的阶段验收，并由独立本地提交闭合但尚未 push。追加仍留在 C5，也没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。
 
 ## 1. 本方案解决什么问题
 
@@ -605,13 +606,62 @@ C4-0 固定结论：
 
 必须覆盖实现矩阵 LIST-01–LIST-19，尤其是游标 Store/查询绑定、合法 limit 跨页变化、严格时间边界、两版本时间来源、不可变矛盾整页失败、64 MiB 有界前缀、投影后重建再筛选、warning 确定顺序及无跨页快照承诺。不得以全量哈希所有列表正文换取伪“verified”。
 
-完成记录（2026-09-13；独立本地提交，未 push）：已公开 `ListCapturesRequest`、`ListCapturesResult`、`ListCapturesOperationResult` 与 `list_captures`。运行时先枚举唯一规范 Item，验证所有已提交版本/Event/Envelope、Payload 集合、安全路径、普通文件和实际大小，再从不可变链在内存重建当前状态、执行严格时间/路由筛选与固定降序；`c1` 游标绑定 Store、规范查询和末项 key，允许跨页改变 limit。只对当页当前主正文读取最多 640 byte，精确保留前 160 个 Unicode code point；不扫描正文尾部、不全量哈希列表 Payload，也不返回 `integrity=verified`。投影缺失/已知损坏/落后与唯一 N+1 尾部只产生可归属且稳定排序的 warning，未知机器 schema 单独失败，其他不可变矛盾整页 fail-closed。
+完成记录（2026-09-13；独立提交 `231ad09`，已 push 至 `origin/main`）：已公开 `ListCapturesRequest`、`ListCapturesResult`、`ListCapturesOperationResult` 与 `list_captures`。运行时先枚举唯一规范 Item，验证所有已提交版本/Event/Envelope、Payload 集合、安全路径、普通文件和实际大小，再从不可变链在内存重建当前状态、执行严格时间/路由筛选与固定降序；`c1` 游标绑定 Store、规范查询和末项 key，允许跨页改变 limit。只对当页当前主正文读取最多 640 byte，精确保留前 160 个 Unicode code point；不扫描正文尾部、不全量哈希列表 Payload，也不返回 `integrity=verified`。投影缺失/已知损坏/落后与唯一 N+1 尾部只产生可归属且稳定排序的 warning，未知机器 schema 单独失败，其他不可变矛盾整页 fail-closed。
 
-新增 `tests/capture/integration/test_list_captures.py` 的 15 项测试覆盖 LIST-01–LIST-19，包括空 Store、同毫秒 tie-break、多页无重复遗漏、坏游标与跨 Store/查询拒绝、Global Intake、精确 code-point 预览、严格时间边界、真实两版本、唯一未完成尾部、整页完整性失败、同大小正文篡改的列表/get 差异、真实 64 MiB 有界前缀、投影内存重建、warning 稳定归属及页间新增 Item 的无快照语义。普通及严格 `ResourceWarning` 全量均为 212 项（捕获内核 197 项、维护与文档脚本 15 项）。未实现 append writer，未改磁盘 schema/golden，未创建生产配置或 Store；当前 `next_gate` 为 C4V，尚未获授权。
+新增 `tests/capture/integration/test_list_captures.py` 的 15 项测试覆盖 LIST-01–LIST-19，包括空 Store、同毫秒 tie-break、多页无重复遗漏、坏游标与跨 Store/查询拒绝、Global Intake、精确 code-point 预览、严格时间边界、真实两版本、唯一未完成尾部、整页完整性失败、同大小正文篡改的列表/get 差异、真实 64 MiB 有界前缀、投影内存重建、warning 稳定归属及页间新增 Item 的无快照语义。普通及严格 `ResourceWarning` 全量均为 212 项（捕获内核 197 项、维护与文档脚本 15 项）。未实现 append writer，未改磁盘 schema/golden，未创建生产配置或 Store；C4C 后续以 `231ad09` push，下一门禁为 C4V。
 
 ### C4V：读取阶段独立验收
 
 默认只补验收测试和证据；发现契约/实现缺陷时停下分类，不借验收批次扩写架构。至少重跑 GET/LIST 全矩阵、真实 4/64 MiB、静态多页、受控并发变化、普通及严格 `ResourceWarning` 全量测试，以及固定工程检查；确认生产配置/Store 仍不存在，`capture_text` 回归字节和回执不变。C4V 单独复核和提交。
+
+C4V 的 GET-01–GET-16 追溯如下；一个测试方法覆盖多个编号时，仍逐项列出对应证据：
+
+| ID | 明确测试方法 |
+|---|---|
+| GET-01 | `GetCaptureIntegrationTest.test_get_01_02_08_latest_and_history_follow_event_proved_chain` |
+| GET-02 | `GetCaptureIntegrationTest.test_get_01_02_08_latest_and_history_follow_event_proved_chain` |
+| GET-03 | `GetCaptureIntegrationTest.test_get_03_04_16_not_found_and_success_shapes_never_claim_commit` |
+| GET-04 | `GetCaptureIntegrationTest.test_get_03_04_16_not_found_and_success_shapes_never_claim_commit` |
+| GET-05 | `GetCaptureIntegrationTest.test_get_05_checks_every_target_payload_before_releasing_primary`、`test_get_05_detects_primary_size_hash_and_payload_set_damage` |
+| GET-06 | `GetCaptureIntegrationTest.test_get_06_envelope_tamper_is_rejected_before_sink_output` |
+| GET-07 | `GetCaptureIntegrationTest.test_get_07_projection_missing_or_known_invalid_is_read_only_warning` |
+| GET-08 | `GetCaptureIntegrationTest.test_get_01_02_08_latest_and_history_follow_event_proved_chain` |
+| GET-09 | `GetCaptureIntegrationTest.test_get_09_one_uncommitted_tail_is_hidden_and_left_untouched` |
+| GET-10 | `GetCaptureIntegrationTest.test_get_10_committed_event_conflict_or_payload_loss_never_falls_back` |
+| GET-11 | `GetCaptureIntegrationTest.test_get_11_gap_duplicate_orphan_event_and_multiple_tails_fail_closed` |
+| GET-12 | `GetCaptureIntegrationTest.test_get_12_unsupported_identity_is_distinct_from_known_invalid_data` |
+| GET-13 | `GetCaptureIntegrationTest.test_get_13_real_64_mib_body_uses_bounded_external_disk_spool` |
+| GET-14 | `GetCaptureIntegrationTest.test_get_14_short_writes_continue_and_invalid_sink_results_are_retryable` |
+| GET-15 | `GetCaptureIntegrationTest.test_get_15_wrong_shard_duplicate_and_escape_fail_without_output`、`test_get_15_reparse_item_is_never_followed` |
+| GET-16 | `GetCaptureIntegrationTest.test_get_03_04_16_not_found_and_success_shapes_never_claim_commit`、`test_get_16_store_io_failure_precedes_output_and_public_has_no_test_hook` |
+
+C4V 的 LIST-01–LIST-19 追溯如下：
+
+| ID | 明确测试方法 |
+|---|---|
+| LIST-01 | `ListCapturesIntegrationTest.test_list_01_empty_result_and_public_signature` |
+| LIST-02 | `ListCapturesIntegrationTest.test_list_02_03_10_tie_order_keyset_pages_and_limit_change` |
+| LIST-03 | `ListCapturesIntegrationTest.test_list_02_03_10_tie_order_keyset_pages_and_limit_change` |
+| LIST-04 | `ListCapturesIntegrationTest.test_list_04_malformed_cursor_is_invalid_input` |
+| LIST-05 | `ListCapturesIntegrationTest.test_list_05_08_17_filter_rebuilds_projection_in_memory_without_writes` |
+| LIST-06 | `ListCapturesIntegrationTest.test_list_06_preview_is_exactly_160_unicode_code_points` |
+| LIST-07 | `ListCapturesIntegrationTest.test_list_07_11_request_bounds_reject_bool_and_invalid_time_range` |
+| LIST-08 | `ListCapturesIntegrationTest.test_list_05_08_17_filter_rebuilds_projection_in_memory_without_writes` |
+| LIST-09 | `ListCapturesIntegrationTest.test_list_09_cursor_is_bound_to_store_and_query` |
+| LIST-10 | `ListCapturesIntegrationTest.test_list_02_03_10_tie_order_keyset_pages_and_limit_change` |
+| LIST-11 | `ListCapturesIntegrationTest.test_list_07_11_request_bounds_reject_bool_and_invalid_time_range`、`test_list_11_time_boundaries_are_strict` |
+| LIST-12 | `ListCapturesIntegrationTest.test_list_12_two_versions_use_v1_capture_time_and_current_event_update` |
+| LIST-13 | `ListCapturesIntegrationTest.test_list_13_unique_uncommitted_tail_is_hidden_and_warned` |
+| LIST-14 | `ListCapturesIntegrationTest.test_list_14_any_immutable_conflict_fails_the_whole_request` |
+| LIST-15 | `ListCapturesIntegrationTest.test_list_15_same_size_body_tamper_is_not_full_attestation` |
+| LIST-16 | `ListCapturesIntegrationTest.test_list_16_real_64_mib_body_reads_only_a_bounded_prefix` |
+| LIST-17 | `ListCapturesIntegrationTest.test_list_05_08_17_filter_rebuilds_projection_in_memory_without_writes` |
+| LIST-18 | `ListCapturesIntegrationTest.test_list_18_multiple_warnings_are_stable_and_page_owned` |
+| LIST-19 | `ListCapturesIntegrationTest.test_list_19_mutation_between_pages_has_no_snapshot_claim` |
+
+完成记录（2026-09-14；独立本地提交，未 push）：没有修改生产源代码、公共契约、磁盘 schema 或 golden fixture。新增 `tests/capture/integration/test_read_acceptance.py` 的 2 项公共 API 组合验收：`test_c4v_real_4_and_64_mib_public_write_list_get_round_trip` 使用运行时生成而非入库 fixture 的真实 4 MiB/64 MiB 正文，验证 `capture_text → list_captures → get_capture` 的 capture 身份、Envelope/Payload 哈希、精确输出字节、至多 1 MiB 的输入/输出块、调用方 sink 所有权及 4 MiB 幂等重试稳定回执；`test_c4v_static_pages_and_controlled_creation_use_keyset_boundaries` 仅经公开写入建立 7 个 Item，证明静态多页无重复/遗漏，并在首屏后受控新增 Item，按游标边界核对后续页且由空游标获得新鲜视图。
+
+GET/LIST/C3V 目标矩阵 34 项先行通过，并与新增 2 项组合验收共同组成 36 项 C4V 定向验证；普通及严格 `ResourceWarning` 全量均为 214 项（捕获内核 199 项、维护与文档脚本 15 项）。`compileall`、`pip check`、文档护栏、diff 和工作树范围检查均通过；验收前后默认配置与 `E:\KnowledgeFlowData\capture-store` 均不存在。本批结论仅为“C4 读取能力已通过本阶段验收”；当前 `next_gate` 为 C5-0，仍需另行明确授权。
 
 ### C5：`append_capture_version` 与并发控制
 
@@ -802,4 +852,4 @@ git status --short
 7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合。D0G、C4-0、R0.3D 与 R0.3F 均于 2026-09-13 通过各自独立本地提交闭合；C4A `06cff02` 与 C4B `666ba18` 均已同步到 `origin/main`。C4C 已获单独授权、完成 212 项验证并由独立本地提交闭合，当前尚未 push；C4V 与后续批次仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合。D0G、C4-0、R0.3D 与 R0.3F 均于 2026-09-13 通过各自独立本地提交闭合；C4A `06cff02`、C4B `666ba18` 与 C4C `231ad09` 均已同步到 `origin/main`。C4V 于 2026-09-14 完成 214 项验证并由独立本地提交闭合，尚未 push；C5-0 与后续批次仍需逐批明确授权。
