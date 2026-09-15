@@ -2,7 +2,7 @@
 
 <!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
 
-> 状态：Approved Design；C4V 提交 `1e38f2f` 已 push；C5-0 内容与本地验证已完成、待独立版本化，下一功能门禁为 C5A<br>
+> 状态：Approved Design；C4V 提交 `1e38f2f` 已 push；C5-0 已由独立本地提交 `ea530ad` 版本化、尚未 push，下一功能门禁为 C5A<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -21,10 +21,10 @@
 > C4B 完成与版本化收口日期：2026-09-13（独立提交 `666ba18`；已 push 至 `origin/main`）<br>
 > C4C 完成与版本化收口日期：2026-09-13（独立提交 `231ad09`；现已 push 至 `origin/main`）<br>
 > C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）<br>
-> C5-0 内容与本地验证日期：2026-09-14（待独立版本化）<br>
+> C5-0 内容与本地验证日期：2026-09-14（独立本地提交 `ea530ad`，未 push）<br>
 > 当前状态同步日期：2026-09-14<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 读取阶段验收记为已实现或验收并独立版本化且已 push；C5-0 只完成契约内容与本地验证，尚未独立版本化。C5A–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
+> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 读取阶段验收记为已实现或验收并独立版本化且已 push；C5-0 已完成契约内容与本地验证，并由独立本地提交 `ea530ad` 版本化、尚未 push。C5A–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
 
 ## 1. 为什么需要本文件
 
@@ -59,7 +59,7 @@
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 冻结读取语义，C5-0 又冻结追加请求/回执、幂等/CAS、尾部续封和三态提交证据 |
 | MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 内容后当前 214 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C4V 已以 `1e38f2f` 推送；C5-0 内容与本地验证已完成、待独立版本化，下一功能门禁 C5A 未授权 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C4V 已以 `1e38f2f` 推送；C5-0 已由独立本地提交 `ea530ad` 版本化、尚未 push，下一功能门禁 C5A 未授权 |
 | C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C5A 及后续实现 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
@@ -296,6 +296,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4V 独立提交 `1e38f2f` 已同步到 `origin/main`，C5-0 已完成 C-035–C-042、APP-01–APP-24 和相关权威文档的内容/本地验证，当前待独立版本化。下一步先复核并提交 C5-0；C5A 仍需另行明确授权。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4V 独立提交 `1e38f2f` 已同步到 `origin/main`，C5-0 已完成 C-035–C-042、APP-01–APP-24 和相关权威文档的内容/本地验证，并由独立本地提交 `ea530ad` 版本化、尚未 push。下一功能门禁为 C5A，仍需另行明确授权。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。

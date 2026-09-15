@@ -338,7 +338,7 @@ knowledge-hub/                 # 可选：只保存 KB 注册表和全局 Intake
 
 主题级优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准。推荐顺序：
 
-1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3 `capture_text` 已通过真实大小、加强版竞态与故障验收，R0.1/R0.2 初始化加固及 D0-F、D0G、C4-0、R0.3D、R0.3F、C4A/C4B/C4C/C4V 均已闭合并版本化，C4V 提交 `1e38f2f` 已 push。C5-0 已冻结追加契约并完成本地验证、待独立版本化；C5A 未授权。
+1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3 `capture_text` 已通过真实大小、加强版竞态与故障验收，R0.1/R0.2 初始化加固及 D0-F、D0G、C4-0、R0.3D、R0.3F、C4A/C4B/C4C/C4V 均已闭合并版本化，C4V 提交 `1e38f2f` 已 push。C5-0 已冻结追加契约并完成本地验证，且由独立本地提交 `ea530ad` 版本化、尚未 push；C5A 未授权。
 2. 按 C4–C8 逐批验收读取、追加、恢复和机器适配接口。
 3. 增加人工路由与 SOP-000A 执行边界。
 4. 实证 GBrain 未审核镜像和查询隔离。
