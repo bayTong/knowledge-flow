@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
+<!-- knowledgeflow-doc-status tests=231 capture_tests=216 script_tests=15 next_gate=C5B -->
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-16）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f` 与 C5-0 契约提交 `ea530ad` 均已同步到 `origin/main`。GET-01–GET-16、LIST-01–LIST-19 全矩阵保持通过，两项公共 API 验收证明真实 4 MiB/64 MiB `capture_text → list_captures → get_capture` 字节闭环、稳定回执、有界 I/O、静态 keyset 遍历及页间受控新增。C5-0 已冻结追加请求/结果、幂等先于 CAS、同请求尾部窄续封、Event rename 提交证据、错误优先级和 APP-01–APP-24，但未修改生产代码或磁盘 schema。最小 Windows CI 提交 `c4d2c7b` 也已 push，首次远端运行 `35075692046` 在干净 Windows runner 上通过普通/严格全量测试、编译、依赖和文档检查；当前仍为 214 项测试（捕获内核 199 项、维护脚本回归 7 项、文档护栏回归 8 项）。下一功能门禁为需另行授权的 C5A；追加操作与生产 Store 仍未实现。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-16）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5A 现已实现并单独验证追加请求/结果类型、严格追加 Envelope/Event writer、向后兼容的版本 2 状态投影、marker-first 追加 staging 与安全清理、尾部身份边界及 source/target 提交证据原语。公共包仍刻意不导出或执行 `append_capture_version`，本批没有产生最终追加版本，也没有创建生产 Store。当前为 231 项测试（捕获内核 216 项、维护脚本回归 7 项、文档护栏回归 8 项）。下一功能门禁为仍需单独授权的 C5B，由它把这些原语集成为完整公开追加事务。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|

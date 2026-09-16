@@ -1,7 +1,8 @@
 """KnowledgeFlow's governed local capture kernel."""
 
-from .errors import GetCaptureResult, ListCapturesResult
+from .errors import AppendCaptureVersionResult, GetCaptureResult, ListCapturesResult
 from .models import (
+    AppendCaptureVersionRequest,
     CaptureTextRequest,
     ChannelMetadata,
     GetCaptureRequest,
@@ -9,6 +10,7 @@ from .models import (
     UserIntent,
 )
 from .operations import (
+    AppendCaptureVersionOperationResult,
     CaptureTextOperationResult,
     GetCaptureOperationResult,
     ListCapturesOperationResult,
@@ -19,6 +21,9 @@ from .operations import (
 
 
 __all__ = [
+    "AppendCaptureVersionOperationResult",
+    "AppendCaptureVersionRequest",
+    "AppendCaptureVersionResult",
     "CaptureTextOperationResult",
     "CaptureTextRequest",
     "ChannelMetadata",

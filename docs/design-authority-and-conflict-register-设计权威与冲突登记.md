@@ -1,8 +1,8 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
+<!-- knowledgeflow-doc-status tests=231 capture_tests=216 script_tests=15 next_gate=C5B -->
 
-> 状态：Approved Design；C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；下一功能门禁为 C5A<br>
+> 状态：Approved Design；C5A 内容与本地验证已完成，当前 231 项全量通过且未公开 append；下一功能门禁为需单独授权的 C5B<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -23,9 +23,10 @@
 > C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）<br>
 > C5-0 内容与本地验证日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）<br>
 > 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）<br>
+> C5A 内容与本地验证日期：2026-09-16（本独立提交；未 push）<br>
 > 当前状态同步日期：2026-09-16<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V 读取阶段验收与 C5-0 契约收口记为已完成或验收、独立版本化且已 push；最小 Windows CI 已建立并首次通过。C5A–C8、生产初始化与后续路由仍未完成，本文整体仍不是 `Effective`，也不替代后续 SOP 的具体执行规范
+> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V 与 C5-0 记为已完成并已 push；最小 Windows CI 已建立并首次通过。C5A 内容与本地验证也已完成，但仍未公开 append；C5B–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
 
 ## 1. 为什么需要本文件
 
@@ -59,9 +60,9 @@
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 冻结读取语义，C5-0 又冻结追加请求/回执、幂等/CAS、尾部续封和三态提交证据 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 内容后当前 214 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已推送且首次 CI 通过；下一功能门禁 C5A 未授权 |
-| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C5A 及后续实现 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 后 214 项；C5A 后当前 231 项通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C5A 内容与本地验证已完成且不公开 append；下一功能门禁 C5B 未授权 |
+| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动授权 C5B 及后续实现 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
@@ -252,14 +253,14 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-032（R0.3-M1） | R0.3D 确认 `_lstat_if_present` 会把 `stat` 的 `OSError` 转成 `_InitFailure`；这不使 `_remove_owned_transaction` 的整个 `except OSError` 成为死代码，但此前一个尚未证明属于当前请求的未知候选若 `stat` 不可读，会阻断已有合法 Store 的纯幂等重开 | 候选尚未通过 marker/request 身份证明时，`stat`/遍历/marker 读取失败统一视为“不可证明归属”，保守跳过且不删除；一旦已证明为本请求自有树，身份复核、`unlink` 或 `rmdir` 失败仍必须 fail-closed、保留 marker 并返回稳定清理阶段。不得全局放宽共享 `_lstat_if_present` | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 已按边界实现、验证并由独立本地提交闭合 |
 | C-033（R0.3-M3） | R0.3D 时，原操作失败后的二次清理若又发生身份或 I/O 失败，清理异常会覆盖原始公共 `details.stage`，调用方失去首个失败阶段 | 首个原操作错误拥有 `code`、`cause_code`、`retryable` 和 `details.stage` 的公共优先级；清理错误只能作为次级诊断，以新增安全 token `details.cleanup_stage` 保留，不得暴露路径或原始 OS 文本。仅清理本身失败时，清理阶段仍作为主 `stage`；初始化结果始终不含 `saved`/`commit_state` | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 已覆盖 Store/配置两条清理路径并由独立本地提交闭合 |
 | C-034（R0.3-M4） | R0.3D 时 `DurabilityError` 恒定 `retryable=false`，使明确的 Windows sharing/lock violation（WinError 32/33）与初始化规范不一致；锁模块的 `errno.EACCES` 回退若直接复用又会把永久 ACL 拒绝误归类 | durability 默认 `retryable=false`；仅当直接保留的 Windows I/O 原因具有 `winerror` 32 或 33 时为 `true`。WinError 5、仅 `errno.EACCES`、无底层原因、校验失败及未知错误均保持 `false`；锁等待循环的上下文分类不外推到通用 durability | 2026-09-13 由 R0.3D 复现并裁决；R0.3F 已按窄分类实现、验证并由独立本地提交闭合 |
-| C-035 | append 请求只列字段，未冻结 Python 类型、`expected_current_version` 上界、可选意图和成功回执是否复用 capture_text 类型；实现可能让 bool/999999 进入 N+1，或放宽已稳定的创建回执 | 新增关键字、frozen/slots 的 `AppendCaptureVersionRequest`；expected 只接受整数 `1..999998`，key 必填，意图省略归一化为全 `null`。新增独立精确 `AppendCaptureVersionResult`，不修改 capture_text 回执形状 | 2026-09-14 由 C5-0 解决；待 C5A 实现 |
+| C-035 | append 请求只列字段，未冻结 Python 类型、`expected_current_version` 上界、可选意图和成功回执是否复用 capture_text 类型；实现可能让 bool/999999 进入 N+1，或放宽已稳定的创建回执 | 新增关键字、frozen/slots 的 `AppendCaptureVersionRequest`；expected 只接受整数 `1..999998`，key 必填，意图省略归一化为全 `null`。新增独立精确 `AppendCaptureVersionResult`，不修改 capture_text 回执形状 | 2026-09-14 由 C5-0 解决；2026-09-16 由 C5A 实现并验证 |
 | C-036 | 同 key 已提交重试与 CAS 的检查顺序未定；若先检查当前版本，原 N+1 的回执丢失后，在 Item 已推进到 N+2 时会错误返回 `version_conflict` | 锁内先验证不可变结构，再按 `scope + key_sha256` 做幂等；同身份同指纹的已提交命中优先于 CAS 并返回原稳定版本，同身份不同指纹的 `idempotency_conflict` 也优先于目标不存在和版本冲突 | 2026-09-14 由 C5-0 解决；APP-08/APP-09 验收 |
 | C-037 | append 的锁范围和完整性深度不明确：全量重哈希所有历史正文代价失控，只信 Envelope/投影又可能在损坏基线上追加 | 正文锁外 staging；Store 级 Windows 锁覆盖全 Store 结构扫描、幂等、目标链、CAS、提交、最终回读和投影尝试。普通扫描验证结构/Event/Envelope/大小；对幂等命中、可采用尾部和目标当前版本完整 attestation 全部 Payload，不顺带重哈希更早历史正文 | 2026-09-14 由 C5-0 解决；APP-13/APP-14 验收 |
 | C-038 | C4 允许唯一无 Event 的 N+1 尾部，但 C5 未规定同 key 重试是续封、生成 N+2、覆盖还是等待 C6，也未区分“已知部分尾部”和“I/O 无法判断尾部身份” | 仅规范、可读、自哈希有效且绑定 Item/版本的尾部 Envelope 可参与未提交身份判定；已知缺失/部分/非规范尾部不保留全 Store key，I/O 无法判断则写前 `capture_store_unavailable + not-committed`。只有全部 Payload/前一版本/身份/指纹也完全匹配时才采用既有 N+1/Event ID/Envelope 续封；其他目标尾部不采用、不覆盖、不删除并返回 atomic not-committed，通用恢复仍属 C6 | 2026-09-14 由 C5-0 解决；APP-14–APP-17 验收 |
 | C-039 | “Event 是逻辑提交点”尚不足以判定 rename 抛错后的公共三态；版本 rename 不明可能被误报 unknown，Event 已落盘也可能被后续异常倒置 | Event 未尝试且目标确定不存在时始终 `not-committed`，即使可能留下不可见版本尾部；Event rename 后用 source/target 与最终 Event/前后版本/Payload 证据判定：明确未落为 not-committed，精确匹配继续 committed，事实不可证明为 atomic unknown，确定损坏为 integrity unknown | 2026-09-14 由 C5-0 解决；APP-18–APP-21 验收 |
 | C-040 | append 的公共错误优先级、Event writer 复用和动态 warning 未冻结，且 warning 表只把未完成尾部列为读取语义 | 固定机械请求/正文 staging 在锁前，锁内按“结构/版本支持 → 幂等 → 目标 → CAS → 提交证据”判定；writer 复用同一严格 Event codec。稳定回执不变，warning 从命中版本所在 Item 的当前完整链生成；已提交 append 幂等命中也可报告随后出现的唯一尾部，但不触发修复或接管不匹配尾部 | 2026-09-14 由 C5-0 解决；APP-03/APP-20–APP-23 验收 |
-| C-041 | 现有 `capture-state` v1 代码只接受 `current_version: 1` 并强制 `updated_at == durability.verified_at`；C5 无法表达版本 2，若直接删除相等校验又会让任意投影时间通过 | 同一 state v1 向后兼容支持 `current_version 1..999999`：版本 1 保持旧相等规则和 golden；版本 >1 必须向 state codec 提供当前追加 Event 与前一 Envelope，复用严格引用校验，使 `updated_at == Event.occurred_at`，而 `durability.verified_at` 为最终回读后的独立时间。C4 返回时间仍从 Event 重建 | 2026-09-14 由 C5-0 解决；C5A 实现，APP-04/APP-22 验收 |
-| C-042 | C3 staging marker 只接受 `capture_text` 且固定树是完整新 Item；若 C5 直接复用该类型/清理器，会把追加版本误建成 `000001` 整 Item，或在部分 rename 后错误拒绝、误删事务对象 | 追加使用独立内部 staging 类型和 `version/ + events/` 固定树；同一 capture-transaction v1 marker 仅增加 append operation，C3 规范字节不变。按 marker operation 选择互斥允许树，校验根与对象身份，容许已 rename 对象缺席，拒绝额外/替换/reparse 对象；marker 最后删除且绝不触及最终尾部 | 2026-09-14 由 C5-0 解决；C5A 实现并做 C3 staging 回归，APP-02/APP-18 验收 |
+| C-041 | 现有 `capture-state` v1 代码只接受 `current_version: 1` 并强制 `updated_at == durability.verified_at`；C5 无法表达版本 2，若直接删除相等校验又会让任意投影时间通过 | 同一 state v1 向后兼容支持 `current_version 1..999999`：版本 1 保持旧相等规则和 golden；版本 >1 必须向 state codec 提供当前追加 Event 与前一 Envelope，复用严格引用校验，使 `updated_at == Event.occurred_at`，而 `durability.verified_at` 为最终回读后的独立时间。C4 返回时间仍从 Event 重建 | 2026-09-14 由 C5-0 解决；2026-09-16 由 C5A 实现并验证，端到端 APP-04/APP-22 留给 C5B/C5V |
+| C-042 | C3 staging marker 只接受 `capture_text` 且固定树是完整新 Item；若 C5 直接复用该类型/清理器，会把追加版本误建成 `000001` 整 Item，或在部分 rename 后错误拒绝、误删事务对象 | 追加使用独立内部 staging 类型和 `version/ + events/` 固定树；同一 capture-transaction v1 marker 仅增加 append operation，C3 规范字节不变。按 marker operation 选择互斥允许树，校验根与对象身份，容许已 rename 对象缺席，拒绝额外/替换/reparse 对象；marker 最后删除且绝不触及最终尾部 | 2026-09-14 由 C5-0 解决；2026-09-16 由 C5A 实现、负向验证并完成 C3 回归 |
 
 面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，统一收录在[MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；本登记保留规范性裁决，避免在多个权威入口复制并逐渐漂移。
 
@@ -268,8 +269,8 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | 要实现的能力 | 必须先完成 |
 |---|---|
 | 本地文本捕获 | 本文件、Capture Envelope、捕获与路由规范及已批准的 MVP-0 操作契约 |
-| 本地文本读取与列表 | C4A 内部契约能力、C4B `get_capture` 与 C4C `list_captures` 已独立版本化，C4V 已重跑 GET-01–GET-16、LIST-01–LIST-19 并新增 2 项公共 API 组合验收，当前 214 项全量通过；C4V 提交 `1e38f2f` 已 push |
-| 本地文本追加版本 | C5-0 已冻结 C-035–C-042 与 APP-01–APP-24 并完成本地验证；其独立版本化收口后，仍须分别授权并通过 C5A、C5B 与 C5V，才能声明追加能力完成 |
+| 本地文本读取与列表 | C4A 内部契约能力、C4B `get_capture` 与 C4C `list_captures` 已独立版本化；C4V 重跑完整矩阵并新增 2 项公共 API 组合验收，当时 214 项全量通过且提交 `1e38f2f` 已 push |
+| 本地文本追加版本 | C5A 已实现类型、codec/writer、投影、staging 与证据原语但未公开 append；仍须分别授权并通过 C5B 与 C5V，才能声明追加能力完成 |
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
@@ -297,6 +298,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已同步到 `origin/main`，首次远端 CI 已通过。下一功能门禁为 C5A，仍需另行明确授权。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4V、C5-0 与最小 Windows CI 已同步到 `origin/main`。C5A 内容与本地验证已完成且未公开 append；下一功能门禁为 C5B，仍需另行明确授权。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。

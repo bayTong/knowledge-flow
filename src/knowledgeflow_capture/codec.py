@@ -543,7 +543,14 @@ def _validate_capture_state_schema(value: object, path: str) -> None:
         raise SchemaValidationError(
             f"{path} contains an invalid projection identity or time"
         ) from exc
-    if state["durability"]["verified_at"] != state["updated_at"]:
+    current_version = state["current_version"]
+    if type(current_version) is not int or current_version > 999999:
+        raise SchemaValidationError(
+            f"{path}.current_version exceeds the v1 maximum"
+        )
+    if current_version == 1 and (
+        state["durability"]["verified_at"] != state["updated_at"]
+    ):
         raise SchemaValidationError(
             f"{path}.updated_at must equal durability.verified_at for initial state"
         )
@@ -557,7 +564,7 @@ CAPTURE_STATE_SCHEMA_V1 = MappingSchema(
         ),
         _field("schema_version", ScalarSchema(int, allowed_values=(1,))),
         _field("capture_id", _CAPTURE_ID),
-        _field("current_version", ScalarSchema(int, allowed_values=(1,))),
+        _field("current_version", ScalarSchema(int, minimum=1)),
         _field("current_envelope_sha256", _SHA256),
         _field("durability", _DURABILITY_SCHEMA),
         _field("routing", _ROUTING_SCHEMA),
@@ -1073,21 +1080,75 @@ def _validate_capture_state_references(
             )
 
 
+def _validate_capture_state_context(
+    state: Mapping[str, object],
+    envelope: Mapping[str, object],
+    *,
+    current_event: object | None,
+    previous_envelope: object | None,
+) -> None:
+    version = state["current_version"]
+    if version == 1:
+        if previous_envelope is not None:
+            raise SchemaValidationError(
+                "initial capture state must not reference a previous Envelope"
+            )
+        if current_event is not None:
+            validate_capture_event(current_event, envelope=envelope)
+        return
+    if current_event is None or previous_envelope is None:
+        raise SchemaValidationError(
+            "appended capture state requires current Event and previous Envelope"
+        )
+    normalized_event = validate_capture_event(
+        current_event,
+        envelope=envelope,
+        previous_envelope=previous_envelope,
+    )
+    if normalized_event["event_type"] != "capture.version-appended":
+        raise SchemaValidationError(
+            "appended capture state requires a version-appended Event"
+        )
+    if state["updated_at"] != normalized_event["occurred_at"]:
+        raise SchemaValidationError(
+            "$.updated_at must equal the current append Event occurred_at"
+        )
+
+
 def validate_capture_state(
     value: object,
     *,
     envelope: object,
+    current_event: object | None = None,
+    previous_envelope: object | None = None,
 ) -> dict[str, object]:
-    """Validate the complete fixed C3 initial projection and its reference."""
+    """Validate one complete v1 projection and its immutable references."""
 
     normalized = validate_document(value, CAPTURE_STATE_SCHEMA_V1)
     normalized_envelope = _validated_reference_envelope(envelope)
     _validate_capture_state_references(normalized, normalized_envelope)
+    _validate_capture_state_context(
+        normalized,
+        normalized_envelope,
+        current_event=current_event,
+        previous_envelope=previous_envelope,
+    )
     return normalized
 
 
-def dump_capture_state(value: object, *, envelope: object) -> bytes:
-    normalized = validate_capture_state(value, envelope=envelope)
+def dump_capture_state(
+    value: object,
+    *,
+    envelope: object,
+    current_event: object | None = None,
+    previous_envelope: object | None = None,
+) -> bytes:
+    normalized = validate_capture_state(
+        value,
+        envelope=envelope,
+        current_event=current_event,
+        previous_envelope=previous_envelope,
+    )
     return dump_restricted_yaml(normalized, CAPTURE_STATE_SCHEMA_V1)
 
 
@@ -1095,6 +1156,8 @@ def load_capture_state(
     source: str | bytes | bytearray | memoryview,
     *,
     envelope: object,
+    current_event: object | None = None,
+    previous_envelope: object | None = None,
     require_canonical: bool = True,
 ) -> dict[str, object]:
     normalized = load_restricted_yaml(
@@ -1104,6 +1167,12 @@ def load_capture_state(
     )
     normalized_envelope = _validated_reference_envelope(envelope)
     _validate_capture_state_references(normalized, normalized_envelope)
+    _validate_capture_state_context(
+        normalized,
+        normalized_envelope,
+        current_event=current_event,
+        previous_envelope=previous_envelope,
+    )
     return normalized
 
 

@@ -143,6 +143,19 @@ _CAPTURE_TEXT_RECEIPT_FIELDS = (
     "trust_status",
     "gbrain_sync_status",
 )
+_APPEND_CAPTURE_VERSION_RECEIPT_FIELDS = (
+    "capture_id",
+    "event_id",
+    "previous_version",
+    "version",
+    "primary_payload_sha256",
+    "payload_set_sha256",
+    "envelope_sha256",
+    "durability",
+    "routing_status",
+    "trust_status",
+    "gbrain_sync_status",
+)
 _RESERVED_SUCCESS_KEYS = frozenset({"ok", "saved", "commit_state", "warnings"})
 
 
@@ -164,6 +177,47 @@ def _freeze_receipt(value: Mapping[str, object]) -> Mapping[str, object]:
             valid = type(item) is str and _SHA256.fullmatch(item) is not None
         elif key == "version":
             valid = type(item) is int and item == 1
+        elif key == "durability":
+            valid = item == "durable"
+        elif key == "routing_status":
+            valid = item == "unassigned"
+        elif key == "trust_status":
+            valid = item == "unreviewed-capture"
+        else:
+            valid = item == "not-requested"
+        if not valid:
+            raise ValueError(f"receipt.{key} has an invalid value")
+        frozen[key] = item
+    return MappingProxyType(frozen)
+
+
+def _freeze_append_receipt(value: Mapping[str, object]) -> Mapping[str, object]:
+    """Validate the exact metadata-only append success receipt shape."""
+
+    if any(type(key) is not str for key in value):
+        raise ValueError("receipt keys must be strings")
+    if set(value) != set(_APPEND_CAPTURE_VERSION_RECEIPT_FIELDS):
+        raise ValueError(
+            "receipt must contain the exact append_capture_version success fields"
+        )
+    frozen: dict[str, object] = {}
+    for key in _APPEND_CAPTURE_VERSION_RECEIPT_FIELDS:
+        item = value[key]
+        if key == "capture_id":
+            valid = type(item) is str and _CAPTURE_ID.fullmatch(item) is not None
+        elif key == "event_id":
+            valid = type(item) is str and _EVENT_ID.fullmatch(item) is not None
+        elif key.endswith("_sha256"):
+            valid = type(item) is str and _SHA256.fullmatch(item) is not None
+        elif key == "version":
+            valid = type(item) is int and 2 <= item <= 999999
+        elif key == "previous_version":
+            version = value.get("version")
+            valid = (
+                type(item) is int
+                and type(version) is int
+                and item == version - 1
+            )
         elif key == "durability":
             valid = item == "durable"
         elif key == "routing_status":
@@ -352,6 +406,36 @@ class CommittedWriteResult:
         return result
 
 
+@dataclass(frozen=True, slots=True)
+class AppendCaptureVersionResult:
+    """Successful durable append with its exact stable receipt fields."""
+
+    receipt: Mapping[str, object] = field(default_factory=dict)
+    warnings: tuple[OperationWarning, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.receipt, Mapping):
+            raise ValueError("receipt must be a mapping")
+        reserved = _RESERVED_SUCCESS_KEYS.intersection(self.receipt)
+        if reserved:
+            raise ValueError("receipt must not override operation result fields")
+        object.__setattr__(self, "receipt", _freeze_append_receipt(self.receipt))
+        warnings = tuple(self.warnings)
+        if not all(isinstance(warning, OperationWarning) for warning in warnings):
+            raise TypeError("warnings must contain OperationWarning values")
+        object.__setattr__(self, "warnings", warnings)
+
+    def to_dict(self) -> dict[str, object]:
+        result: dict[str, object] = {
+            "ok": True,
+            "saved": True,
+            "commit_state": CommitState.COMMITTED.value,
+        }
+        result.update(_thaw_json(self.receipt))
+        result["warnings"] = [warning.to_dict() for warning in self.warnings]
+        return result
+
+
 def _read_warning_sort_key(warning: OperationWarning) -> tuple[str, str, int]:
     raw_capture_id = warning.details.get("capture_id", "")
     raw_version = warning.details.get("version", 0)
@@ -464,6 +548,7 @@ class ListCapturesResult:
 
 
 __all__ = [
+    "AppendCaptureVersionResult",
     "CauseCode",
     "CommitState",
     "CommittedWriteResult",

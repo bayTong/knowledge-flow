@@ -45,6 +45,7 @@ from .durability import (
     InvalidTextInputError,
 )
 from .errors import (
+    AppendCaptureVersionResult,
     CauseCode,
     CommitState,
     CommittedWriteResult,
@@ -79,6 +80,7 @@ from .locking import (
 )
 from .manifest import CaptureStoreManifest
 from .models import (
+    AppendCaptureVersionRequest,
     CaptureItemState,
     CaptureListItem,
     CaptureReadMetadata,
@@ -96,6 +98,7 @@ from .models import (
 )
 from .paths import PathPolicy, PathPolicyError
 from .store import (
+    _AppendStaging,
     _CaptureVersionChain,
     _CaptureVersionChainError,
     _CaptureStaging,
@@ -111,6 +114,9 @@ from .store import (
 
 
 CaptureTextOperationResult: TypeAlias = CommittedWriteResult | FailureResult
+AppendCaptureVersionOperationResult: TypeAlias = (
+    AppendCaptureVersionResult | FailureResult
+)
 GetCaptureOperationResult: TypeAlias = GetCaptureResult | FailureResult
 ListCapturesOperationResult: TypeAlias = ListCapturesResult | FailureResult
 
@@ -250,6 +256,55 @@ class _CandidateItem:
     event_bytes: bytes
     payload_digest: DigestResult
     payload_set_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class _AppendCandidate:
+    capture_id: str
+    event_id: str
+    previous_version: int
+    version: int
+    envelope: Mapping[str, object]
+    envelope_bytes: bytes
+    previous_envelope: Mapping[str, object]
+    event: Mapping[str, object]
+    event_bytes: bytes
+    payload_digest: DigestResult
+    payload_set_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class _AppendRequestIdentity:
+    scope: str
+    key_sha256: str
+    request_fingerprint_sha256: str
+
+
+class _AppendSourceEvidence(StrEnum):
+    ORIGINAL = "original"
+    ABSENT = "absent"
+    OTHER = "other"
+    UNPROVABLE = "unprovable"
+
+
+class _AppendTargetEvidence(StrEnum):
+    ABSENT = "absent"
+    PRESENT = "present"
+    UNPROVABLE = "unprovable"
+
+
+class _AppendTargetAttestation(StrEnum):
+    NOT_RUN = "not-run"
+    MATCH = "match"
+    INVALID = "invalid"
+    UNPROVABLE = "unprovable"
+
+
+class _AppendCommitDisposition(StrEnum):
+    NOT_COMMITTED = "not-committed"
+    COMMITTED = "committed"
+    UNKNOWN = "unknown"
+    INTEGRITY_UNKNOWN = "integrity-unknown"
 
 
 class _IntegrityFailure(RuntimeError):
@@ -1255,9 +1310,15 @@ def _projection_warning_for_read(
                 expected_schema="knowledgeflow.capture-state",
                 invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
             )
+            current = disk_chain.chain.current
+            previous = disk_chain.chain.version(current.version - 1)
             load_capture_state(
                 source,
-                envelope=disk_chain.chain.current.envelope,
+                envelope=current.envelope,
+                current_event=(current.event if current.version > 1 else None),
+                previous_envelope=(
+                    previous.envelope if previous is not None else None
+                ),
                 require_canonical=True,
             )
             return ()
@@ -1712,6 +1773,122 @@ def _build_candidate(
     )
 
 
+def _build_append_candidate(
+    request: AppendCaptureVersionRequest,
+    *,
+    previous_envelope: Mapping[str, object],
+    received_at: str,
+    payload_digest: DigestResult,
+    payload_set_digest: str,
+    request_digest: str,
+    dependencies: _CaptureDependencies,
+) -> _AppendCandidate:
+    """Preseal one append Envelope/Event pair without touching final paths."""
+
+    if not isinstance(request, AppendCaptureVersionRequest):
+        raise TypeError("request must be AppendCaptureVersionRequest")
+    if not isinstance(previous_envelope, Mapping) or not verify_envelope(
+        previous_envelope
+    ):
+        raise ValueError("previous_envelope must be a verified Envelope")
+    if (
+        previous_envelope.get("capture_id") != request.capture_id
+        or previous_envelope.get("version") != request.expected_current_version
+    ):
+        raise ValueError("previous_envelope does not match the append request")
+    intent = request.user_intent
+    if not isinstance(intent, UserIntent):
+        raise TypeError("AppendCaptureVersionRequest.user_intent was not normalized")
+
+    event_id = _typed_id(dependencies.event_id_factory, IdKind.EVENT)
+    version = request.expected_current_version + 1
+    captured_at = _sample_time(dependencies)
+    scope = canonical_idempotency_scope(
+        request.channel,
+        "append_capture_version",
+    )
+    key_digest = idempotency_key_sha256(request.idempotency_key)
+    envelope_without_hash: dict[str, object] = {
+        "schema": "knowledgeflow.capture-envelope",
+        "schema_version": 1,
+        "capture_id": request.capture_id,
+        "event_id": event_id,
+        "version": version,
+        "previous_version": request.expected_current_version,
+        "received_at": received_at,
+        "captured_at": captured_at,
+        "actor": dict(_ACTOR),
+        "channel": request.channel.as_canonical_mapping(),
+        "idempotency": {
+            "scope": scope,
+            "key_sha256": key_digest,
+            "request_fingerprint_sha256": request_digest,
+        },
+        "payloads": [
+            {
+                "payload_id": payload_digest.sha256,
+                "ordinal": 0,
+                "role": "primary",
+                "kind": "text",
+                "path": "payloads/primary.txt",
+                "original_name": None,
+                "media_type": "text/plain; charset=utf-8",
+                "encoding": "utf-8",
+                "fidelity": "channel-exact",
+                "byte_size": payload_digest.byte_size,
+                "sha256": payload_digest.sha256,
+            }
+        ],
+        "payload_set_sha256": payload_set_digest,
+        "user_intent": {
+            **intent.as_canonical_mapping(),
+            "evidence": {
+                "event_id": event_id,
+                "payload_id": payload_digest.sha256,
+            },
+        },
+        "delivery_requests": [],
+        "envelope_serialization": {
+            "encoding": "utf-8",
+            "line_endings": "lf",
+            "bom": False,
+            "key_order": "schema-defined",
+        },
+    }
+    sealed = seal_envelope(envelope_without_hash)
+    event: dict[str, object] = {
+        "schema": "knowledgeflow.capture-event",
+        "schema_version": 1,
+        "event_id": event_id,
+        "event_type": "capture.version-appended",
+        "capture_id": request.capture_id,
+        "version": version,
+        "previous_version": request.expected_current_version,
+        "previous_envelope_sha256": previous_envelope["envelope_sha256"],
+        "envelope_sha256": sealed.sha256,
+        "occurred_at": _sample_time(dependencies),
+        "actor": dict(_ACTOR),
+    }
+    event_bytes = dump_capture_event(
+        event,
+        envelope=sealed.envelope,
+        previous_envelope=previous_envelope,
+    )
+    return _AppendCandidate(
+        capture_id=request.capture_id,
+        event_id=event_id,
+        previous_version=request.expected_current_version,
+        version=version,
+        envelope=sealed.envelope,
+        envelope_bytes=sealed.yaml_bytes,
+        previous_envelope=previous_envelope,
+        event=event,
+        event_bytes=event_bytes,
+        payload_digest=payload_digest,
+        payload_set_sha256=payload_set_digest,
+    )
+
+
 def _require_exact_envelope(source: bytes, candidate: _CandidateItem) -> object:
     envelope = load_envelope(source, require_canonical=True)
     if envelope != candidate.envelope or not verify_envelope(envelope):
@@ -1746,6 +1923,230 @@ def _write_candidate_metadata(
         candidate.event_bytes,
         validator=lambda source: _require_exact_event(source, candidate),
     )
+
+
+def _require_exact_append_envelope(
+    source: bytes,
+    candidate: _AppendCandidate,
+) -> object:
+    envelope = load_envelope(source, require_canonical=True)
+    if envelope != candidate.envelope or not verify_envelope(envelope):
+        raise ValueError("Envelope does not match the append candidate")
+    return envelope
+
+
+def _require_exact_append_event(
+    source: bytes,
+    candidate: _AppendCandidate,
+) -> object:
+    event = load_capture_event(
+        source,
+        envelope=candidate.envelope,
+        previous_envelope=candidate.previous_envelope,
+        require_canonical=True,
+    )
+    if event != candidate.event:
+        raise ValueError("Event does not match the append candidate")
+    return event
+
+
+def _write_append_candidate_metadata(
+    staging: _AppendStaging,
+    candidate: _AppendCandidate,
+    dependencies: _CaptureDependencies,
+) -> None:
+    """Durably write and reread the presealed append metadata in staging."""
+
+    if not isinstance(staging, _AppendStaging):
+        raise TypeError("staging must be _AppendStaging")
+    dependencies.durability.write_new_file_durable(
+        staging.version_path / "envelope.yaml",
+        candidate.envelope_bytes,
+        validator=lambda source: _require_exact_append_envelope(source, candidate),
+    )
+    dependencies.durability.write_new_file_durable(
+        staging.event_path(candidate.event_id),
+        candidate.event_bytes,
+        validator=lambda source: _require_exact_append_event(source, candidate),
+    )
+
+
+def _decidable_append_tail_identity(
+    source: bytes,
+    *,
+    expected_capture_id: str,
+    expected_version: int,
+    previous_envelope: Mapping[str, object],
+) -> _AppendRequestIdentity | None:
+    """Return an identity only for one canonical, self-bound append tail.
+
+    Known partial, malformed, noncanonical, anonymous, or mismatched Envelopes
+    deliberately return ``None`` and therefore reserve no idempotency key.
+    Filesystem I/O uncertainty is handled before this pure byte boundary.
+    """
+
+    try:
+        envelope = load_envelope(source, require_canonical=True)
+        if not verify_envelope(envelope) or not verify_envelope(previous_envelope):
+            return None
+        if (
+            type(expected_version) is not int
+            or not 2 <= expected_version <= 999999
+            or envelope["capture_id"] != expected_capture_id
+            or envelope["version"] != expected_version
+            or envelope["previous_version"] != expected_version - 1
+            or previous_envelope["capture_id"] != expected_capture_id
+            or previous_envelope["version"] != expected_version - 1
+        ):
+            return None
+        identity = envelope["idempotency"]
+        if not isinstance(identity, Mapping):
+            return None
+        scope = identity["scope"]
+        key_sha256 = identity["key_sha256"]
+        request_sha256 = identity["request_fingerprint_sha256"]
+        if (
+            type(scope) is not str
+            or not scope.endswith(":append_capture_version")
+            or type(key_sha256) is not str
+            or type(request_sha256) is not str
+        ):
+            return None
+        return _AppendRequestIdentity(
+            scope=scope,
+            key_sha256=key_sha256,
+            request_fingerprint_sha256=request_sha256,
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _attest_version_payloads(
+    version_path: Path,
+    envelope: Mapping[str, object],
+) -> tuple[DigestResult, ...]:
+    """Fully attest all payload bytes in one already-identified version."""
+
+    payloads = _payload_files(version_path, envelope)
+    results: list[DigestResult] = []
+    for payload in payloads:
+        is_primary = (
+            payload.metadata.get("ordinal") == 0
+            and payload.metadata.get("role") == "primary"
+        )
+        decoder = (
+            codecs.getincrementaldecoder("utf-8")("strict")
+            if is_primary
+            else None
+        )
+        prefix = bytearray()
+        digest = hashlib.sha256()
+        byte_size = 0
+        try:
+            with payload.path.open("rb") as stream:
+                handle_stat = os.fstat(stream.fileno())
+                if not (
+                    stat.S_ISREG(handle_stat.st_mode)
+                    and handle_stat.st_dev == payload.path_stat.st_dev
+                    and handle_stat.st_ino == payload.path_stat.st_ino
+                    and handle_stat.st_mode == payload.path_stat.st_mode
+                ):
+                    raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+                while True:
+                    chunk = stream.read(DEFAULT_CHUNK_SIZE)
+                    if type(chunk) is not bytes:
+                        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+                    if not chunk:
+                        break
+                    byte_size += len(chunk)
+                    digest.update(chunk)
+                    if is_primary:
+                        if len(prefix) < 3:
+                            prefix.extend(chunk[: 3 - len(prefix)])
+                        try:
+                            assert decoder is not None
+                            decoder.decode(chunk, final=False)
+                        except UnicodeDecodeError as exc:
+                            raise _IntegrityFailure(
+                                CauseCode.PAYLOAD_HASH_MISMATCH
+                            ) from exc
+        except _IntegrityFailure:
+            raise
+        except OSError as exc:
+            raise _StoreIoFailure(
+                stage="payload-read",
+                cause_code=CauseCode.PAYLOAD_READ_FAILED,
+            ) from exc
+        if not _same_identity(payload.path, payload.path_stat):
+            raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+        expected_size = payload.metadata.get("byte_size")
+        if type(expected_size) is not int or byte_size != expected_size:
+            raise _IntegrityFailure(CauseCode.BYTE_SIZE_MISMATCH)
+        actual_sha256 = "sha256:" + digest.hexdigest()
+        expected_sha256 = payload.metadata.get("sha256")
+        if type(expected_sha256) is not str or not hmac.compare_digest(
+            actual_sha256,
+            expected_sha256,
+        ):
+            raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+        if is_primary:
+            if byte_size == 0 or bytes(prefix).startswith(b"\xef\xbb\xbf"):
+                raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+            try:
+                assert decoder is not None
+                decoder.decode(b"", final=True)
+            except UnicodeDecodeError as exc:
+                raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH) from exc
+        results.append(DigestResult(byte_size=byte_size, sha256=actual_sha256))
+    return tuple(results)
+
+
+def _attest_append_candidate_at(
+    version_path: Path,
+    event_path: Path,
+    candidate: _AppendCandidate,
+) -> None:
+    """Prove final or staging version/Event bytes equal one append candidate."""
+
+    _immutable_directory_stat(
+        version_path,
+        missing_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+        invalid_cause=CauseCode.ENVELOPE_HASH_MISMATCH,
+        stage="version-read",
+    )
+    envelope = _load_committed_envelope(version_path / "envelope.yaml")
+    if envelope != candidate.envelope:
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+    digests = _attest_version_payloads(version_path, envelope)
+    if len(digests) != 1:
+        raise _IntegrityFailure(CauseCode.PAYLOAD_SET_HASH_MISMATCH)
+    if (
+        digests[0].byte_size != candidate.payload_digest.byte_size
+        or not hmac.compare_digest(
+            digests[0].sha256,
+            candidate.payload_digest.sha256,
+        )
+    ):
+        raise _IntegrityFailure(CauseCode.PAYLOAD_HASH_MISMATCH)
+    source = _read_regular_bytes(
+        event_path,
+        maximum_bytes=_EVENT_MAXIMUM_BYTES,
+        missing_cause=CauseCode.EVENT_MISSING,
+        invalid_cause=CauseCode.EVENT_SCHEMA_INVALID,
+    )
+    try:
+        event = load_capture_event(
+            source,
+            envelope=envelope,
+            previous_envelope=candidate.previous_envelope,
+            require_canonical=True,
+        )
+    except CaptureEventReferenceError as exc:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH) from exc
+    except ValueError as exc:
+        raise _IntegrityFailure(CauseCode.EVENT_SCHEMA_INVALID) from exc
+    if event != candidate.event:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
 
 
 def _validate_candidate_at(
@@ -1832,6 +2233,84 @@ def _probe(path: Path) -> os.stat_result | None | object:
         return _lstat_if_present(path)
     except OSError:
         return _UNPROVABLE
+
+
+def _probe_append_source(
+    path: Path,
+    expected_stat: os.stat_result,
+) -> _AppendSourceEvidence:
+    """Classify whether an append rename source is the originally owned object."""
+
+    probed = _probe(path)
+    if probed is _UNPROVABLE:
+        return _AppendSourceEvidence.UNPROVABLE
+    if probed is None:
+        return _AppendSourceEvidence.ABSENT
+    if _same_identity(path, expected_stat):
+        return _AppendSourceEvidence.ORIGINAL
+    return _AppendSourceEvidence.OTHER
+
+
+def _probe_append_target(path: Path) -> _AppendTargetEvidence:
+    """Classify target existence without treating existence as commit proof."""
+
+    probed = _probe(path)
+    if probed is _UNPROVABLE:
+        return _AppendTargetEvidence.UNPROVABLE
+    if probed is None:
+        return _AppendTargetEvidence.ABSENT
+    return _AppendTargetEvidence.PRESENT
+
+
+def _attest_append_target(
+    version_path: Path,
+    event_path: Path,
+    candidate: _AppendCandidate,
+) -> _AppendTargetAttestation:
+    try:
+        _attest_append_candidate_at(version_path, event_path, candidate)
+        return _AppendTargetAttestation.MATCH
+    except _IntegrityFailure:
+        return _AppendTargetAttestation.INVALID
+    except _StoreIoFailure:
+        return _AppendTargetAttestation.UNPROVABLE
+
+
+def _classify_append_event_evidence(
+    *,
+    rename_attempted: bool,
+    source: _AppendSourceEvidence,
+    target: _AppendTargetEvidence,
+    target_attestation: _AppendTargetAttestation,
+) -> _AppendCommitDisposition:
+    """Pure C5 Event-rename evidence matrix; never guesses from an exception."""
+
+    if type(rename_attempted) is not bool:
+        raise TypeError("rename_attempted must be boolean")
+    source = _AppendSourceEvidence(source)
+    target = _AppendTargetEvidence(target)
+    target_attestation = _AppendTargetAttestation(target_attestation)
+
+    if target is _AppendTargetEvidence.PRESENT and (
+        target_attestation is _AppendTargetAttestation.INVALID
+    ):
+        return _AppendCommitDisposition.INTEGRITY_UNKNOWN
+    if not rename_attempted:
+        if target is _AppendTargetEvidence.ABSENT:
+            return _AppendCommitDisposition.NOT_COMMITTED
+        return _AppendCommitDisposition.UNKNOWN
+    if (
+        source is _AppendSourceEvidence.ORIGINAL
+        and target is _AppendTargetEvidence.ABSENT
+    ):
+        return _AppendCommitDisposition.NOT_COMMITTED
+    if (
+        source is _AppendSourceEvidence.ABSENT
+        and target is _AppendTargetEvidence.PRESENT
+        and target_attestation is _AppendTargetAttestation.MATCH
+    ):
+        return _AppendCommitDisposition.COMMITTED
+    return _AppendCommitDisposition.UNKNOWN
 
 
 def _source_is_original_directory(
@@ -1983,6 +2462,46 @@ def _initial_projection(
         },
         "updated_at": verified_at,
     }
+
+
+def _appended_projection(
+    candidate: _AppendCandidate,
+    *,
+    verified_at: str,
+) -> dict[str, object]:
+    """Build the current-state projection for a presealed append candidate."""
+
+    state = {
+        "schema": "knowledgeflow.capture-state",
+        "schema_version": 1,
+        "capture_id": candidate.capture_id,
+        "current_version": candidate.version,
+        "current_envelope_sha256": candidate.envelope["envelope_sha256"],
+        "durability": {"status": "durable", "verified_at": verified_at},
+        "routing": {"status": "unassigned", "target_kb_ids": []},
+        "trust": {"status": "unreviewed-capture"},
+        "gbrain": {
+            "sync_status": "not-requested",
+            "source_id": None,
+            "page_slug": None,
+            "mirrored_version": None,
+            "mirrored_envelope_sha256": None,
+        },
+        "backup": {
+            "git_status": "uncommitted",
+            "commit": None,
+            "remote_status": "not-requested",
+        },
+        "updated_at": candidate.event["occurred_at"],
+    }
+    # Validate here so no caller can obtain an unbound version >1 projection.
+    dump_capture_state(
+        state,
+        envelope=candidate.envelope,
+        current_event=candidate.event,
+        previous_envelope=candidate.previous_envelope,
+    )
+    return state
 
 
 def _write_projection(
@@ -2600,6 +3119,7 @@ def _list_captures_with_dependencies(
 
 
 __all__ = [
+    "AppendCaptureVersionOperationResult",
     "CaptureTextOperationResult",
     "GetCaptureOperationResult",
     "ListCapturesOperationResult",

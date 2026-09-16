@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
+<!-- knowledgeflow-doc-status tests=231 capture_tests=216 script_tests=15 next_gate=C5B -->
 
-> 状态：Approved Design；C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；下一功能门禁为 C5A<br>
+> 状态：Approved Design；C5A 内容与本地验证已完成，当前 231 项全量通过且未公开 append；下一功能门禁为需单独授权的 C5B<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -30,11 +30,12 @@
 > C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）<br>
 > C5-0 内容与本地验证日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）<br>
 > 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）<br>
+> C5A 内容与本地验证日期：2026-09-16（本独立提交；未 push）<br>
 > 当前状态同步日期：2026-09-16<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 后为 212 项并以 `231ad09` 推送；C4V 新增 2 项组合验收后当前全量为 214 项，并以 `1e38f2f` 推送；C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 也已推送，首次远端 CI 已通过<br>
-> 当前授权：仅允许完成并复核本次 C5-0/首次 CI 远端事实收口；C5A、真实 Capture Store 和外部系统接入均未授权
+> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 后为 212 项并以 `231ad09` 推送；C4V 后为 214 项并以 `1e38f2f` 推送；C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 也已推送，首次远端 CI 已通过；C5A 新增 17 项捕获内核测试后当前全量为 231 项<br>
+> 当前授权：C5A 已按本次明确授权完成内容与本地验证；C5B、真实 Capture Store 和外部系统接入均未授权
 
 ## 0. 结论先行
 
@@ -44,9 +45,9 @@
 
 C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。
 
-C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 后为 212 项并以 `231ad09` 推送；C4V 新增 2 项公共 API 组合验收后当前为 214 项。
+C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项；C4B 后为 197 项；C4C 后为 212 项；C4V 后为 214 项；C5A 新增 17 项定向测试后当前为 231 项。
 
-公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；C4B `get_capture` 与 C4C `list_captures` 均已独立版本化并 push。C4V 又以公开 API 闭合真实 4/64 MiB 写入—列表—读取、静态分页和页间受控新增的阶段验收，并以独立提交 `1e38f2f` push。C5-0 只完成追加契约内容与本地验证，追加生产实现仍留在 C5A/C5B/C5V；没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。
+公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；C4B `get_capture` 与 C4C `list_captures` 均已独立版本化并 push。C4V 又以公开 API 闭合真实 4/64 MiB 写入—列表—读取、静态分页和页间受控新增的阶段验收，并以独立提交 `1e38f2f` push。C5A 已实现追加类型、codec/writer、投影、staging、尾部身份和提交证据原语，但公共 `append_capture_version` 与完整事务仍留在 C5B/C5V；没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。
 
 ## 1. 本方案解决什么问题
 
@@ -680,7 +681,7 @@ GET/LIST/C3V 目标矩阵 34 项先行通过，并与新增 2 项组合验收共
 - `capture-state` v1 向后兼容支持版本 `1..999999`；追加投影 `updated_at` 取当前 Event 时间，`durability.verified_at` 取最终回读后的独立时间，既有版本 1 golden 不变。
 - APP-01–APP-24 取代原 APP-01–APP-08 粗粒度矩阵，覆盖契约、完整性、竞态、尾部、三态证据、投影和真实边界。
 
-完成记录（2026-09-14；独立提交 `ea530ad`）：C4V 提交 `1e38f2f` 当时已 push 至 `origin/main`。本批只修改操作契约、Envelope、冲突登记、实现/编码计划、状态文档和文档护栏期望值；未修改 `src/`、磁盘 schema/golden、公开 API 或提示词，未创建生产配置/Store。`ea530ad` 后于 2026-09-16 push；当前全量仍为 214 项，下一功能门禁为需另行授权的 C5A。
+完成记录（2026-09-14；独立提交 `ea530ad`）：C4V 提交 `1e38f2f` 当时已 push 至 `origin/main`。本批只修改操作契约、Envelope、冲突登记、实现/编码计划、状态文档和文档护栏期望值；未修改 `src/`、磁盘 schema/golden、公开 API 或提示词，未创建生产配置/Store。`ea530ad` 后于 2026-09-16 push；在该时点全量为 214 项、后续门禁为 C5A。
 
 远端门禁记录（2026-09-16）：最小 Windows CI 提交 `c4d2c7b` 已随 C5-0 及其事实同步提交推送至 `origin/main`；首次 `push` 运行 `35075692046` 在干净 `windows-latest` / Python 3.13 runner 上逐项通过普通与严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。该门禁不部署项目、不创建生产配置/Store，也不授权 C5A。
 
@@ -697,6 +698,8 @@ GET/LIST/C3V 目标矩阵 34 项先行通过，并与新增 2 项组合验收共
 - `tests/capture/unit/`、`tests/capture/golden/`：至少闭合 APP-01–APP-03、追加回执、版本 2 投影/Event writer、版本上界、尾部身份可判定边界和 rename 证据纯能力；另做 capture_text marker/golden/清理不变、append marker 先写、部分 rename 后固定树清理、额外对象/替换身份/reparse 拒绝的负向回归。
 
 停点：公共包顶层不得导出或执行 `append_capture_version`；不得扫描真实生产 Store、提交最终版本/Event、实现通用恢复或索引。C5A 单独复核、测试和提交后，才能请求 C5B 授权。
+
+完成记录（2026-09-16；本独立提交，未 push）：新增公开但不可执行的追加请求/结果类型与操作结果联合类型，保持 `CommittedWriteResult` 精确形状不变；严格预封存追加 Envelope/Event；向后兼容地泛化 state v1，并要求版本大于 1 时绑定当前追加 Event 和前一 Envelope；新增独立 marker-first `_AppendStaging`、按 operation 隔离的固定树清理、尾部身份可判定边界、完整 Payload/Event attestation 及 Event rename source/target 证据矩阵。新增 17 项捕获测试后普通与严格 `ResourceWarning` 全量均为 231 项；`compileall`、`pip check`、文档护栏和 diff 检查通过。公共包仍不含 `append_capture_version`，未提交任何最终版本/Event，默认配置与生产 Store 均不存在。下一门禁为需单独授权的 C5B。
 
 ### C5B：完整 `append_capture_version`
 
@@ -889,4 +892,4 @@ git status --short
 7. 未获明确 Git 授权时保留既有工作树修改，不自动清理、提交或恢复。
 8. MVP-0 不增加 UI、GBrain、Harness、路由或 SOP 实现；C2B 编码前复核后的规划估算为约 10–15 个专注工程日，其中 C2B 为 2–3 天。
 
-第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合。D0G、C4-0、R0.3D 与 R0.3F 均于 2026-09-13 通过各自独立本地提交闭合；C4A `06cff02`、C4B `666ba18` 与 C4C `231ad09` 均已同步到 `origin/main`。C4V 于 2026-09-14 完成 214 项验证并以 `1e38f2f` push；C5-0 同日完成契约内容与本地验证并以 `ea530ad` 版本化，2026-09-16 与最小 Windows CI `c4d2c7b` 一并 push，首次远端 CI 已通过。C5A 与后续批次仍需逐批明确授权。
+第 1–7 项已于 2026-09-02 获批；第 8 项的 C2 成本校准、C2A/C2B 停点及 C2B-1/2/3 内部边界于 2026-09-03 补充确认。C0–C2（含 C2B-3 崩溃恢复）已于 2026-09-04 全部完成；C3-0 六项行为与原子 Event 补充于 2026-09-08 确认，成功回执、固定错误消息和幂等命中警告语义于 2026-09-09 完成编码前收口，C3A/C3B/C3C/C3V 四个独立停点于 2026-09-10 确认。C3A 与 C3B 已于 2026-09-10 分别完成并单独提交，C3C 与 C3V 已于 2026-09-11 先后完成；R0.1/R0.2 随后分别以 `92a37b3`、`79515ed` 完成，D0-F 已于 2026-09-12 通过独立本地文档提交闭合。D0G、C4-0、R0.3D 与 R0.3F 均于 2026-09-13 通过各自独立本地提交闭合；C4A `06cff02`、C4B `666ba18` 与 C4C `231ad09` 均已同步到 `origin/main`。C4V 于 2026-09-14 完成 214 项验证并以 `1e38f2f` push；C5-0 同日完成契约内容与本地验证并以 `ea530ad` 版本化，2026-09-16 与最小 Windows CI `c4d2c7b` 一并 push，首次远端 CI 已通过。C5A 已按本次独立授权完成内容与本地验证，并由本独立提交闭合；C5B 与后续批次仍需逐批明确授权。

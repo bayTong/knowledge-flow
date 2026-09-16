@@ -73,6 +73,14 @@ def _require_capture_version(value: object, field_name: str) -> int:
     return value
 
 
+def _require_append_expected_version(value: object) -> int:
+    if type(value) is not int or not 1 <= value < _MAX_CAPTURE_VERSION:
+        raise ValueError(
+            "expected_current_version must be an integer from 1 through 999998"
+        )
+    return value
+
+
 def _require_channel_token(value: object, field_name: str) -> str:
     if type(value) is not str or _CHANNEL_TOKEN_PATTERN.fullmatch(value) is None:
         raise ValueError(
@@ -304,6 +312,36 @@ class CaptureTextRequest:
             raise TypeError("channel must be ChannelMetadata")
         if self.idempotency_key is not None:
             require_idempotency_key(self.idempotency_key)
+        intent = self.user_intent if self.user_intent is not None else UserIntent()
+        if not isinstance(intent, UserIntent):
+            raise TypeError("user_intent must be UserIntent or null")
+        object.__setattr__(self, "user_intent", intent)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AppendCaptureVersionRequest:
+    """Validated caller inputs for appending one complete Capture version."""
+
+    capture_id: str
+    expected_current_version: int
+    text: str | BinaryReadable
+    channel: ChannelMetadata
+    idempotency_key: str
+    user_intent: UserIntent | None = None
+
+    def __post_init__(self) -> None:
+        _require_capture_id(self.capture_id)
+        _require_append_expected_version(self.expected_current_version)
+        if type(self.text) is str:
+            if not self.text:
+                raise ValueError("text must not be empty")
+            if self.text.startswith("\ufeff"):
+                raise ValueError("text must not begin with a byte order mark")
+        elif not callable(getattr(self.text, "read", None)):
+            raise TypeError("text must be str or provide read(size)")
+        if not isinstance(self.channel, ChannelMetadata):
+            raise TypeError("channel must be ChannelMetadata")
+        require_idempotency_key(self.idempotency_key)
         intent = self.user_intent if self.user_intent is not None else UserIntent()
         if not isinstance(intent, UserIntent):
             raise TypeError("user_intent must be UserIntent or null")
@@ -562,10 +600,7 @@ class RequestFingerprint:
                 )
         else:
             _require_capture_id(self.capture_id)
-            _require_positive_integer(
-                self.expected_current_version,
-                "expected_current_version",
-            )
+            _require_append_expected_version(self.expected_current_version)
 
     def as_canonical_mapping(self) -> dict[str, object]:
         metadata = sorted(self.payload_metadata, key=lambda item: item.ordinal)
@@ -597,6 +632,7 @@ class EnvelopeSeal:
 
 
 __all__ = [
+    "AppendCaptureVersionRequest",
     "BinaryReadable",
     "BinaryWritable",
     "CaptureItemState",

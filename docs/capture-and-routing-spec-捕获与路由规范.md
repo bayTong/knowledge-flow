@@ -738,7 +738,7 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 
 ## 24. 下一步
 
-1. 实现拆解与编码执行方案已经批准；C3 已完成，完整 `capture_text` 事务已在测试持有的 Store 中通过真实大小、加强版竞态与故障验收；R0.1/R0.2、D0-F、D0G、C4-0、R0.3D 与 R0.3F 也已闭合。C4A 读取契约能力、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别闭合；C4V `1e38f2f`、C5-0 `ea530ad` 和最小 Windows CI `c4d2c7b` 均已 push，当前 214 项全量与首次远端 CI 均通过；C5A 及后续批次未授权。
+1. 实现拆解与编码执行方案已经批准；C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已闭合。C4V `1e38f2f`、C5-0 `ea530ad` 和最小 Windows CI `c4d2c7b` 均已 push；C5A 内容与本地验证已完成，当前 231 项全量通过但不公开 append。C5B 及后续批次未授权。
 2. 本地链路通过故障注入和迁移验收后，再实现人工路由和 SOP-000A 调用边界。
 3. 以本地 DB-only source 实证 GBrain 未审核镜像、副作用关闭和查询隔离。
 4. 定义 SOP-000B：如何基于首份获批策展地图写入 SCHEMA 并激活 KB。

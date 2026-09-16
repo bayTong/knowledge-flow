@@ -696,4 +696,4 @@ Event ID 最终目标在第一次逻辑提交尝试前已存在时，不得采�
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A 契约能力和 C3B 写入基础已于 2026-09-10 分别完成；C3C 与 C3V 已于 2026-09-11 在测试持有的 Store 中先后实现并验收完整 `capture_text` 事务，C3V 当时全量为 144 项。R0.1/R0.2 随后完成初始化所有权加固，R0 后全量为 148 项；D0-F、D0G、C4-0、R0.3D 与 R0.3F 也已闭合。C4A、C4B `get_capture` 与 C4C `list_captures` 已分别以 `06cff02`、`666ba18`、`231ad09` 完成并 push；C4V 已完成 GET-01–GET-16、LIST-01–LIST-19、2 项公共 API 组合验收及当前全量 214 项验证，并以 `1e38f2f` push。C5-0 已冻结追加的 C-035–C-042 与 APP-01–APP-24、完成本地验证，并以 `ea530ad` push；最小 Windows CI `c4d2c7b` 的首次远端运行也已通过。追加、生产 Store、GBrain 与路由仍未实现，C5A 未授权。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5-0 `ea530ad` 已冻结 C-035–C-042 与 APP-01–APP-24 并 push，最小 Windows CI `c4d2c7b` 首次远端运行也已通过。C5A 已实现追加公开类型、严格 codec/writer、版本 2 投影、独立 staging/清理、尾部身份和提交证据原语，当前 231 项全量通过；公共 `append_capture_version`、生产 Store、GBrain 与路由仍未实现，C5B 未授权。

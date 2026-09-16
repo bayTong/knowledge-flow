@@ -1,8 +1,8 @@
 # KnowledgeFlow C3 后综合评估与后续实施方案
 
-<!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
+<!-- knowledgeflow-doc-status tests=231 capture_tests=216 script_tests=15 next_gate=C5B -->
 
-> 状态：Draft，待用户逐批授权；C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；下一功能门禁为 C5A
+> 状态：Draft，待用户逐批授权；C5A 内容与本地验证已完成，当前 231 项全量通过且未公开 append；下一功能门禁为需单独授权的 C5B
 > 形成日期：2026-09-11
 > D0G 内容与本地验证日期：2026-09-12；版本化收口日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
 > C4-0 读取契约完成日期：2026-09-13（完成时未 push；现已随 `dc3a35f` 同步至 `origin/main`）
@@ -16,8 +16,9 @@
 > C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）
 > C5-0 内容与本地验证日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）
 > 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）
+> C5A 内容与本地验证日期：2026-09-16（本独立提交；未 push）
 > 作用：综合当前仓库事实、既有评估、实施方案及其复核意见，确定 C3 之后的建议执行顺序、批次边界和验收门禁
-> 权威边界：本文是分析与计划，不自动覆盖任何 `Approved Design`；C4V 已 push，C5-0 已按单独授权同步进主题权威并完成本地验证，但当前不代表 C5A 或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
+> 权威边界：本文是分析与计划，不自动覆盖任何 `Approved Design`；C5A 已按本次明确授权完成内容与本地验证，但不代表 C5B 或后续批次已获授权。发生冲突时，以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及其指定的主题权威文件为准
 
 ---
 
@@ -27,7 +28,7 @@
 
 1. 初始化事务 marker 顺序和配置临时文件身份问题已分别以 `92a37b3`、`79515ed` 修复并回归验证，不再阻塞读取主线。
 2. C4A 已把读取与分页裁决落实为内部 schema、模型、codec、版本链纯原语和 golden，并以提交 `06cff02` 推送；C4B `get_capture` 已以 `666ba18` 推送；C4C `list_captures` 已以 `231ad09` 推送；C4V 已完成公共 API 组合验收和 214 项验证，并以独立提交 `1e38f2f` 推送。
-3. C4-0 已解决 C5 “版本目录提交”和追加 Event 分离造成的读取可见性冲突；C5-0 又完成写侧幂等恢复、尾部续封、三态证据和故障优先级收口，并由独立提交 `ea530ad` 版本化、现已 push。最小 Windows CI `c4d2c7b` 的首次远端运行已通过，下一实现门禁为 C5A。
+3. C4-0 与 C5-0 已解决追加可见性、幂等恢复、尾部续封、三态证据和故障优先级；C5A 又实现类型、codec/writer、投影、staging、尾部身份和提交证据原语，当前 231 项通过且未公开 append。下一实现门禁为 C5B。
 4. 策展提示词存在真实漂移和方法论矛盾，但其权威状态仍是 `Draft，待重构`，不应整体阻塞 C4。
 5. 人工审核成本是产品风险，需要实验；它应阻塞后续 SOP/审核工作流定型，而不是阻塞基本读取能力。
 
@@ -48,7 +49,8 @@ R0.1 初始化清理所有权修复（已完成）
   -> C4V 独立验收（`1e38f2f` 已 push）
   -> C5-0 写入契约（ea530ad 已版本化并 push）
   -> 最小 Windows CI（c4d2c7b 已 push，首次远端运行通过）
-  -> C5A/C5B/C5V
+  -> C5A 追加基础（已完成内容与本地验证）
+  -> C5B/C5V
   -> C6A/C6B/C6C
   -> C7
   -> C8
@@ -89,9 +91,9 @@ R0.1 初始化清理所有权修复（已完成）
 |---|---|---|
 | Git | C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 已与 `origin/main` 同步 | 首次远端运行 `35075692046` 已通过 |
 | 捕获内核 | C0–C3 已完成 | `capture_text` 已实现并通过当前阶段验收 |
-| 测试 | C4V 新增 2 项后为 214 项，其中捕获内核 199 项、维护脚本 7 项、文档护栏 8 项；普通与严格 `ResourceWarning` 模式均通过 | 当前绿线不得因后续批次下降 |
-| 源码 | C4C 完成后，`src/knowledgeflow_capture/` 共 13 个 Python 模块、9,127 个物理行 | 未新增模块，只扩大经批准的公开列表入口 |
-| 下一动作 | 单独授权并实施 C5A | 已完成的 C5-0 与 CI 仍不自动授权 C5A |
+| 测试 | C5A 后为 231 项，其中捕获内核 216 项、维护脚本 7 项、文档护栏 8 项；普通与严格 `ResourceWarning` 全量均通过 | 当前绿线不得因后续批次下降 |
+| 源码 | C5A 后 `src/knowledgeflow_capture/` 仍为 13 个 Python 模块、10,118 个物理行 | 未新增模块；只新增经批准且尚不可执行的追加基础能力 |
+| 下一动作 | 完成 C5A 独立本地提交，再单独请求 C5B | C5A 不自动授权完整追加事务 |
 | 生产环境 | 生产配置和生产 Capture Store 未创建 | 后续开发继续只使用测试持有的临时 Store |
 | 外部系统 | GBrain、模型、账号/API key、QQ 均未接入 | 不属于 MVP-0 当前热路径 |
 | 提示词/SOP | 策展地图和覆盖审计方法为 `Draft，待重构` | 可登记问题，但不能反向覆盖 Capture 权威契约 |
@@ -544,13 +546,15 @@ C4-0 完成记录（2026-09-13）：上述 A–H 已同步进操作契约、Enve
 - 同一 `capture-state` v1 向后兼容支持多版本；`updated_at` 取当前版本 Event 时间，`durability.verified_at` 取最终回读后的独立时间。
 - APP-01–APP-24 分别覆盖公共契约、幂等/CAS、完整性、尾部、三态证据、投影、双进程及真实 4/64 MiB 边界。
 
-Envelope、操作契约、实现矩阵、编码批次和 C-035–C-042 已同步。C5-0 没有修改生产代码、磁盘 schema/golden 或公开 API；不得重新把“最高版本目录”降级为提交事实，也不得改变 C4 的读取可见性。下一功能门禁是需另行授权的 C5A。
+Envelope、操作契约、实现矩阵、编码批次和 C-035–C-042 已同步。C5A 已落实其中的基础原语，但不得重新把“最高版本目录”降级为提交事实，也不得改变 C4 的读取可见性。下一功能门禁是需另行授权的 C5B。
 
 ### C5A：追加写入基础
 
 - 新增请求/结果类型、版本 2 投影能力和严格 Event writer，保持旧 golden 与 capture_text 回执不变。
 - 复用现有 Store 级 Windows 锁，不引入 Item 锁；新增独立 append staging、按 marker operation 分流的固定树安全清理、完整正文、previous-version 链和 Envelope/Event 预封存。
 - 新增无覆盖提交、source/target 现场探测与最终 attestation 的内部纯能力，但不公开 append、不写最终 Item。
+
+完成记录（2026-09-16；本独立提交，未 push）：上述类型、writer、版本 2 投影、独立 staging/清理、尾部身份和提交证据原语已实现；新增 17 项捕获测试，普通与严格 `ResourceWarning` 全量均为 231 项，固定工程检查通过。公共包不含 `append_capture_version`，本批未提交最终版本/Event，也未创建或扫描生产 Store。
 
 ### C5B：完整操作
 
@@ -702,11 +706,11 @@ Git 状态：
 
 ## 13. 下一项应完成的工作
 
-截至最小 Windows CI 提交 `c4d2c7b` 的稳定基线已同步到 `origin/main`。C5-0 已按独立授权完成 C-035–C-042、APP-01–APP-24 和相关主题权威的内容/本地验证，并由独立提交 `ea530ad` 版本化和推送；首次远端 Windows CI 已通过。不能自动进入 C5A，也不能启动提示词或 UI 重构。
+截至最小 Windows CI 提交 `c4d2c7b` 的稳定基线已同步到 `origin/main`。C5A 已按明确授权完成内容与 231 项本地验证，但仍不公开 append。不能自动进入 C5B，也不能启动提示词或 UI 重构。
 
 建议执行步骤：
 
 1. 最小 Windows CI 已按独立授权完成并首次远端通过；继续维持普通/严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性 doc-check，不把 mypy 或覆盖率设为阻塞门禁。
-2. 下一步单独请求 C5A 授权；C5A 只实现类型、codec/writer、投影泛化、staging 与现场探测原语，不公开 append。
+2. C5A 的严格 `ResourceWarning`、编译、依赖、doc-check、diff 与生产路径复核均已通过；完成独立本地提交后，单独请求 C5B 授权。
 
-本文仍是 Draft；C5-0 和最小 Windows CI 已 push 且首次远端运行通过，但这不表示 C5A 或任何后续批次已获授权。
+本文仍是 Draft；C5A 已获本次授权并完成内容与本地验证，但这不表示 C5B 或任何后续批次已获授权。
