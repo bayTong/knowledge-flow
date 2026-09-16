@@ -2,7 +2,7 @@
 
 <!-- knowledgeflow-doc-status tests=214 capture_tests=199 script_tests=15 next_gate=C5A -->
 
-> 状态：Approved Design；C4V 提交 `1e38f2f` 已 push；C5-0 已由独立本地提交 `ea530ad` 版本化、尚未 push，下一功能门禁为 C5A<br>
+> 状态：Approved Design；C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；下一功能门禁为 C5A<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -24,9 +24,10 @@
 > C4B 完成与版本化收口日期：2026-09-13（独立提交 `666ba18`；已 push 至 `origin/main`）<br>
 > C4C 完成与版本化收口日期：2026-09-13（独立提交 `231ad09`；现已 push 至 `origin/main`）<br>
 > C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）<br>
-> C5-0 内容与本地验证日期：2026-09-14（独立本地提交 `ea530ad`，未 push）<br>
+> C5-0 内容与本地验证日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）<br>
+> 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；C4V 提交 `1e38f2f` 已 push，C5-0 已按单独授权完成契约内容与本地验证，并由独立本地提交 `ea530ad` 版本化、尚未 push；当前不授权 C5A、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；当前不授权 C5A、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
 
 ## 0. 结论先行
 
@@ -60,7 +61,7 @@
 - C4B 已公开 `get_capture` 并闭合 latest/历史版本、目标 Payload 完整证明、Store 外磁盘 spool、sink 失败和投影只读降级；独立提交 `666ba18` 已 push。
 - C4C 已公开 `list_captures`，闭合全 Store 结构验证、内存状态筛选、有界预览、稳定 keyset 分页及 warning 归属，并由独立提交 `231ad09` 完成版本化和 push。
 - C4V 已在不修改生产代码、公共契约或磁盘 schema 的边界内新增 2 项公共 API 组合验收，闭合真实 4/64 MiB 写入—列表—读取、静态分页及页间受控新增证据，并由独立提交 `1e38f2f` 完成版本化和 push。
-- C5-0 已冻结追加的请求/结果、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24，内容与本地验证已由独立本地提交 `ea530ad` 版本化且尚未 push；未修改生产代码或磁盘 schema。
+- C5-0 已冻结追加的请求/结果、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24，内容与本地验证已由独立提交 `ea530ad` 版本化并 push；未修改生产代码或磁盘 schema。最小 Windows CI `c4d2c7b` 的首次远端运行已通过。
 - 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试，稳定化后为 93 项，C3A 后为 105 项，C3B 后为 122 项，C3C 后为 140 项，C3V 后为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 内容后当前为 214 项。
 
 ### 1.2 尚不存在
@@ -542,7 +543,7 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-E8 | `get_capture`（C4B） | E7、E8A | **2026-09-13 已由独立提交 `666ba18` 闭合并 push：先完整验证、再经 Store 外有界磁盘 spool 向调用方 sink 输出；GET-01–GET-16 与当时 197 项全量通过** |
 | M0-E9 | `list_captures`（C4C） | E7、E8A | **2026-09-13 已完成并由独立提交 `231ad09` 闭合且已 push：有界预览、稳定 keyset 游标、投影内存重建和 Global Intake 视图闭环；LIST-01–LIST-19 与 212 项全量通过** |
 | M0-V0 | C4V 读取阶段验收 | E8、E9 | **2026-09-14 已完成并由独立提交 `1e38f2f` 闭合、已 push：GET/LIST 全矩阵、真实 4/64 MiB 公共读取闭环、静态分页和页间受控新增通过；当前全量 214 项** |
-| M0-D5 | C5-0 追加写入契约冻结 | E4、E5、E7–E9、M0-D3 | **2026-09-14 已完成内容与本地验证并由独立本地提交 `ea530ad` 版本化、尚未 push：冻结公开请求/回执、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24** |
+| M0-D5 | C5-0 追加写入契约冻结 | E4、E5、E7–E9、M0-D3 | **2026-09-14 已完成内容与本地验证并由独立提交 `ea530ad` 版本化，2026-09-16 已 push：冻结公开请求/回执、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24** |
 | M0-E10A | C5A 追加契约能力与写入基础 | M0-D5 | 请求/结果模型、版本/投影 schema 泛化、追加 Event writer、staging 与现场探测纯能力通过；不公开 append |
 | M0-E10B | C5B 完整 `append_capture_version` | M0-E10A | 锁内幂等/CAS、版本先落盘、Event 逻辑提交、最终回读、投影和窄续封闭环 |
 | M0-E10V | C5V 追加阶段验收 | M0-E10B | APP-01–APP-24、真实边界、双进程与三态证据全部通过 |
@@ -936,7 +937,7 @@ before_append_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C4V 已逐批通过、版本化并 push；C5-0 已由独立本地提交 `ea530ad` 版本化、尚未 push，下一功能门禁为 C5A** | C5A 及后续未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C4V 与 C5-0 已逐批通过、版本化并 push；最小 Windows CI 已建立且首次远端运行通过，下一功能门禁为 C5A** | C5A 及后续未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | **已于 2026-09-04 通过：LOCK/DUR/INIT/FI 全绿，自动发现总计 85 项测试** | 使用真实生产 root |
@@ -959,4 +960,4 @@ before_append_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后当前为 214 项。安全 Store 初始化、初始化崩溃恢复、C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 及 C4V 读取阶段验收均已实现或验收并独立版本化，C4V `1e38f2f` 已 push。C5-0 已完成契约内容与本地验证，并由独立本地提交 `ea530ad` 版本化且尚未 push；下一功能门禁为 C5A，仍需另行明确授权。追加和业务事务恢复尚未实现。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A 契约能力与 C3B 写入基础分别以 `346164d`、`8050d88` 完成，C3C 完成公开 `capture_text` 事务，C3V 完成独立阶段验收时全量为 144 项；R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后当前为 214 项。安全 Store 初始化、初始化崩溃恢复、C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 及 C4V 读取阶段验收均已实现或验收并独立版本化。C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；下一功能门禁为 C5A，仍需另行明确授权。追加和业务事务恢复尚未实现。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在用户另行明确要求“初始化生产 Capture Store”后才允许创建。
