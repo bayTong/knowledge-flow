@@ -111,6 +111,7 @@ from .store import (
     _create_capture_staging,
     _inspect_store,
     _parse_capture_version_directory_name,
+    _recover_abandoned_capture_staging,
     _rebuild_capture_read_state,
     _warnings_for_capture_version_chain,
 )
@@ -144,11 +145,27 @@ _PreviewOpener = Callable[[Path], BinaryIO]
 
 
 class _CaptureFaultPoint(StrEnum):
-    """Internal-only C3 fault points; never accepted from public input."""
+    """Internal-only C3/C5/C6 fault points; never accepted publicly."""
 
+    AFTER_LOCK_ACQUIRED = "after_lock_acquired"
+    AFTER_PAYLOAD_WRITTEN = "after_payload_written"
+    AFTER_PAYLOAD_FLUSHED = "after_payload_flushed"
+    AFTER_ENVELOPE_WRITTEN = "after_envelope_written"
+    AFTER_READBACK_VERIFIED = "after_readback_verified"
+    AFTER_VERSION_RENAMED = "after_version_renamed"
+    AFTER_EVENT_APPENDED = "after_event_appended"
+    AFTER_PROJECTION_REPLACED = "after_projection_replaced"
+    BEFORE_RECEIPT_RETURNED = "before_receipt_returned"
     BEFORE_EVENT_WRITE = "before_event_write"
     BEFORE_APPEND_EVENT_PREFLIGHT = "before_append_event_preflight"
     BEFORE_PROJECTION_REPLACE = "before_projection_replace"
+    BEFORE_APPEND_VERSION_RENAME = "before_append_version_rename"
+    AFTER_APPEND_VERSION_RENAME = "after_append_version_rename"
+    BEFORE_APPEND_EVENT_RENAME = "before_append_event_rename"
+    AFTER_APPEND_EVENT_RENAME = "after_append_event_rename"
+    AFTER_APPEND_FINAL_READBACK = "after_append_final_readback"
+    BEFORE_APPEND_PROJECTION_REPLACE = "before_append_projection_replace"
+    BEFORE_APPEND_RECEIPT_RETURNED = "before_append_receipt_returned"
 
 
 def _default_utc_now() -> datetime:
@@ -1950,6 +1967,7 @@ def _write_candidate_metadata(
         candidate.envelope_bytes,
         validator=lambda source: _require_exact_envelope(source, candidate),
     )
+    _trigger_fault(_CaptureFaultPoint.AFTER_ENVELOPE_WRITTEN, dependencies)
     _trigger_fault(_CaptureFaultPoint.BEFORE_EVENT_WRITE, dependencies)
     dependencies.durability.write_new_file_durable(
         staging.item_path / "events" / f"{candidate.event_id}.yaml",
@@ -1997,6 +2015,7 @@ def _write_append_candidate_metadata(
         candidate.envelope_bytes,
         validator=lambda source: _require_exact_append_envelope(source, candidate),
     )
+    _trigger_fault(_CaptureFaultPoint.AFTER_ENVELOPE_WRITTEN, dependencies)
     dependencies.durability.write_new_file_durable(
         staging.event_path(candidate.event_id),
         candidate.event_bytes,
@@ -2730,6 +2749,7 @@ def _commit_candidate(
             staging.item_path,
             final_path,
         )
+        _trigger_fault(_CaptureFaultPoint.AFTER_VERSION_RENAMED, dependencies)
     except (DestinationAlreadyExistsError, DurabilityError, OSError):
         return _classify_commit_exception(
             staging,
@@ -2741,12 +2761,15 @@ def _commit_candidate(
         )
 
     try:
-        return _validate_candidate_at(
+        stored = _validate_candidate_at(
             final_path,
             candidate,
             expected_year=year,
             expected_month=month,
         )
+        # Initial capture commits its version and Event in one Item rename.
+        _trigger_fault(_CaptureFaultPoint.AFTER_EVENT_APPENDED, dependencies)
+        return stored
     except _IntegrityFailure as exc:
         return _integrity_failure(exc, CommitState.UNKNOWN)
     except _StoreIoFailure:
@@ -2902,6 +2925,10 @@ def _commit_append_candidate(
                 staged_event_path,
                 candidate,
             )
+            _trigger_fault(
+                _CaptureFaultPoint.AFTER_READBACK_VERIFIED,
+                dependencies,
+            )
         except _IntegrityFailure as exc:
             return _integrity_failure(exc, CommitState.NOT_COMMITTED)
         except (_StoreIoFailure, DurabilityError, OSError):
@@ -2922,9 +2949,17 @@ def _commit_append_candidate(
                 stage="version-target-conflict",
             )
         try:
+            _trigger_fault(
+                _CaptureFaultPoint.BEFORE_APPEND_VERSION_RENAME,
+                dependencies,
+            )
             dependencies.durability.commit_directory_no_replace(
                 staging.version_path,
                 version_path,
+            )
+            _trigger_fault(
+                _CaptureFaultPoint.AFTER_APPEND_VERSION_RENAME,
+                dependencies,
             )
         except (DestinationAlreadyExistsError, DurabilityError, OSError):
             try:
@@ -2999,6 +3034,10 @@ def _commit_append_candidate(
         )
 
     try:
+        _trigger_fault(
+            _CaptureFaultPoint.BEFORE_APPEND_EVENT_RENAME,
+            dependencies,
+        )
         dependencies.durability.commit_file_no_replace_same_volume(
             staged_event_path,
             event_path,
@@ -3007,6 +3046,10 @@ def _commit_append_candidate(
                 source,
                 candidate,
             ),
+        )
+        _trigger_fault(
+            _CaptureFaultPoint.AFTER_APPEND_EVENT_RENAME,
+            dependencies,
         )
     except (DestinationAlreadyExistsError, DurabilityError, OSError):
         disposition = _append_disposition_after_event_attempt(
@@ -3021,7 +3064,13 @@ def _commit_append_candidate(
         if failure is not None:
             return failure
 
-    return _final_append_chain(target.item, candidate)
+    final = _final_append_chain(target.item, candidate)
+    if not isinstance(final, FailureResult):
+        _trigger_fault(
+            _CaptureFaultPoint.AFTER_APPEND_FINAL_READBACK,
+            dependencies,
+        )
+    return final
 
 
 def _initial_projection(
@@ -3134,6 +3183,7 @@ def _write_projection(
             return False
         dependencies.replace_file(temporary_path, destination_path)
         dependencies.durability.flush_directory_metadata(stored.item_path)
+        _trigger_fault(_CaptureFaultPoint.AFTER_PROJECTION_REPLACED, dependencies)
         return _projection_is_valid(stored)
     except Exception:
         return False
@@ -3199,11 +3249,16 @@ def _write_appended_projection(
             or _is_reparse_point(destination_stat)
         ):
             return False
+        _trigger_fault(
+            _CaptureFaultPoint.BEFORE_APPEND_PROJECTION_REPLACE,
+            dependencies,
+        )
         _trigger_fault(_CaptureFaultPoint.BEFORE_PROJECTION_REPLACE, dependencies)
         if not _same_identity(temporary_path, temporary_stat):
             return False
         dependencies.replace_file(temporary_path, destination_path)
         dependencies.durability.flush_directory_metadata(item_path)
+        _trigger_fault(_CaptureFaultPoint.AFTER_PROJECTION_REPLACED, dependencies)
         return not _projection_warning_for_read(disk_chain)
     except Exception:
         return False
@@ -3236,6 +3291,7 @@ def _new_success(
         warnings = (
             OperationWarning(code=WarningCode.PROJECTION_NEEDS_REBUILD),
         )
+    _trigger_fault(_CaptureFaultPoint.BEFORE_RECEIPT_RETURNED, dependencies)
     return CommittedWriteResult(
         receipt=_receipt_from_stored(stored),
         warnings=warnings,
@@ -3268,6 +3324,10 @@ def _new_append_success(
                 details={"capture_id": candidate.capture_id},
             ),
         )
+    _trigger_fault(
+        _CaptureFaultPoint.BEFORE_APPEND_RECEIPT_RETURNED,
+        dependencies,
+    )
     return AppendCaptureVersionResult(
         receipt=_append_receipt_from_committed(committed),
         warnings=warnings,
@@ -3345,6 +3405,7 @@ def _capture_while_locked(
     )
     _write_candidate_metadata(staging, candidate, dependencies)
     _validate_candidate_at(staging.item_path, candidate)
+    _trigger_fault(_CaptureFaultPoint.AFTER_READBACK_VERIFIED, dependencies)
     committed = _commit_candidate(staging, candidate, dependencies)
     if isinstance(committed, FailureResult):
         return committed
@@ -3572,6 +3633,14 @@ def _run_capture_text(
                 request.text,
                 maximum_bytes=local_config.capture.max_text_version_bytes,
                 chunk_size=chunk_size,
+                _before_flush=lambda _path: _trigger_fault(
+                    _CaptureFaultPoint.AFTER_PAYLOAD_WRITTEN,
+                    dependencies,
+                ),
+                _after_flush=lambda _path: _trigger_fault(
+                    _CaptureFaultPoint.AFTER_PAYLOAD_FLUSHED,
+                    dependencies,
+                ),
             )
         except DurabilityError as exc:
             raise _StoreIoFailure(
@@ -3607,6 +3676,15 @@ def _run_capture_text(
         locked_result: CaptureTextOperationResult | None = None
         try:
             with dependencies.lock_factory(capture_root):
+                _trigger_fault(
+                    _CaptureFaultPoint.AFTER_LOCK_ACQUIRED,
+                    dependencies,
+                )
+                _recover_abandoned_capture_staging(
+                    capture_root,
+                    durability=dependencies.durability,
+                    exclude_transaction_ids=(staging.transaction_id,),
+                )
                 locked_result = _capture_while_locked(
                     request,
                     staging=staging,
@@ -3723,6 +3801,14 @@ def _run_append_capture_version(
                 request.text,
                 maximum_bytes=local_config.capture.max_text_version_bytes,
                 chunk_size=chunk_size,
+                _before_flush=lambda _path: _trigger_fault(
+                    _CaptureFaultPoint.AFTER_PAYLOAD_WRITTEN,
+                    dependencies,
+                ),
+                _after_flush=lambda _path: _trigger_fault(
+                    _CaptureFaultPoint.AFTER_PAYLOAD_FLUSHED,
+                    dependencies,
+                ),
             )
         except DurabilityError as exc:
             raise _StoreIoFailure(
@@ -3760,6 +3846,15 @@ def _run_append_capture_version(
         locked_result: AppendCaptureVersionOperationResult | None = None
         try:
             with dependencies.lock_factory(capture_root):
+                _trigger_fault(
+                    _CaptureFaultPoint.AFTER_LOCK_ACQUIRED,
+                    dependencies,
+                )
+                _recover_abandoned_capture_staging(
+                    capture_root,
+                    durability=dependencies.durability,
+                    exclude_transaction_ids=(staging.transaction_id,),
+                )
                 locked_result = _append_while_locked(
                     request,
                     staging=staging,

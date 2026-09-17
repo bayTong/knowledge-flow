@@ -444,8 +444,16 @@ class DurabilityBackend:
         *,
         maximum_bytes: int,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
+        _before_flush: _FileBeforeFlush | None = None,
+        _after_flush: _FileBeforeFlush | None = None,
     ) -> DigestResult:
-        """Write one UTF-8 source once, then independently stream-verify disk bytes."""
+        """Write one UTF-8 source once, then independently stream-verify disk bytes.
+
+        The two underscored callbacks are internal crash-test boundaries.  The
+        first runs after all writes but before stream flush; the second runs
+        after flush and fsync but before close.  Production callers keep both
+        unset.
+        """
 
         _validate_stream_parameters(maximum_bytes, chunk_size)
         target = Path(path)
@@ -472,11 +480,15 @@ class DurabilityBackend:
                     _write_all(stream, chunk)
                     digest.update(chunk)
                     byte_size = next_size
+                if _before_flush is not None:
+                    _before_flush(target)
                 stream.flush()
                 try:
                     self._fsync(stream.fileno())
                 except OSError as exc:
                     raise DurabilityError(DurabilityStage.FILE_FSYNC) from exc
+                if _after_flush is not None:
+                    _after_flush(target)
         except FileExistsError as exc:
             raise DestinationAlreadyExistsError from exc
         except (

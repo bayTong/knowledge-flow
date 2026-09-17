@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=253 capture_tests=238 script_tests=15 next_gate=C6 -->
+<!-- knowledgeflow-doc-status tests=258 capture_tests=243 script_tests=15 next_gate=C6B -->
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-17）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5V 现已完成追加阶段验收：真实双进程在同 Item、同 expected 下的同 key/不同 key 竞争，以及真实 4 MiB/64 MiB append → list/get 闭环均通过，且未修改生产源码。当前为 253 项测试（捕获内核 238 项、维护脚本回归 7 项、文档护栏回归 8 项）。C5A `63a3250`、C5B `ab2a613` 与 C5V 均为尚未 push 的本地批次；下一功能门禁为需单独授权的 C6 恢复、重建与迁移。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-17）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5V 已完成追加阶段验收，C6A 现又闭合业务事务崩溃恢复：9 个 capture 与 7 个 append `os._exit()` 边界均能由新进程恢复，同时活跃、未知、旧式、reparse 与身份变化的 staging 保持不动。当前为 258 项测试（捕获内核 243 项、维护脚本回归 7 项、文档护栏回归 8 项）。C5A `63a3250`、C5B `ab2a613`、C5V 与 C6A 均为尚未 push 的本地批次；下一门禁为 C6B 派生状态重建。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -186,7 +186,7 @@ knowledge-flow/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
 │   │   ├── unit/                     C0–C4A 单元与平台测试
 │   │   ├── integration/              C2B–C4C 事务、读取、真实边界与并发测试
-│   │   └── fault/                    C2B/R0 进程崩溃恢复测试（捕获测试共 199 项）
+│   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 243 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
@@ -246,11 +246,11 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 追加阶段验收也已通过；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，C5A `63a3250`、C5B `ab2a613` 与 C5V 仍只在本地。业务事务恢复、受限 CLI 与生产初始化尚未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 追加阶段验收和 C6A 业务事务崩溃恢复也已通过；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，C5A `63a3250`、C5B `ab2a613`、C5V 与 C6A 仍只在本地。派生状态重建、迁移、受限 CLI 与生产初始化尚未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，C5A/C5B/C5V 为已完成的本地批次，最小 Windows CI 首次远端运行已通过；这不授权 C6 或其他后续批次。
-3. 再按 C6–C8 闭合恢复、重建、迁移和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，C5A/C5B/C5V/C6A 为已完成的本地批次，最小 Windows CI 首次远端运行已通过。
+3. 下一步按 C6B 重建、C6C 迁移和 C7–C8 受限适配/总验收继续闭合，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。

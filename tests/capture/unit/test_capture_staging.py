@@ -34,11 +34,17 @@ class CaptureStagingTest(unittest.TestCase):
         self.backend = DurabilityBackend(_directory_flusher=lambda _path: True)
 
     def _create(self):
-        return _create_capture_staging(
+        staging = _create_capture_staging(
             self.capture_root,
             durability=self.backend,
             uuid_factory=lambda: _TRANSACTION_UUID,
         )
+        self.addCleanup(
+            _cleanup_capture_staging,
+            staging,
+            durability=self.backend,
+        )
+        return staging
 
     def test_t0_marker_proves_ownership_before_request_fingerprint_exists(self) -> None:
         staging = self._create()
@@ -64,7 +70,7 @@ class CaptureStagingTest(unittest.TestCase):
 
         self.assertEqual(
             sorted(path.name for path in staging.transaction_path.iterdir()),
-            ["item", "transaction.yaml"],
+            ["active.lock", "item", "transaction.yaml"],
         )
         self.assertEqual(
             sorted(path.name for path in staging.item_path.iterdir()),

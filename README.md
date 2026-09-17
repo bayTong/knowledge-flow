@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=253 capture_tests=238 script_tests=15 next_gate=C6 -->
+<!-- knowledgeflow-doc-status tests=258 capture_tests=243 script_tests=15 next_gate=C6B -->
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-17):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C4V read-stage acceptance commit `1e38f2f`, C5-0 contract commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` are synchronized with `origin/main`; the first clean-runner CI run `35075692046` passed. C5V has now completed append-stage acceptance: real two-process same-Item races for equal and different idempotency keys, plus real 4 MiB/64 MiB append → list/get round trips, all passed without changing production source. The current suite is 253 tests (238 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). C5A `63a3250`, C5B `ab2a613`, and C5V remain local and unpushed; the next separately authorized gate is C6 recovery, rebuild, and migration. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-17):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C4V read-stage acceptance commit `1e38f2f`, C5-0 contract commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` are synchronized with `origin/main`; the first clean-runner CI run `35075692046` passed. C5V has completed append-stage acceptance, and C6A has now completed business-transaction crash recovery: 9 capture and 7 append `os._exit()` boundaries recover in a new process, while live, unknown, legacy, reparse, and identity-changed staging remains untouched. The current suite is 258 tests (243 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). C5A `63a3250`, C5B `ab2a613`, C5V, and C6A remain local and unpushed; the next gate is C6B derived-state rebuild. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -186,7 +186,7 @@ knowledge-flow/
 │   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
 │   │   ├── unit/                     C0–C4A unit and platform tests
 │   │   ├── integration/              C2B–C4C transaction, read, boundary, and concurrency tests
-│   │   └── fault/                    C2B/R0 process-crash recovery tests (199 capture tests total)
+│   │   └── fault/                    C2B/C6A process-crash recovery tests (243 capture tests total)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
@@ -246,11 +246,11 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, `list_captures`, and `append_capture_version` are implemented, and C5V append-stage acceptance has passed. C4V commit `1e38f2f`, C5-0 commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` have been pushed, while C5A `63a3250`, C5B `ab2a613`, and C5V remain local. Business-transaction recovery, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
+The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, `list_captures`, and `append_capture_version` are implemented; C5V append-stage acceptance and C6A business-transaction crash recovery have passed. C4V commit `1e38f2f`, C5-0 commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` have been pushed, while C5A `63a3250`, C5B `ab2a613`, C5V, and C6A remain local. Derived-state rebuild, migration, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C4V and C5-0 are complete, versioned, and pushed; C5A, C5B, and C5V are complete local batches, and the first minimal Windows CI run passed. This does not authorize C6 or any later batch.
-3. Then complete recovery, rebuild, migration, and the restricted adapter through C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C4V and C5-0 are complete, versioned, and pushed; C5A, C5B, C5V, and C6A are complete local batches, and the first minimal Windows CI run passed.
+3. Next complete C6B rebuild, C6C migration, and the restricted adapter through C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful for studying curation-map extraction and coverage auditing, but outputs now belong under `proposals/curation-maps/` and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.

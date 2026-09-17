@@ -51,6 +51,14 @@ class CaptureWriteLockError(RuntimeError):
         return OperationError(code=self.code, retryable=self.retryable)
 
 
+class _StagingTransactionLeaseError(RuntimeError):
+    """Internal failure to prove exclusive ownership of one staging tree."""
+
+    def __init__(self, *, retryable: bool) -> None:
+        self.retryable = retryable
+        super().__init__("staging transaction lease is unavailable")
+
+
 class InitializationLock:
     """One acquired byte-range lock; closing the handle releases it in the OS."""
 
@@ -159,6 +167,53 @@ class CaptureWriteLock:
         return False
 
 
+class _StagingTransactionLease:
+    """Kernel-backed liveness lease held for one business staging tree."""
+
+    __slots__ = ("lock_path", "_stream")
+
+    def __init__(self, *, lock_path: Path, stream: BinaryIO) -> None:
+        self.lock_path = lock_path
+        self._stream: BinaryIO | None = stream
+
+    @property
+    def is_held(self) -> bool:
+        return self._stream is not None
+
+    def release(self) -> None:
+        stream = self._stream
+        if stream is None:
+            return
+        self._stream = None
+        release_failed = False
+        try:
+            stream.seek(0)
+            if msvcrt is None:  # pragma: no cover - guarded during acquisition
+                release_failed = True
+            else:
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            release_failed = True
+        finally:
+            try:
+                stream.close()
+            except OSError:
+                release_failed = True
+        if release_failed:
+            raise _StagingTransactionLeaseError(retryable=False)
+
+    def __enter__(self) -> _StagingTransactionLease:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> bool:
+        try:
+            self.release()
+        except _StagingTransactionLeaseError:
+            if exc_type is None:
+                raise
+        return False
+
+
 def _is_reparse_point(path_stat: os.stat_result) -> bool:
     attributes = getattr(path_stat, "st_file_attributes", 0)
     return bool(attributes & _REPARSE_POINT_ATTRIBUTE)
@@ -173,7 +228,11 @@ def _lstat_if_present(path: Path) -> os.stat_result | None:
 
 def _require_plain_directory(
     path: Path,
-    error_type: type[InitializationLockError | CaptureWriteLockError] = (
+    error_type: type[
+        InitializationLockError
+        | CaptureWriteLockError
+        | _StagingTransactionLeaseError
+    ] = (
         InitializationLockError
     ),
 ) -> None:
@@ -187,7 +246,11 @@ def _require_plain_directory(
 
 def _require_optional_plain_file(
     path: Path,
-    error_type: type[InitializationLockError | CaptureWriteLockError] = (
+    error_type: type[
+        InitializationLockError
+        | CaptureWriteLockError
+        | _StagingTransactionLeaseError
+    ] = (
         InitializationLockError
     ),
 ) -> None:
@@ -263,10 +326,20 @@ def _capture_write_lock_path(
 
 def _open_lock_file(
     lock_path: Path,
-    error_type: type[InitializationLockError | CaptureWriteLockError],
+    error_type: type[
+        InitializationLockError
+        | CaptureWriteLockError
+        | _StagingTransactionLeaseError
+    ],
+    *,
+    create_if_missing: bool = True,
 ) -> BinaryIO:
     _require_optional_plain_file(lock_path, error_type)
-    flags = os.O_RDWR | os.O_CREAT
+    if not create_if_missing and _lstat_if_present(lock_path) is None:
+        raise error_type(retryable=False)
+    flags = os.O_RDWR
+    if create_if_missing:
+        flags |= os.O_CREAT
     flags |= getattr(os, "O_BINARY", 0)
     flags |= getattr(os, "O_NOINHERIT", 0)
     descriptor = os.open(lock_path, flags, 0o600)
@@ -302,7 +375,11 @@ def _wait_or_timeout(
     poll_interval_seconds: float,
     clock: _Clock,
     sleeper: _Sleeper,
-    error_type: type[InitializationLockError | CaptureWriteLockError],
+    error_type: type[
+        InitializationLockError
+        | CaptureWriteLockError
+        | _StagingTransactionLeaseError
+    ],
 ) -> None:
     remaining = deadline - clock()
     if remaining <= 0:
@@ -333,11 +410,16 @@ def _validate_wait_parameters(
 def _acquire_kernel_byte_lock(
     lock_path: Path,
     *,
-    error_type: type[InitializationLockError | CaptureWriteLockError],
+    error_type: type[
+        InitializationLockError
+        | CaptureWriteLockError
+        | _StagingTransactionLeaseError
+    ],
     timeout_seconds: float,
     poll_interval_seconds: float,
     clock: _Clock,
     sleeper: _Sleeper,
+    create_if_missing: bool = True,
 ) -> BinaryIO:
     """Acquire the shared Windows byte-lock protocol for one fixed lock path."""
 
@@ -349,8 +431,16 @@ def _acquire_kernel_byte_lock(
 
     while stream is None:
         try:
-            stream = _open_lock_file(lock_path, error_type)
-        except (InitializationLockError, CaptureWriteLockError):
+            stream = _open_lock_file(
+                lock_path,
+                error_type,
+                create_if_missing=create_if_missing,
+            )
+        except (
+            InitializationLockError,
+            CaptureWriteLockError,
+            _StagingTransactionLeaseError,
+        ):
             raise
         except OSError as exc:
             if not _known_lock_contention(exc):
@@ -382,6 +472,36 @@ def _acquire_kernel_byte_lock(
     except BaseException:
         stream.close()
         raise
+
+
+def _acquire_staging_transaction_lease(
+    transaction_path: str | os.PathLike[str],
+    *,
+    create_if_missing: bool,
+) -> _StagingTransactionLease:
+    """Acquire one non-waiting lease without following transaction reparse data."""
+
+    path = Path(transaction_path)
+    try:
+        _require_plain_directory(path, _StagingTransactionLeaseError)
+        _require_plain_directory(path.parent, _StagingTransactionLeaseError)
+        if path.parent.name != ".staging":
+            raise _StagingTransactionLeaseError(retryable=False)
+        lock_path = path / "active.lock"
+        stream = _acquire_kernel_byte_lock(
+            lock_path,
+            error_type=_StagingTransactionLeaseError,
+            timeout_seconds=0.0,
+            poll_interval_seconds=_DEFAULT_POLL_INTERVAL_SECONDS,
+            clock=time.monotonic,
+            sleeper=time.sleep,
+            create_if_missing=create_if_missing,
+        )
+        return _StagingTransactionLease(lock_path=lock_path, stream=stream)
+    except _StagingTransactionLeaseError:
+        raise
+    except (OSError, RuntimeError) as exc:
+        raise _StagingTransactionLeaseError(retryable=False) from exc
 
 
 def _acquire_initialization_lock(

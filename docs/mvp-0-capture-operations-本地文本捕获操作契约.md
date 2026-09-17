@@ -1,6 +1,6 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；四个公开文本操作均已实现并通过各自阶段验收，C5V 已闭合追加阶段<br>
+> 状态：Approved Design；四个公开文本操作及 C5V 已闭合，C6A 业务事务崩溃恢复已完成<br>
 > 确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
 > C3 编码前收口日期：2026-09-09<br>
@@ -14,8 +14,9 @@
 > C5A 完成日期：2026-09-16（独立提交 `63a3250`；未 push）<br>
 > C5B 内容与本地验证日期：2026-09-17（独立提交 `ab2a613`；未 push）<br>
 > C5V 阶段验收日期：2026-09-17（本独立提交；未 push）<br>
+> C6A 业务事务崩溃恢复日期：2026-09-17（本独立提交；未 push）<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
-> 边界：本文定义调用方可见的完整操作；`append_capture_version` 已由 C5B 公开实现并通过 C5V 双进程与真实 4/64 MiB 阶段验收，但尚未进入 C6 或创建生产目录
+> 边界：本文定义调用方可见的完整操作；C6A 只增加内部事务存活租约、后续写操作的保守写前恢复与故障验收，不增加公开参数；C6B/C6C、生产目录和外部接入仍未完成
 
 ## 0. 结论先行
 
@@ -556,6 +557,7 @@ C5A 不得把 C3 的整 Item staging 假装成追加版本。追加使用独立�
 
 ```text
 <capture-root>/.staging/<transaction-id>/
+├── active.lock
 ├── transaction.yaml
 ├── version/
 │   ├── envelope.yaml
@@ -565,9 +567,9 @@ C5A 不得把 C3 的整 Item staging 假装成追加版本。追加使用独立�
     └── <event-id>.yaml
 ```
 
-事务根创建后先耐久写入并回读 marker，再创建 `version/payloads/` 和 `events/`；正文始终先写 `version/payloads/primary.txt`。全新追加把整个 `version/` 无覆盖 rename 到最终 `versions/<N+1>/`，再把单个暂存 Event 文件无覆盖 rename 到最终 `events/<event-id>.yaml`。采用既有尾部时丢弃本次尚未提交的 `version/` 候选，只在本事务的 `events/` 中按尾部不可变 Envelope 重建待提交 Event。
+事务根创建后先创建并持有空的 `active.lock` Windows 内核字节锁，再耐久写入并回读 marker，随后创建 `version/payloads/` 和 `events/`；正文始终先写 `version/payloads/primary.txt`。租约只证明当前事务进程仍存活，不承载业务状态，锁文件存在本身不等于仍被持有。全新追加把整个 `version/` 无覆盖 rename 到最终 `versions/<N+1>/`，再把单个暂存 Event 文件无覆盖 rename 到最终 `events/<event-id>.yaml`。采用既有尾部时丢弃本次尚未提交的 `version/` 候选，只在本事务的 `events/` 中按尾部不可变 Envelope 重建待提交 Event。
 
-清理必须先以调用持有的事务根对象身份、规范 marker 的 `transaction_id + operation` 和 capture-root 包含关系证明所有权，再按 `operation` 选择各自的固定允许树。允许提交后缺少已经 rename 的 `version/` 或 Event 文件；出现额外名字、第二个 Event、非普通对象、reparse point 或对象身份变化时拒绝清理。只删除本次事务根内仍存在的内容，marker 最后删除，绝不跟随或删除最终 Item 中的 N+1 尾部。C3 `capture_text` 的 `_CaptureStaging`、允许树、marker 字节和清理行为必须保持回归不变；C6 才能枚举和处理其他进程遗留事务。
+清理必须先以调用持有的事务根对象身份与 `active.lock` 租约、规范 marker 的 `transaction_id + operation` 和 capture-root 包含关系证明所有权，再按 `operation` 选择各自的固定允许树。允许提交后缺少已经 rename 的 `version/` 或 Event 文件；出现额外名字、第二个 Event、非普通对象、reparse point 或对象身份变化时拒绝清理。只删除本次事务根内仍存在的内容；内容删除后释放并删除租约文件，marker 仍最后删除，绝不跟随或删除最终 Item 中的 N+1 尾部。C3 `capture_text` 与 C5 append 的 marker schema/规范字节不变；C6A 只向两种固定允许树加入同名空租约文件。
 
 ### 7.6 唯一 N+1 尾部与同 key 续封
 
@@ -596,6 +598,16 @@ Event ID 最终目标在第一次逻辑提交尝试前已存在时，不得采�
 - Event writer 必须复用既有严格 `capture.version-appended` schema/codec，并同时校验新 Envelope 的 `event_id`、actor、版本、前一版本及前后 Envelope 哈希；不得维护第二套宽松 writer schema。
 - 已提交旧版本、旧 Event、旧哈希和旧批准字节完全不变；新版本不继承任何批准。
 - 追加版本不等于路由、归档、可信知识写入、GBrain 镜像或通用崩溃恢复。
+
+### 7.9 C6A 业务事务崩溃恢复
+
+`capture_text` 与 `append_capture_version` 仍在 Store 写锁外完成正文 staging。为避免一个持有 Store 锁的进程把另一个仍在准备正文或等待锁的活跃事务误判为残片，每个新业务事务从创建固定根开始持续持有 `active.lock` 的 Windows 内核字节锁，直至安全清理完成；进程被 `os._exit()` 强制终止时，该租约由操作系统释放。
+
+后续写操作取得 Store 写锁后，只枚举固定 `.staging/` 的直接子项，并排除自己的事务。候选必须同时满足：规范 UUIDv7 目录名、普通非 reparse 事务根、规范且目录名一致的 capture-transaction v1 marker、普通非 reparse 的既有 `active.lock`、可无等待取得该租约，以及扫描前后根/marker/lease 身份不变。恢复器不得替未知或旧式目录创建租约；租约被占用表示事务仍活跃，必须跳过。满足这些条件后仍须按 marker operation 通过完整固定树校验；额外对象、symlink、junction、其他 reparse、身份变化或 I/O 不可证明均保持原字节，不自动删除。
+
+对于 `capture_text`，完整 Item rename 已同时带入版本 1 Event；崩溃发生在 rename 前时只回收已证明放弃的 staging，发生在 rename 后时只清理剩余事务控制文件，同 key 重试从最终不可变 Item 恢复原回执。对于 append，版本 rename 后但 Event rename 前的 N+1 继续保持不可见：完全匹配的同 key 重试沿用 C5 规则续封 Event；其他或不可证明尾部不移动、不覆盖、不删除，继续由 Event 真源逻辑隔离并失败关闭。C6A 不发明物理 quarantine schema，也不把锁文件、目录时间或最高版本目录当成提交事实。
+
+C6A 自动化只证明进程崩溃边界：9 个 capture 与 7 个 append 内部故障点均用子进程 `os._exit()` 终止，并由无故障钩子的新进程依据磁盘事实恢复。它不宣称突然断电、控制器缓存或第三方长期占用已被证明。
 
 ## 8. 错误码
 
@@ -699,4 +711,4 @@ Event ID 最终目标在第一次逻辑提交尝试前已存在时，不得采�
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5-0 `ea530ad` 已冻结 C-035–C-042 与 APP-01–APP-24 并 push，最小 Windows CI `c4d2c7b` 首次远端运行也已通过。C5A `63a3250` 已实现追加基础原语，C5B `ab2a613` 公开完整 `append_capture_version`，C5V 又以真实双进程和 4/64 MiB 闭合追加阶段，当前 253 项全量通过；生产 Store、GBrain 与路由仍未实现，下一门禁 C6 未授权。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5-0 `ea530ad` 已冻结 C-035–C-042 与 APP-01–APP-24 并 push，最小 Windows CI `c4d2c7b` 首次远端运行也已通过。C5A `63a3250`、C5B `ab2a613` 与 C5V 已闭合追加阶段；C6A 又以事务租约、保守扫描和 16 个真实进程终止边界闭合业务崩溃恢复，当前 258 项全量通过。生产 Store、GBrain 与路由仍未实现，下一门禁为 C6B 派生状态重建。

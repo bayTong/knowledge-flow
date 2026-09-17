@@ -49,11 +49,17 @@ class AppendStagingTest(unittest.TestCase):
         self.backend = DurabilityBackend(_directory_flusher=lambda _path: True)
 
     def _create(self):
-        return _create_append_staging(
+        staging = _create_append_staging(
             self.capture_root,
             durability=self.backend,
             uuid_factory=lambda: _TRANSACTION_UUID,
         )
+        self.addCleanup(
+            _cleanup_append_staging,
+            staging,
+            durability=self.backend,
+        )
+        return staging
 
     def test_app_02_marker_is_durable_before_fixed_append_tree_is_created(self) -> None:
         original_create = store_module._capture_create_directory
@@ -84,7 +90,7 @@ class AppendStagingTest(unittest.TestCase):
         self.assertEqual(staging.marker_path.read_bytes(), expected_marker)
         self.assertEqual(
             sorted(path.name for path in staging.transaction_path.iterdir()),
-            ["events", "transaction.yaml", "version"],
+            ["active.lock", "events", "transaction.yaml", "version"],
         )
         self.assertEqual(
             sorted(path.name for path in staging.version_path.iterdir()),

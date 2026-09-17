@@ -55,6 +55,9 @@ from .ids import generate_store_id, generate_uuid7, validate_typed_id, IdKind
 from .locking import (
     InitializationLock,
     InitializationLockError,
+    _StagingTransactionLease,
+    _StagingTransactionLeaseError,
+    _acquire_staging_transaction_lease,
     acquire_initialization_lock,
 )
 from .manifest import (
@@ -224,10 +227,15 @@ class _CaptureStaging:
     transaction_id: str
     transaction_path: Path
     transaction_stat: os.stat_result = field(repr=False, compare=False)
+    lease: _StagingTransactionLease = field(repr=False, compare=False)
 
     @property
     def marker_path(self) -> Path:
         return self.transaction_path / "transaction.yaml"
+
+    @property
+    def lease_path(self) -> Path:
+        return self.transaction_path / "active.lock"
 
     @property
     def item_path(self) -> Path:
@@ -250,10 +258,15 @@ class _AppendStaging:
     transaction_id: str
     transaction_path: Path
     transaction_stat: os.stat_result = field(repr=False, compare=False)
+    lease: _StagingTransactionLease = field(repr=False, compare=False)
 
     @property
     def marker_path(self) -> Path:
         return self.transaction_path / "transaction.yaml"
+
+    @property
+    def lease_path(self) -> Path:
+        return self.transaction_path / "active.lock"
 
     @property
     def version_path(self) -> Path:
@@ -1028,6 +1041,33 @@ def _capture_create_directory(path: Path, durability: DurabilityBackend) -> None
     durability.flush_directory_metadata(path.parent)
 
 
+def _discard_unmarked_staging_root(
+    transaction_path: Path,
+    transaction_stat: os.stat_result,
+    *,
+    durability: DurabilityBackend,
+) -> None:
+    """Best-effort cleanup before a durable ownership marker can exist."""
+
+    if not _capture_same_identity(transaction_path, transaction_stat):
+        return
+    lease_path = transaction_path / "active.lock"
+    try:
+        lease_stat = _capture_lstat_if_present(lease_path)
+        if lease_stat is not None:
+            if not stat.S_ISREG(lease_stat.st_mode) or _is_reparse_point(lease_stat):
+                return
+            if not _capture_same_identity(transaction_path, transaction_stat):
+                return
+            lease_path.unlink()
+        if not _capture_same_identity(transaction_path, transaction_stat):
+            return
+        transaction_path.rmdir()
+        durability.flush_directory_metadata(transaction_path.parent)
+    except (DurabilityError, OSError):
+        return
+
+
 def _create_capture_staging(
     capture_root: str | os.PathLike[str],
     *,
@@ -1055,6 +1095,8 @@ def _create_capture_staging(
     for _attempt in range(8):
         transaction_id = _canonical_uuid_from_factory(uuid_factory)
         transaction_path = staging_root / transaction_id
+        transaction_stat: os.stat_result | None = None
+        lease: _StagingTransactionLease | None = None
         try:
             transaction_path.mkdir(parents=False, exist_ok=False)
         except FileExistsError:
@@ -1075,18 +1117,32 @@ def _create_capture_staging(
                 DurabilityStage.FILE_WRITE,
             )
             durability.flush_directory_metadata(staging_root)
+            lease = _acquire_staging_transaction_lease(
+                transaction_path,
+                create_if_missing=True,
+            )
             staging = _CaptureStaging(
                 capture_root=root,
                 transaction_id=transaction_id,
                 transaction_path=transaction_path,
                 transaction_stat=transaction_stat,
+                lease=lease,
             )
             break
-        except Exception:
-            try:
-                transaction_path.rmdir()
-            except OSError:
-                pass
+        except Exception as exc:
+            if lease is not None:
+                try:
+                    lease.release()
+                except _StagingTransactionLeaseError:
+                    pass
+            if transaction_stat is not None:
+                _discard_unmarked_staging_root(
+                    transaction_path,
+                    transaction_stat,
+                    durability=durability,
+                )
+            if isinstance(exc, _StagingTransactionLeaseError):
+                raise DurabilityError(DurabilityStage.FILE_WRITE) from exc
             raise
     if staging is None:
         raise DurabilityError(DurabilityStage.FILE_WRITE)
@@ -1137,6 +1193,8 @@ def _create_append_staging(
     for _attempt in range(8):
         transaction_id = _canonical_uuid_from_factory(uuid_factory)
         transaction_path = staging_root / transaction_id
+        transaction_stat: os.stat_result | None = None
+        lease: _StagingTransactionLease | None = None
         try:
             transaction_path.mkdir(parents=False, exist_ok=False)
         except FileExistsError:
@@ -1157,18 +1215,32 @@ def _create_append_staging(
                 DurabilityStage.FILE_WRITE,
             )
             durability.flush_directory_metadata(staging_root)
+            lease = _acquire_staging_transaction_lease(
+                transaction_path,
+                create_if_missing=True,
+            )
             staging = _AppendStaging(
                 capture_root=root,
                 transaction_id=transaction_id,
                 transaction_path=transaction_path,
                 transaction_stat=transaction_stat,
+                lease=lease,
             )
             break
-        except Exception:
-            try:
-                transaction_path.rmdir()
-            except OSError:
-                pass
+        except Exception as exc:
+            if lease is not None:
+                try:
+                    lease.release()
+                except _StagingTransactionLeaseError:
+                    pass
+            if transaction_stat is not None:
+                _discard_unmarked_staging_root(
+                    transaction_path,
+                    transaction_stat,
+                    durability=durability,
+                )
+            if isinstance(exc, _StagingTransactionLeaseError):
+                raise DurabilityError(DurabilityStage.FILE_WRITE) from exc
             raise
     if staging is None:
         raise DurabilityError(DurabilityStage.FILE_WRITE)
@@ -1239,6 +1311,8 @@ def _safe_capture_staging_tree(
         _validate_uuid7_text(staging.transaction_id)
     except ValueError:
         return None
+    if staging.lease.lock_path != staging.lease_path or not staging.lease.is_held:
+        return None
     if not _capture_same_identity(staging.transaction_path, staging.transaction_stat):
         return None
 
@@ -1264,7 +1338,11 @@ def _safe_capture_staging_tree(
         return None
 
     allowed: dict[tuple[str, ...], dict[str, str]] = {
-        (): {"transaction.yaml": "file", "item": "directory"},
+        (): {
+            "active.lock": "file",
+            "transaction.yaml": "file",
+            "item": "directory",
+        },
         ("item",): {"versions": "directory", "events": "directory"},
         ("item", "versions"): {"000001": "directory"},
         ("item", "versions", "000001"): {
@@ -1336,6 +1414,8 @@ def _safe_append_staging_tree(
         _validate_uuid7_text(staging.transaction_id)
     except ValueError:
         return None
+    if staging.lease.lock_path != staging.lease_path or not staging.lease.is_held:
+        return None
     if not _capture_same_identity(staging.transaction_path, staging.transaction_stat):
         return None
 
@@ -1362,6 +1442,7 @@ def _safe_append_staging_tree(
 
     allowed: dict[tuple[str, ...], dict[str, str]] = {
         (): {
+            "active.lock": "file",
             "transaction.yaml": "file",
             "version": "directory",
             "events": "directory",
@@ -1432,27 +1513,38 @@ def _cleanup_capture_staging(
 
     if not isinstance(staging, _CaptureStaging):
         raise TypeError("staging must be _CaptureStaging")
+
+    def release_then(status: _CaptureStagingCleanupStatus) -> _CaptureStagingCleanupStatus:
+        try:
+            staging.lease.release()
+        except _StagingTransactionLeaseError:
+            return _CaptureStagingCleanupStatus.FAILED
+        return status
+
     try:
         current = _capture_lstat_if_present(staging.transaction_path)
     except OSError:
-        return _CaptureStagingCleanupStatus.FAILED
+        return release_then(_CaptureStagingCleanupStatus.FAILED)
     if current is None:
-        return _CaptureStagingCleanupStatus.ALREADY_ABSENT
+        return release_then(_CaptureStagingCleanupStatus.ALREADY_ABSENT)
     safe_tree = _safe_capture_staging_tree(staging)
     if safe_tree is None:
-        return _CaptureStagingCleanupStatus.REFUSED
+        return release_then(_CaptureStagingCleanupStatus.REFUSED)
     files, directories = safe_tree
     if not all(_capture_same_identity(path, expected) for path, expected in files):
-        return _CaptureStagingCleanupStatus.REFUSED
+        return release_then(_CaptureStagingCleanupStatus.REFUSED)
     if not all(
         _capture_same_identity(path, expected) for path, expected in directories
     ):
-        return _CaptureStagingCleanupStatus.REFUSED
+        return release_then(_CaptureStagingCleanupStatus.REFUSED)
     marker_entry = next(
         item for item in files if item[0] == staging.marker_path
     )
+    lease_entry = next(item for item in files if item[0] == staging.lease_path)
     content_files = tuple(
-        item for item in files if item[0] != staging.marker_path
+        item
+        for item in files
+        if item[0] not in {staging.marker_path, staging.lease_path}
     )
     transaction_entry = next(
         item for item in directories if item[0] == staging.transaction_path
@@ -1463,7 +1555,7 @@ def _cleanup_capture_staging(
     try:
         for path, expected in content_files:
             if not _capture_same_identity(path, expected):
-                return _CaptureStagingCleanupStatus.REFUSED
+                return release_then(_CaptureStagingCleanupStatus.REFUSED)
             path.unlink()
         for path, expected in sorted(
             content_directories,
@@ -1471,8 +1563,16 @@ def _cleanup_capture_staging(
             reverse=True,
         ):
             if not _capture_same_identity(path, expected):
-                return _CaptureStagingCleanupStatus.REFUSED
+                return release_then(_CaptureStagingCleanupStatus.REFUSED)
             path.rmdir()
+        try:
+            staging.lease.release()
+        except _StagingTransactionLeaseError:
+            return _CaptureStagingCleanupStatus.FAILED
+        lease_path, lease_stat = lease_entry
+        if not _capture_same_identity(lease_path, lease_stat):
+            return _CaptureStagingCleanupStatus.REFUSED
+        lease_path.unlink()
         marker_path, marker_stat = marker_entry
         if not _capture_same_identity(marker_path, marker_stat):
             return _CaptureStagingCleanupStatus.REFUSED
@@ -1483,7 +1583,7 @@ def _cleanup_capture_staging(
         transaction_path.rmdir()
         durability.flush_directory_metadata(staging.transaction_path.parent)
     except (DurabilityError, OSError):
-        return _CaptureStagingCleanupStatus.FAILED
+        return release_then(_CaptureStagingCleanupStatus.FAILED)
     return _CaptureStagingCleanupStatus.REMOVED
 
 
@@ -1496,24 +1596,37 @@ def _cleanup_append_staging(
 
     if not isinstance(staging, _AppendStaging):
         raise TypeError("staging must be _AppendStaging")
+
+    def release_then(status: _CaptureStagingCleanupStatus) -> _CaptureStagingCleanupStatus:
+        try:
+            staging.lease.release()
+        except _StagingTransactionLeaseError:
+            return _CaptureStagingCleanupStatus.FAILED
+        return status
+
     try:
         current = _capture_lstat_if_present(staging.transaction_path)
     except OSError:
-        return _CaptureStagingCleanupStatus.FAILED
+        return release_then(_CaptureStagingCleanupStatus.FAILED)
     if current is None:
-        return _CaptureStagingCleanupStatus.ALREADY_ABSENT
+        return release_then(_CaptureStagingCleanupStatus.ALREADY_ABSENT)
     safe_tree = _safe_append_staging_tree(staging)
     if safe_tree is None:
-        return _CaptureStagingCleanupStatus.REFUSED
+        return release_then(_CaptureStagingCleanupStatus.REFUSED)
     files, directories = safe_tree
     if not all(_capture_same_identity(path, expected) for path, expected in files):
-        return _CaptureStagingCleanupStatus.REFUSED
+        return release_then(_CaptureStagingCleanupStatus.REFUSED)
     if not all(
         _capture_same_identity(path, expected) for path, expected in directories
     ):
-        return _CaptureStagingCleanupStatus.REFUSED
+        return release_then(_CaptureStagingCleanupStatus.REFUSED)
     marker_entry = next(item for item in files if item[0] == staging.marker_path)
-    content_files = tuple(item for item in files if item[0] != staging.marker_path)
+    lease_entry = next(item for item in files if item[0] == staging.lease_path)
+    content_files = tuple(
+        item
+        for item in files
+        if item[0] not in {staging.marker_path, staging.lease_path}
+    )
     transaction_entry = next(
         item for item in directories if item[0] == staging.transaction_path
     )
@@ -1523,7 +1636,7 @@ def _cleanup_append_staging(
     try:
         for path, expected in content_files:
             if not _capture_same_identity(path, expected):
-                return _CaptureStagingCleanupStatus.REFUSED
+                return release_then(_CaptureStagingCleanupStatus.REFUSED)
             path.unlink()
         for path, expected in sorted(
             content_directories,
@@ -1531,8 +1644,16 @@ def _cleanup_append_staging(
             reverse=True,
         ):
             if not _capture_same_identity(path, expected):
-                return _CaptureStagingCleanupStatus.REFUSED
+                return release_then(_CaptureStagingCleanupStatus.REFUSED)
             path.rmdir()
+        try:
+            staging.lease.release()
+        except _StagingTransactionLeaseError:
+            return _CaptureStagingCleanupStatus.FAILED
+        lease_path, lease_stat = lease_entry
+        if not _capture_same_identity(lease_path, lease_stat):
+            return _CaptureStagingCleanupStatus.REFUSED
+        lease_path.unlink()
         marker_path, marker_stat = marker_entry
         if not _capture_same_identity(marker_path, marker_stat):
             return _CaptureStagingCleanupStatus.REFUSED
@@ -1543,8 +1664,139 @@ def _cleanup_append_staging(
         transaction_path.rmdir()
         durability.flush_directory_metadata(staging.transaction_path.parent)
     except (DurabilityError, OSError):
-        return _CaptureStagingCleanupStatus.FAILED
+        return release_then(_CaptureStagingCleanupStatus.FAILED)
     return _CaptureStagingCleanupStatus.REMOVED
+
+
+def _recover_abandoned_capture_staging(
+    capture_root: str | os.PathLike[str],
+    *,
+    durability: DurabilityBackend,
+    exclude_transaction_ids: Iterable[str] = (),
+) -> tuple[str, ...]:
+    """Remove only marker-valid staging whose kernel liveness lease is free.
+
+    The caller holds the Store write lock.  A per-transaction lease is still
+    required because payload staging deliberately happens before that lock;
+    another live writer may therefore already own a sibling transaction.
+    Unknown, legacy, malformed, reparse, changing, or contended trees remain
+    byte-for-byte untouched.
+    """
+
+    try:
+        root = Path(capture_root).resolve(strict=True)
+        _capture_plain_directory(root, DurabilityStage.FILE_READBACK)
+        staging_root = root / ".staging"
+        staging_root_stat = _capture_plain_directory(
+            staging_root,
+            DurabilityStage.FILE_READBACK,
+        )
+        entries = tuple(staging_root.iterdir())
+    except (OSError, RuntimeError) as exc:
+        raise DurabilityError(DurabilityStage.FILE_READBACK) from exc
+
+    excluded = frozenset(exclude_transaction_ids)
+    removed: list[str] = []
+    for transaction_path in entries:
+        transaction_id = transaction_path.name
+        if transaction_id in excluded:
+            continue
+        try:
+            _validate_uuid7_text(transaction_id)
+        except (TypeError, ValueError):
+            continue
+        try:
+            transaction_stat = _capture_lstat_if_present(transaction_path)
+        except OSError:
+            continue
+        if (
+            transaction_stat is None
+            or not stat.S_ISDIR(transaction_stat.st_mode)
+            or _is_reparse_point(transaction_stat)
+            or not _capture_same_identity(staging_root, staging_root_stat)
+        ):
+            continue
+
+        marker_path = transaction_path / "transaction.yaml"
+        try:
+            marker_stat = _capture_lstat_if_present(marker_path)
+        except OSError:
+            continue
+        if (
+            marker_stat is None
+            or not stat.S_ISREG(marker_stat.st_mode)
+            or _is_reparse_point(marker_stat)
+        ):
+            continue
+        marker_bytes = _read_small_owned_file(marker_path, marker_stat)
+        if marker_bytes is None:
+            continue
+        try:
+            marker = _load_capture_transaction(marker_bytes)
+        except ValueError:
+            continue
+        if marker.transaction_id != transaction_id:
+            continue
+
+        lease_path = transaction_path / "active.lock"
+        try:
+            lease_stat = _capture_lstat_if_present(lease_path)
+        except OSError:
+            continue
+        if (
+            lease_stat is None
+            or not stat.S_ISREG(lease_stat.st_mode)
+            or _is_reparse_point(lease_stat)
+        ):
+            continue
+        try:
+            lease = _acquire_staging_transaction_lease(
+                transaction_path,
+                create_if_missing=False,
+            )
+        except _StagingTransactionLeaseError:
+            continue
+
+        if (
+            not _capture_same_identity(staging_root, staging_root_stat)
+            or not _capture_same_identity(transaction_path, transaction_stat)
+            or not _capture_same_identity(marker_path, marker_stat)
+            or not _capture_same_identity(lease_path, lease_stat)
+        ):
+            try:
+                lease.release()
+            except _StagingTransactionLeaseError:
+                pass
+            continue
+
+        if marker.operation == _CAPTURE_TRANSACTION_OPERATION:
+            staging: _CaptureStaging | _AppendStaging = _CaptureStaging(
+                capture_root=root,
+                transaction_id=transaction_id,
+                transaction_path=transaction_path,
+                transaction_stat=transaction_stat,
+                lease=lease,
+            )
+            status = _cleanup_capture_staging(staging, durability=durability)
+        elif marker.operation == _APPEND_TRANSACTION_OPERATION:
+            staging = _AppendStaging(
+                capture_root=root,
+                transaction_id=transaction_id,
+                transaction_path=transaction_path,
+                transaction_stat=transaction_stat,
+                lease=lease,
+            )
+            status = _cleanup_append_staging(staging, durability=durability)
+        else:  # pragma: no cover - schema validation excludes this branch
+            try:
+                lease.release()
+            except _StagingTransactionLeaseError:
+                pass
+            continue
+        if status is _CaptureStagingCleanupStatus.REMOVED:
+            removed.append(transaction_id)
+
+    return tuple(removed)
 
 
 def _transaction_path(

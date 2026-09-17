@@ -26,8 +26,10 @@ from knowledgeflow_capture.models import (
 )
 from knowledgeflow_capture.operations import (
     _CaptureDependencies,
+    _CaptureFaultPoint,
     _append_capture_version_with_dependencies,
     _capture_text_with_dependencies,
+    append_capture_version,
     capture_text,
 )
 from knowledgeflow_capture.paths import PathPolicy
@@ -166,6 +168,74 @@ def _capture_text(
     return _write_result(result, result_path)
 
 
+def _capture_text_c6(
+    owned_root: Path,
+    config_path: Path,
+    text: str,
+    idempotency_key: str,
+    result_path: Path,
+    fault_point: str | None = None,
+) -> int:
+    request = CaptureTextRequest(
+        text=text,
+        channel=ChannelMetadata(type="app", instance_id="c6a-fault"),
+        idempotency_key=idempotency_key,
+    )
+    if fault_point is None:
+        result = capture_text(
+            request,
+            config_path=config_path,
+            path_policy=PathPolicy.test_owned(owned_root),
+        )
+    else:
+        result = _capture_text_with_dependencies(
+            request,
+            config_path=config_path,
+            path_policy=PathPolicy.test_owned(owned_root),
+            dependencies=_CaptureDependencies(
+                fault_point=_CaptureFaultPoint(fault_point),
+                fault_hook=_exit_at_fault_point,
+            ),
+        )
+    return _write_result(result, result_path)
+
+
+def _append_capture_version_c6(
+    owned_root: Path,
+    config_path: Path,
+    capture_id: str,
+    expected_current_version: int,
+    text: str,
+    idempotency_key: str,
+    result_path: Path,
+    fault_point: str | None = None,
+) -> int:
+    request = AppendCaptureVersionRequest(
+        capture_id=capture_id,
+        expected_current_version=expected_current_version,
+        text=text,
+        channel=ChannelMetadata(type="app", instance_id="c6a-fault"),
+        idempotency_key=idempotency_key,
+    )
+    if fault_point is None:
+        result = append_capture_version(
+            request,
+            config_path=config_path,
+            path_policy=PathPolicy.test_owned(owned_root),
+        )
+    else:
+        result = _append_capture_version_with_dependencies(
+            request,
+            config_path=config_path,
+            path_policy=PathPolicy.test_owned(owned_root),
+            dependencies=_CaptureDependencies(
+                fault_point=_CaptureFaultPoint(fault_point),
+                fault_hook=_exit_at_fault_point,
+            ),
+        )
+    return _write_result(result, result_path)
+
+
 def _capture_text_at_lock_barrier(
     owned_root: Path,
     config_path: Path,
@@ -301,6 +371,22 @@ def main(argv: list[str] | None = None) -> int:
     barrier_appender.add_argument("lock_ready_path", type=Path)
     barrier_appender.add_argument("lock_gate_path", type=Path)
     barrier_appender.add_argument("result_path", type=Path)
+    c6_capturer = subparsers.add_parser("capture-text-c6")
+    c6_capturer.add_argument("owned_root", type=Path)
+    c6_capturer.add_argument("config_path", type=Path)
+    c6_capturer.add_argument("text", type=str)
+    c6_capturer.add_argument("idempotency_key", type=str)
+    c6_capturer.add_argument("result_path", type=Path)
+    c6_capturer.add_argument("--fault-point", type=str)
+    c6_appender = subparsers.add_parser("append-capture-version-c6")
+    c6_appender.add_argument("owned_root", type=Path)
+    c6_appender.add_argument("config_path", type=Path)
+    c6_appender.add_argument("capture_id", type=str)
+    c6_appender.add_argument("expected_current_version", type=int)
+    c6_appender.add_argument("text", type=str)
+    c6_appender.add_argument("idempotency_key", type=str)
+    c6_appender.add_argument("result_path", type=Path)
+    c6_appender.add_argument("--fault-point", type=str)
     arguments = parser.parse_args(argv)
     if arguments.command == "hold-lock":
         return _hold_lock(
@@ -368,6 +454,26 @@ def main(argv: list[str] | None = None) -> int:
             arguments.lock_ready_path,
             arguments.lock_gate_path,
             arguments.result_path,
+        )
+    if arguments.command == "capture-text-c6":
+        return _capture_text_c6(
+            arguments.owned_root,
+            arguments.config_path,
+            arguments.text,
+            arguments.idempotency_key,
+            arguments.result_path,
+            arguments.fault_point,
+        )
+    if arguments.command == "append-capture-version-c6":
+        return _append_capture_version_c6(
+            arguments.owned_root,
+            arguments.config_path,
+            arguments.capture_id,
+            arguments.expected_current_version,
+            arguments.text,
+            arguments.idempotency_key,
+            arguments.result_path,
+            arguments.fault_point,
         )
     return 2
 

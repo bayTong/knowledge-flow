@@ -1,6 +1,6 @@
 # Capture Envelope v1：捕获信封数据契约与原子保存事务
 
-> 状态：Approved Design；`capture_text` 与 C4 读取能力已实现并验收，C5-0 追加事务契约已收口，追加实现尚未开始<br>
+> 状态：Approved Design；四个公开文本操作、C5V 追加验收与 C6A 业务事务崩溃恢复均已完成<br>
 > 整理日期：2026-09-01<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-02<br>
@@ -14,8 +14,10 @@
 > C4V 完成与远端同步日期：2026-09-14（提交 `1e38f2f` 已 push 至 `origin/main`）<br>
 > C5-0 追加写入契约收口日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）<br>
 > 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）<br>
+> C5A/C5B/C5V 完成日期：2026-09-17（独立本地批次；未 push）<br>
+> C6A 业务事务崩溃恢复日期：2026-09-17（本独立提交；未 push）<br>
 > 适用范围：MVP-0 的文本捕获，以及未来 URL、文件 Payload 必须保持的身份与事务语义<br>
-> 边界：本文定义完整数据和事务契约；新建与读取已实现，C5-0 只冻结追加契约，追加生产代码、业务崩溃恢复和本文其余远期能力尚未完成
+> 边界：本文定义完整数据和事务契约；四个公开操作与 C6A 已实现，C6B 派生状态重建、C6C 迁移及本文其余远期能力尚未完成
 
 ## 0. 结论先行
 
@@ -761,6 +763,7 @@ MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒
 
 ```text
 .staging/<transaction-id>/
+├── active.lock
 ├── transaction.yaml
 ├── version/
 │   ├── envelope.yaml
@@ -768,7 +771,7 @@ MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒
 └── events/<event-id>.yaml
 ```
 
-内部事务 marker 继续使用 `knowledgeflow.capture-transaction` v1 的四字段规范形状；C5A 只增加 `operation: "append_capture_version"`，不改变已有 `capture_text` marker 字节。marker 必须先于内容耐久写入和回读，清理按 marker operation 选择互不混用的固定允许树，并校验事务根/每个对象身份、普通对象类型、非 reparse 与 root 包含关系。提交导致 `version/` 或 Event 文件缺失是允许的部分树；未知额外对象或身份变化必须拒绝清理。清理只触及当前调用拥有的 staging，marker 最后删除，不能枚举、采用或删除最终 Item 尾部；通用残留扫描属于 C6。
+内部事务 marker 继续使用 `knowledgeflow.capture-transaction` v1 的四字段规范形状；C5A 只增加 `operation: "append_capture_version"`，不改变已有 `capture_text` marker 字节。C6A 在事务根创建后先创建并持续持有空 `active.lock` 的 Windows 内核字节锁，再写 marker 与内容；租约只证明事务进程仍存活，文件存在本身不等于锁仍被持有。清理按 marker operation 选择互不混用的固定允许树，并校验事务根/marker/lease 与每个对象身份、普通对象类型、非 reparse 与 root 包含关系。提交导致 `version/` 或 Event 文件缺失是允许的部分树；未知额外对象或身份变化必须拒绝清理。清理只触及已证明归属的 staging，先删内容，再释放并删除租约，marker 最后删除，不能枚举、采用或删除最终 Item 尾部。
 
 逻辑提交顺序固定为：
 
@@ -795,7 +798,8 @@ MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒
 - Event 已提交但最终回读无法证明内容有效：不能报告成功；确定的规范字节、引用或哈希损坏返回 `integrity_check_failed + unknown`，I/O 使事实不可证明则返回 `atomic_commit_failed + unknown`。读取侧看到 Event/Version 矛盾时一律 fail-closed。
 - Event 和版本最终回读有效而投影失败：提交已成立，返回成功加 `projection_needs_rebuild`。
 - 同 key 重试若发现可证明一致的唯一未提交 N+1 尾部，复用其版本、Event ID 和 Envelope 续封 Event；发现已提交匹配版本则返回原稳定回执。其他残留不自动处理。
-- C5 只实现上述请求专属的精确幂等回执和窄续封；通用启动恢复、未知残留隔离/清理和投影重建仍属于 C6。
+- C6A 已在后续写操作取得 Store 锁后扫描固定 `.staging/` 的直接子项；只清理规范 UUIDv7 根、匹配的规范 marker、既有普通非 reparse lease 可无等待取得、身份复核不变且固定树完全通过的已放弃事务。活跃、旧式、未知、额外对象、reparse、身份变化或 I/O 不可证明的树均保持原字节。
+- C6A 不发明物理 quarantine schema：完全匹配同一请求的唯一 N+1 尾部沿用 C5 窄续封；其他尾部继续由 Event 真源逻辑隔离并失败关闭。投影/索引重建属于 C6B。
 
 约束：
 
@@ -809,12 +813,12 @@ MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒
 
 | 故障点 | 结果 | 恢复方式 |
 |---|---|---|
-| staging 写入前崩溃 | 没有捕获成功 | 操作系统释放内核锁；按所有权规则处理本事务 staging 后重试，不删除持久锁文件 |
-| staging 写入中崩溃 | 只有不完整临时目录 | 启动时隔离/清理，不返回成功 |
+| staging 写入前崩溃 | 没有捕获成功 | 操作系统释放事务 `active.lock` 租约；后续写操作只按 C6A 所有权规则清理可证明放弃的 staging |
+| staging 写入中崩溃 | 只有不完整临时目录 | 后续写操作取得 Store 锁后保守扫描；只清理租约可取得且固定树完整通过的已放弃事务，不返回成功 |
 | 回读校验失败 | 不提交 | 保留诊断后重试 |
 | rename 前崩溃 | 最终版本不存在 | 同幂等键重试 |
 | rename 后、回执前崩溃 | 已耐久，但调用方不知道 | 同幂等键找到并验证原 Event/Version，返回相同身份与哈希字段；警告按当前投影事实生成 |
-| 追加版本目录 rename 后、Event 前崩溃 | 只有不可见 N+1 残留 | C4 继续读取 N 并警告；C6 恢复或隔离，任何读取操作不自行修复 |
+| 追加版本目录 rename 后、Event 前崩溃 | 只有不可见 N+1 残留 | C4 继续读取 N 并警告；完全匹配同 key 重试续封，其他尾部保持逻辑隔离，读取操作不自行修复 |
 | 追加 Event rename 附近崩溃 | 逻辑提交状态未知 | 返回/保持 `unknown`；同幂等键按最终 Event 与版本事实探测，不盲目追加 |
 | 投影更新失败 | 原件已耐久 | 当前调用及同 key 重试返回 `projection_needs_rebuild`；正式重建留到恢复批次 |
 | outbox 索引失败 | 原件已耐久，尚未镜像 | 从 Envelope 的 Delivery Request 重建任务 |
@@ -1070,9 +1074,9 @@ v1 推荐暂不引入新的业务数据库：
 
 本文虽已获批，仍不应立即开发完整捕获系统。当前推荐顺序：
 
-1. C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A/C3B 完成后为 122 项，C3C 完成后为 140 项，C3V 完成后为 144 项，R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后当前全量 253 项测试通过。除原有 C3/C4/C5A 证据外，完整追加事务、幂等/CAS、尾部续封、Event 三态、投影降级、真实双进程竞争和真实 4/64 MiB 追加读回也已有证据。
-2. 当前实现已包含公开 `capture_text`、C4B `get_capture`、C4C `list_captures` 和 C5B `append_capture_version`；四者均已完成各自阶段验收。业务崩溃恢复、重建与迁移尚未实现，因此本文整体仍不是 `Effective`。
+1. C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A/C3B 完成后为 122 项，C3C 完成后为 140 项，C3V 完成后为 144 项，R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后当前全量 258 项测试通过。除原有 C3–C5 证据外，每事务存活租约、保守残留扫描以及 9 个 capture + 7 个 append 真实进程终止边界也已有证据。
+2. 当前实现已包含公开 `capture_text`、C4B `get_capture`、C4C `list_captures` 和 C5B `append_capture_version`；四者均已完成各自阶段验收，C6A 业务崩溃恢复也已完成。派生状态重建与迁移尚未实现，因此本文整体仍不是 `Effective`。
 3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，C3A/C3B 已于 2026-09-10 分别完成，C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 在测试持有的 Store 中先后完成，D0-F、D0G 与 C4-0 也已闭合；后续 C4A/C4B/C4C 均另行获得逐批授权。任何这些授权都不包含生产 Store。
-4. C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 已同步至 `origin/main`，首次远端 Windows CI 已通过；C5A `63a3250`、C5B `ab2a613` 与 C5V 均为尚未 push 的独立本地批次。下一功能门禁为仍需另行授权的 C6 恢复、重建与迁移。上述阶段均不接 GBrain。
+4. C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 已同步至 `origin/main`，首次远端 Windows CI 已通过；C5A `63a3250`、C5B `ab2a613`、C5V 与 C6A 均为尚未 push 的独立本地批次。下一功能门禁为 C6B 派生状态重建；上述阶段均不接 GBrain。
 5. 本地链路验收后，再把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. 最后分别设计 URL 和文件 Payload 的入口门禁。

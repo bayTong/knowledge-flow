@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=253 capture_tests=238 script_tests=15 next_gate=C6 -->
+<!-- knowledgeflow-doc-status tests=258 capture_tests=243 script_tests=15 next_gate=C6B -->
 
-> 状态：Approved Design；C5V 追加阶段验收已完成，当前 253 项全量通过；下一功能门禁为需单独授权的 C6<br>
+> 状态：Approved Design；C6A 业务事务崩溃恢复已完成，当前 258 项全量通过；下一功能门禁为 C6B 派生状态重建<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -29,8 +29,9 @@
 > C5A 内容与本地验证日期：2026-09-16（独立提交 `63a3250`；未 push）<br>
 > C5B 内容与本地验证日期：2026-09-17（独立提交 `ab2a613`；未 push）<br>
 > C5V 阶段验收日期：2026-09-17（本独立提交；未 push）<br>
+> C6A 业务事务崩溃恢复日期：2026-09-17（本独立提交；未 push）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；C5V 已闭合完整 append 的阶段验收；当前不授权 C6、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由或 UI
+> 边界：本文定义实现与测试要求；C6A 已闭合业务事务崩溃恢复；C6B/C6C、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由与 UI 尚未实施
 
 ## 0. 结论先行
 
@@ -44,7 +45,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A–C4V 已逐批闭合，其中 C4A `06cff02`、C4B `666ba18`、C4C `231ad09` 和 C4V `1e38f2f` 已同步到 `origin/main`；C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 也已 push。C5A `63a3250`、C5B `ab2a613` 与 C5V 已在本地逐批闭合；这不授权 push、C6、创建生产目录或接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A–C4V 已逐批闭合，其中 C4A `06cff02`、C4B `666ba18`、C4C `231ad09` 和 C4V `1e38f2f` 已同步到 `origin/main`；C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 也已 push。C5A `63a3250`、C5B `ab2a613`、C5V 与 C6A 已在本地逐批闭合；这不授权 push、创建生产目录或接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -66,13 +67,14 @@
 - C4V 已在不修改生产代码、公共契约或磁盘 schema 的边界内新增 2 项公共 API 组合验收，闭合真实 4/64 MiB 写入—列表—读取、静态分页及页间受控新增证据，并由独立提交 `1e38f2f` 完成版本化和 push。
 - C5-0 已冻结追加的请求/结果、幂等优先于 CAS、唯一尾部窄续封、Event rename 三态证据、追加投影时间、独立 staging 所有权、错误优先级和 APP-01–APP-24，内容与本地验证已由独立提交 `ea530ad` 版本化并 push；未修改生产代码或磁盘 schema。最小 Windows CI `c4d2c7b` 的首次远端运行已通过。
 - C5A 已实现并验证追加请求/结果、严格 Event writer、版本 2 state、独立 staging/清理、尾部身份与提交证据原语；C5B 已把这些原语集成为公开完整 `append_capture_version`，闭合全 Store 扫描、幂等/CAS、当前 Payload attestation、匹配尾部续封、版本/Event 无覆盖提交、最终回读和投影 warning；C5V 又以真实双进程竞争和真实 4/64 MiB append → list/get 闭合阶段验收，未修改生产源码。
-- 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试，稳定化后为 93 项，C3A 后为 105 项，C3B 后为 122 项，C3C 后为 140 项，C3V 后为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后当前为 253 项。
+- C6A 已为 capture/append 事务增加独立 `active.lock` 内核租约和保守残留扫描；9 个 capture 与 7 个 append 真实 `os._exit()` 边界均由新进程安全恢复，活跃、未知、旧式、reparse 与身份变化 staging 保持不动。
+- 捕获包已精确锁定 `PyYAML==6.0.3`；C0–C2 里程碑自动发现 85 项测试，稳定化后为 93 项，C3A 后为 105 项，C3B 后为 122 项，C3C 后为 140 项，C3V 后为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后当前为 258 项。
 
 ### 1.2 尚不存在
 
 - 没有 `package.json`、Node/Bun 应用或桌面前端。
-- `append_capture_version` 的公开完整事务及 APP-01–APP-24 阶段验收已经完成；C6 的业务事务崩溃恢复、投影/幂等重建与迁移尚未授权。
-- 没有追加故障注入、投影与幂等索引恢复或迁移测试；初始化崩溃恢复和 C3 新建事务已验收，但捕获业务崩溃恢复尚未验收。
+- `append_capture_version` 的公开完整事务、APP-01–APP-24 阶段验收及 C6A 业务事务崩溃恢复已经完成；C6B 投影/幂等/空 outbox 重建与 C6C 迁移尚未实现。
+- 没有派生状态重建或迁移测试；突然断电、控制器缓存与第三方长期占用也不由 C6A 的进程终止测试证明。
 - 没有统一 CLI；C3 的 Python 操作边界通过测试不代表机器适配层已经实现。
 - 没有接入 DeepSeek Harness，也没有可调用的 GBrain 适配器。
 
@@ -85,7 +87,7 @@
 | Python YAML 依赖 | C0 已在 `pyproject.toml` 锁定 `PyYAML==6.0.3` | 只能经项目受限 codec 使用，不能依赖默认加载/发射行为 |
 | Node.js | 22.22.3 | 可用，但仓库没有 Node 工程 |
 | Bun | 未安装 | 不应成为本地捕获前置条件 |
-| 自动化测试 | C5V 后当前全量 253 项通过（捕获内核 238 项、维护脚本 7 项、文档护栏 8 项） | 在 C5B 证据上新增 3 项验收：两个真实进程的同 key/不同 key 竞争，以及真实 4/64 MiB append → list/get 闭环；APP-01–APP-24 全矩阵通过 |
+| 自动化测试 | C6A 后当前全量 258 项通过（捕获内核 243 项、维护脚本 7 项、文档护栏 8 项） | 在 C5V 证据上新增 5 项测试方法，覆盖 16 个真实进程崩溃边界、租约所有权、未知/旧式/额外对象/身份变化保留及真实 junction/symlink 防越界 |
 | 生产 `capture-root` | 尚未创建 | 所有实现测试必须使用隔离临时目录 |
 
 Python、Node.js 与 Bun 盘点来自 2026-09-02 至 2026-09-04；实现与测试状态已同步至 2026-09-17。它们都是本机事实，不是跨机器规范。
@@ -551,14 +553,16 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-E10A | C5A 追加契约能力与写入基础 | M0-D5 | **2026-09-16 已完成内容与本地验证：请求/结果、版本 2 state、严格 Event writer、独立 staging/清理、尾部身份及 source/target 证据原语通过；231 项全绿且不公开 append** |
 | M0-E10B | C5B 完整 `append_capture_version` | M0-E10A | **2026-09-17 已完成内容与本地验证：公开完整事务闭合全 Store 扫描、幂等优先于 CAS、当前 Payload attestation、匹配尾部续封、版本先落盘、Event 逻辑提交、三态证据、最终回读及投影 warning；新增 19 项捕获测试后 250 项全绿** |
 | M0-E10V | C5V 追加阶段验收 | M0-E10B | **2026-09-17 已完成：APP-01–APP-24、两个真实 Windows 进程同 Item/同 expected 的同 key 与不同 key 竞争、真实 4/64 MiB append → list/get、有界 I/O 与既有三态/尾部矩阵全部通过；新增 3 项后 253 项全绿，生产源码未改** |
-| M0-E11 | 投影/索引重建和恢复扫描 | E7–E10V | 删除派生投影后可由不可变记录重建 |
-| M0-E12 | JSON/文本流 CLI 适配 | E6–E11 | stdin 使用 JSON 头 + 精确长度正文；stdout 使用 JSON 结果头 + `get_capture` 精确长度正文 |
+| M0-E11A | C6A 业务事务崩溃恢复 | E7–E10V | **2026-09-17 已完成：每事务 `active.lock` 存活租约、保守 staging 扫描、9 个 capture + 7 个 append 真实 `os._exit()` 边界及 reparse/身份变化负向验证闭合；新增 5 项后 258 项全绿** |
+| M0-E11B | C6B 投影/幂等/空 outbox 重建 | M0-E11A | 删除派生状态后可只由不可变 Item/Version/Event 确定性重建；可重复、可中断且不修改原件 |
+| M0-E11C | C6C Store 迁移 | M0-E11B | 显式复制—验证—配置切换与失败回退，不以跨卷 rename 冒充原子迁移 |
+| M0-E12 | JSON/文本流 CLI 适配 | E6–E11C | stdin 使用 JSON 头 + 精确长度正文；stdout 使用 JSON 结果头 + `get_capture` 精确长度正文 |
 | M0-V1 | 全故障注入和并发验证 | E6–E12 | 第 10 节全部自动化场景通过 |
 | M0-V2 | 迁移演练 | E11、V1 | 临时 Store 复制—校验—切换后身份和哈希不变 |
 | M0-V3 | Windows 人工耐久验收 | V1–V2 | 强制终止恢复通过；断电声明按实测校准 |
 | M0-R1 | 实现审查和状态升级 | V1–V3 | 规范与实现一致后，才从 Approved Design 升为 Effective |
 
-不得把 E7 的“能保存一次”当作 MVP 完成。E8–E11 和 V1–V3 是可恢复性承诺的一部分。
+不得把 E7 的“能保存一次”当作 MVP 完成。E8–E12 和 V1–V3 是可恢复性承诺的一部分。
 
 ## 9. 四操作完成定义
 
@@ -603,16 +607,16 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 - `expected_current_version` 只接受整数 `1..999998`，`bool` 无效；v1 已到 `999999` 返回 `invalid_input`，不分配越界版本。
 - 新增独立、精确字段的 `AppendCaptureVersionResult` 与 `AppendCaptureVersionOperationResult`；不放宽现有 `CommittedWriteResult` 的 capture_text 回执。
 - 保存完整新 Payload，不保存补丁链；输入验证、安全上限、UTF-8/BOM 和有界 staging 复用 C3B 能力。
-- 暂存使用独立内部类型和 `.staging/<tx>/version + events` 固定树；capture-transaction v1 marker 仅增加 append operation，按 operation 分流所有权允许树。部分 rename 后只清理本事务仍在 staging 的对象，marker 最后删除，最终尾部和未知 staging 永不删除；C3 布局/规范字节保持不变。
+- 暂存使用独立内部类型和 `.staging/<tx>/active.lock + transaction.yaml + version + events` 固定树；capture-transaction v1 marker 仅增加 append operation，按 operation 分流所有权允许树。C6A 从事务根创建起持有独立内核租约；部分 rename 后只清理已证明放弃事务中仍在 staging 的对象，内容和租约删除后 marker 最后删除，最终尾部和未知/活跃 staging 永不删除；C3/C5 marker 规范字节保持不变。
 - 正文在锁外 staging 并生成 Request Fingerprint；Store 级 Windows 锁覆盖全 Store 不可变扫描、幂等判定、目标链/当前 Payload attestation、CAS、提交、最终回读和投影尝试。
 - 锁内优先级固定为不可变完整性/版本支持 → 幂等命中或冲突 → `capture_not_found` → CAS `version_conflict` → 目标/写入证据。同 key 已提交命中优先于 CAS，即使 Item 后来已推进也返回原版本。
 - 同一基线的不同 key 并发追加最多一个成功；同 key、同请求并发返回同一版本/Event，同 key、不同指纹返回 `idempotency_conflict`。
-- 只有完全规范、全部 Payload 已验证、绑定当前 N 且幂等身份/指纹相同的唯一 N+1 无 Event 尾部可由同 key 续封；采用其既有版本、Event ID 和 Envelope，不生成 N+2。其他尾部不采用、不覆盖、不清理，留给 C6。
+- 只有完全规范、全部 Payload 已验证、绑定当前 N 且幂等身份/指纹相同的唯一 N+1 无 Event 尾部可由同 key 续封；采用其既有版本、Event ID 和 Envelope，不生成 N+2。其他尾部不采用、不覆盖、不清理，并继续由 Event 真源保持逻辑隔离。
 - 版本目录先无覆盖提交，匹配的 `capture.version-appended` Event 后无覆盖提交；Event 是 N>1 的唯一逻辑提交点。版本 rename 结果不明但 Event 被证明不存在时仍是 `not-committed`。
 - Event rename 之后按 source/target 与最终规范字节、引用和 Payload attestation 区分 `not-committed | committed | unknown`；确定损坏为 `integrity_check_failed + unknown`，无法证明为 `atomic_commit_failed + unknown`。
 - 追加 Event 复用同一严格 codec，同时绑定 N、N+1 及前后 Envelope 哈希；投影只能在 Event 提交并完成最终回读后推进，失败只产生成功 warning。
 - state v1 的版本 1 分支保持 `updated_at == durability.verified_at` 与旧调用/golden；版本 >1 的 codec 必须取得当前 Event 和前一 Envelope，严格验证 `updated_at == Event.occurred_at`，验证时间独立采样。
-- 旧版本、旧 Event、旧哈希和旧批准不变，新版本不继承批准；C5 不实现通用恢复、索引、路由、GBrain 或生产初始化。
+- 旧版本、旧 Event、旧哈希和旧批准不变，新版本不继承批准；C6A 已实现保守 staging 恢复，但不实现派生索引、路由、GBrain 或生产初始化。
 
 ## 10. 自动化测试矩阵
 
@@ -823,6 +827,8 @@ R0.3D 特征证据与 R0.3F 实现结果：
 
 ### 10.8 恢复和迁移
 
+C6A 已以 5 个自动化测试方法覆盖 16 个真实子进程崩溃边界：capture 9 点、append 7 点；每点均由无故障钩子的新进程验证同 key 恢复与稳定重试。另行验证只清理可证明放弃且租约可取得的固定树，未知/旧式/额外对象/身份变化树原样保留，并在真实 Windows junction 与 symlink 下不跟随、不越界。下列派生状态重建与迁移场景仍属于 C6B/C6C：
+
 | ID | 场景 | 预期 |
 |---|---|---|
 | REC-01 | 删除 `capture.yaml` | 从版本和事件重建相同投影 |
@@ -903,6 +909,8 @@ before_append_receipt_returned
 - 追加 Event rename 抛错后，分别伪造“source 仍在且 target 不在”“source 已消失且 target 精确匹配”“source/target 无法可靠读取”“target 确定损坏”四类现场，验证 APP-20/APP-21 的三态和错误码。
 - 版本 rename 后、Event 前的所有现场都不得让 C4 读取 N+1；同 key 只接管 APP-15 的完全匹配尾部，任何其他尾部均保持原样。
 
+完成记录（2026-09-17；本独立提交，未 push）：以上 9 + 7 个边界全部使用子进程 `os._exit(70)`，而非同进程异常模拟；新进程会先在 Store 写锁内完成保守残留扫描，再按最终不可变事实恢复。普通和严格 `ResourceWarning` 全量均为 258 项。该证据只覆盖进程崩溃，不扩展为突然断电、控制器缓存或第三方长期占用保证。
+
 ### 11.4 无法仅靠自动化证明的部分
 
 - 突然断电。
@@ -941,7 +949,7 @@ before_append_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C4V 与 C5-0 已逐批通过、版本化并 push；C5A/C5B/C5V 已在本地逐批完成，下一功能门禁为 C6** | C6 及后续未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C4V 与 C5-0 已逐批通过、版本化并 push；C5A/C5B/C5V/C6A 已在本地逐批完成，下一功能门禁为 C6B** | C7 及后续未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | **已于 2026-09-04 通过：LOCK/DUR/INIT/FI 全绿，自动发现总计 85 项测试** | 使用真实生产 root |
@@ -964,4 +972,4 @@ before_append_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3V 时为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后当前为 253 项。完整追加事务、真实双进程、真实 4/64 MiB 和 APP-01–APP-24 阶段矩阵均已通过；下一功能门禁为 C6，仍需另行明确授权。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在 C8 通过后、用户另行明确要求“初始化生产 Capture Store”时才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3V 时为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后当前为 258 项。完整追加事务、真实双进程、真实 4/64 MiB、APP-01–APP-24 及 16 个进程崩溃边界均已通过；下一功能门禁为 C6B 派生状态重建。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在 C8 通过后、用户另行明确要求“初始化生产 Capture Store”时才允许创建。
