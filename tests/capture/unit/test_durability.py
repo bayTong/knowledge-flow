@@ -425,6 +425,45 @@ class DurabilityBackendTest(unittest.TestCase):
             b"external-race",
         )
 
+    def test_c5_event_file_connects_across_same_volume_without_overwrite(self) -> None:
+        source_parent = self.root / "staging-events"
+        destination_parent = self.root / "item-events"
+        source_parent.mkdir()
+        destination_parent.mkdir()
+        flushed: list[Path] = []
+        backend = DurabilityBackend(
+            _directory_flusher=lambda path: (flushed.append(path), True)[1]
+        )
+        expected = b"canonical append event"
+        source = source_parent / "event.yaml"
+        destination = destination_parent / "event.yaml"
+        backend.write_new_file_durable(source, expected)
+        flushed.clear()
+
+        disposition = backend.commit_file_no_replace_same_volume(
+            source,
+            destination,
+            expected,
+        )
+
+        self.assertEqual(disposition, FileCommitDisposition.CREATED)
+        self.assertFalse(source.exists())
+        self.assertEqual(destination.read_bytes(), expected)
+        self.assertEqual(flushed, [source_parent, destination_parent])
+
+        conflicting_source = source_parent / "conflicting.yaml"
+        conflicting_destination = destination_parent / "conflicting.yaml"
+        backend.write_new_file_durable(conflicting_source, expected)
+        conflicting_destination.write_bytes(b"foreign")
+        with self.assertRaises(DestinationAlreadyExistsError):
+            backend.commit_file_no_replace_same_volume(
+                conflicting_source,
+                conflicting_destination,
+                expected,
+            )
+        self.assertEqual(conflicting_source.read_bytes(), expected)
+        self.assertEqual(conflicting_destination.read_bytes(), b"foreign")
+
     def test_dur_04_directory_flush_reports_support_and_unexpected_failures(self) -> None:
         calls: list[Path] = []
 

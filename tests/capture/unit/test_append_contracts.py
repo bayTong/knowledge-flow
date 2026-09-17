@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, fields
 import io
+import inspect
 from pathlib import Path
 import unittest
 
@@ -69,7 +70,7 @@ def append_receipt(*, version: int = 2) -> dict[str, object]:
 
 
 class AppendContractTest(unittest.TestCase):
-    def test_app_01_public_types_exist_but_append_operation_is_not_published(self) -> None:
+    def test_app_01_public_types_and_c5b_operation_are_published(self) -> None:
         for name in (
             "AppendCaptureVersionOperationResult",
             "AppendCaptureVersionRequest",
@@ -78,8 +79,18 @@ class AppendContractTest(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertTrue(hasattr(knowledgeflow_capture, name))
                 self.assertIn(name, knowledgeflow_capture.__all__)
-        self.assertFalse(hasattr(knowledgeflow_capture, "append_capture_version"))
-        self.assertNotIn("append_capture_version", knowledgeflow_capture.__all__)
+        self.assertTrue(hasattr(knowledgeflow_capture, "append_capture_version"))
+        self.assertIn("append_capture_version", knowledgeflow_capture.__all__)
+        parameters = inspect.signature(
+            knowledgeflow_capture.append_capture_version
+        ).parameters
+        self.assertEqual(
+            tuple(parameters),
+            ("request", "config_path", "path_policy"),
+        )
+        self.assertEqual(parameters["request"].kind, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        self.assertEqual(parameters["config_path"].kind, inspect.Parameter.KEYWORD_ONLY)
+        self.assertEqual(parameters["path_policy"].kind, inspect.Parameter.KEYWORD_ONLY)
 
     def test_app_01_request_is_exact_keyword_only_frozen_and_slotted(self) -> None:
         request = AppendCaptureVersionRequest(

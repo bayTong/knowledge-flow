@@ -1,6 +1,6 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；`capture_text`、`get_capture`、`list_captures` 与 C4V 已完成，C5-0 追加契约已收口，追加实现尚未开始<br>
+> 状态：Approved Design；四个公开文本操作均已实现，C5B 完整追加事务已完成内容与本地验证，C5V 阶段验收尚未开始<br>
 > 确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
 > C3 编码前收口日期：2026-09-09<br>
@@ -11,8 +11,10 @@
 > C4V 完成与远端同步日期：2026-09-14（提交 `1e38f2f` 已 push 至 `origin/main`）<br>
 > C5-0 追加写入契约收口日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）<br>
 > 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）<br>
+> C5A 完成日期：2026-09-16（独立提交 `63a3250`；未 push）<br>
+> C5B 内容与本地验证日期：2026-09-17（本独立提交；未 push）<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
-> 边界：本文定义调用方可见的完整操作；前三个公开操作已经实现和验收，`append_capture_version` 目前只有 C5-0 契约、尚无生产实现，也未创建生产目录
+> 边界：本文定义调用方可见的完整操作；`append_capture_version` 已由 C5B 公开实现，但尚未通过 C5V 双进程与真实 4/64 MiB 阶段验收，也未创建生产目录
 
 ## 0. 结论先行
 
@@ -696,4 +698,4 @@ Event ID 最终目标在第一次逻辑提交尝试前已存在时，不得采�
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5-0 `ea530ad` 已冻结 C-035–C-042 与 APP-01–APP-24 并 push，最小 Windows CI `c4d2c7b` 首次远端运行也已通过。C5A 已实现追加公开类型、严格 codec/writer、版本 2 投影、独立 staging/清理、尾部身份和提交证据原语，当前 231 项全量通过；公共 `append_capture_version`、生产 Store、GBrain 与路由仍未实现，C5B 未授权。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5-0 `ea530ad` 已冻结 C-035–C-042 与 APP-01–APP-24 并 push，最小 Windows CI `c4d2c7b` 首次远端运行也已通过。C5A `63a3250` 已实现追加基础原语，C5B 又公开完整 `append_capture_version`，当前 250 项全量通过；生产 Store、GBrain 与路由仍未实现，下一门禁 C5V 未授权。

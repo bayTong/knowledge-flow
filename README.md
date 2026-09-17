@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=231 capture_tests=216 script_tests=15 next_gate=C5B -->
+<!-- knowledgeflow-doc-status tests=250 capture_tests=235 script_tests=15 next_gate=C5V -->
 
 > Solving the curation paradox — a two-stage pipeline that separates LLM-powered
 > exhaustive extraction from human semantic curation, with an auditable curation map
 > as the interface between them.
 
-> **Current status (2026-09-16):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C4V read-stage acceptance commit `1e38f2f`, C5-0 contract commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` are synchronized with `origin/main`; the first clean-runner CI run `35075692046` passed. C5A has now implemented the separately validated append request/result types, strict append Envelope/Event writer, backward-compatible version-2 state projection, marker-first append staging and safe cleanup, tail-identity boundary, and source/target commit-evidence primitives. The public package deliberately does not yet expose or execute `append_capture_version`, and no final append transaction or production Store was created. The current suite is 231 tests (216 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). The next functional gate is separately authorized C5B, which will integrate these primitives into the complete public append transaction. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-17):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. C4V read-stage acceptance commit `1e38f2f`, C5-0 contract commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` are synchronized with `origin/main`; the first clean-runner CI run `35075692046` passed. C5B now publicly integrates `append_capture_version` as one complete Store-locked transaction: full immutable scan, idempotency before CAS, current-Payload attestation, narrow matching-tail adoption, version/Event no-replace commits, final reread, and best-effort version-2 projection. The current suite is 250 tests (235 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). C5B remains a local unpushed batch; the next separately authorized gate is C5V, which adds real two-process and 4/64 MiB append acceptance. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -246,11 +246,11 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, and `list_captures` are implemented and independently versioned; C4V commit `1e38f2f`, C5-0 commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` have all been pushed, and the first remote CI run passed. Append, business-transaction recovery, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
+The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, `list_captures`, and `append_capture_version` are implemented; C4V commit `1e38f2f`, C5-0 commit `ea530ad`, and minimal Windows CI commit `c4d2c7b` have all been pushed, while C5A commit `63a3250` and the C5B batch remain local. Append still needs C5V stage acceptance; business-transaction recovery, the restricted CLI, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C4V and C5-0 are complete, versioned, and pushed, and the first minimal Windows CI run passed. This does not authorize C5A or any later batch.
-3. Then complete append, recovery, and the restricted adapter through C5–C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0–C4V and C5-0 are complete, versioned, and pushed; C5A and C5B are complete local batches, and the first minimal Windows CI run passed. This does not authorize C5V or any later batch.
+3. Then complete C5V, recovery, and the restricted adapter through C8 before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
 4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful for studying curation-map extraction and coverage auditing, but outputs now belong under `proposals/curation-maps/` and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.

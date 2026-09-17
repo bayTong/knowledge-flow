@@ -607,6 +607,90 @@ class DurabilityBackend:
         self.flush_directory_metadata(destination_path.parent)
         return FileCommitDisposition.CREATED
 
+    def commit_file_no_replace_same_volume(
+        self,
+        source: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        expected_bytes: bytes | bytearray | memoryview,
+        *,
+        validator: _FileValidator | None = None,
+    ) -> FileCommitDisposition:
+        """Connect a verified file across same-volume directories without replace.
+
+        The older ``commit_file_no_replace`` deliberately retains its stricter
+        same-directory contract for configuration transactions. Append Events
+        originate in Store staging and therefore need this separately named
+        same-volume primitive, including metadata flushes for both parents.
+        """
+
+        source_path = Path(source)
+        destination_path = Path(destination)
+        if not isinstance(expected_bytes, (bytes, bytearray, memoryview)):
+            raise TypeError("expected_bytes must be bytes-like")
+        expected = bytes(expected_bytes)
+        source_parent = _require_plain_directory(
+            source_path.parent,
+            DurabilityStage.RENAME,
+        )
+        destination_parent = _require_plain_directory(
+            destination_path.parent,
+            DurabilityStage.RENAME,
+        )
+        if source_parent.st_dev != destination_parent.st_dev:
+            raise DurabilityError(DurabilityStage.RENAME)
+        self._verify_file(source_path, expected, validator)
+
+        def classify_existing() -> FileCommitDisposition:
+            destination_stat = _require_plain_file(
+                destination_path,
+                DurabilityStage.RENAME,
+            )
+            if _is_reparse_point(destination_stat):
+                raise DestinationAlreadyExistsError
+            try:
+                actual = self._read_bytes(destination_path)
+            except OSError as exc:
+                raise DurabilityError(DurabilityStage.FILE_READBACK) from exc
+            if type(actual) is not bytes or actual != expected:
+                raise DestinationAlreadyExistsError
+            if validator is not None:
+                try:
+                    validator(actual)
+                except Exception as exc:
+                    raise DestinationAlreadyExistsError from exc
+            try:
+                self._unlink(source_path)
+            except OSError as exc:
+                raise DurabilityError(DurabilityStage.CLEANUP) from exc
+            self.flush_directory_metadata(source_path.parent)
+            self.flush_directory_metadata(destination_path.parent)
+            return FileCommitDisposition.ALREADY_PRESENT
+
+        try:
+            destination_stat = _lstat_if_present(destination_path)
+        except OSError as exc:
+            raise DurabilityError(DurabilityStage.RENAME) from exc
+        if destination_stat is not None:
+            return classify_existing()
+
+        if os.name != "nt":
+            raise DurabilityError(DurabilityStage.RENAME)
+        try:
+            self._rename(source_path, destination_path)
+        except OSError as exc:
+            try:
+                destination_appeared = _lstat_if_present(destination_path) is not None
+            except OSError as probe_exc:
+                raise DurabilityError(DurabilityStage.RENAME) from probe_exc
+            if destination_appeared:
+                return classify_existing()
+            raise DurabilityError(DurabilityStage.RENAME) from exc
+
+        self._verify_file(destination_path, expected, validator)
+        self.flush_directory_metadata(source_path.parent)
+        self.flush_directory_metadata(destination_path.parent)
+        return FileCommitDisposition.CREATED
+
     def commit_directory_no_replace(
         self,
         source: str | os.PathLike[str],

@@ -99,12 +99,15 @@ from .models import (
 from .paths import PathPolicy, PathPolicyError
 from .store import (
     _AppendStaging,
+    _CommittedCaptureVersion,
     _CaptureVersionChain,
     _CaptureVersionChainError,
     _CaptureStaging,
     _InitFailure,
     _build_capture_version_chain,
+    _cleanup_append_staging,
     _cleanup_capture_staging,
+    _create_append_staging,
     _create_capture_staging,
     _inspect_store,
     _parse_capture_version_directory_name,
@@ -144,6 +147,7 @@ class _CaptureFaultPoint(StrEnum):
     """Internal-only C3 fault points; never accepted from public input."""
 
     BEFORE_EVENT_WRITE = "before_event_write"
+    BEFORE_APPEND_EVENT_PREFLIGHT = "before_append_event_preflight"
     BEFORE_PROJECTION_REPLACE = "before_projection_replace"
 
 
@@ -278,6 +282,35 @@ class _AppendRequestIdentity:
     scope: str
     key_sha256: str
     request_fingerprint_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class _AppendTailObservation:
+    disk_chain: _DiskCaptureVersionChain
+    version: int
+    envelope_source: bytes | None
+    identity: _AppendRequestIdentity | None
+
+    @property
+    def version_path(self) -> Path:
+        path = self.disk_chain.version_paths.get(self.version)
+        if path is None:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        return path
+
+
+@dataclass(frozen=True, slots=True)
+class _AppendCommittedMatch:
+    disk_chain: _DiskCaptureVersionChain
+    committed: _CommittedCaptureVersion
+
+
+@dataclass(frozen=True, slots=True)
+class _AppendStoreScan:
+    chains: tuple[_DiskCaptureVersionChain, ...]
+    committed_match: _AppendCommittedMatch | None
+    tail_match: _AppendTailObservation | None
+    tails: tuple[_AppendTailObservation, ...]
 
 
 class _AppendSourceEvidence(StrEnum):
@@ -2101,6 +2134,296 @@ def _attest_version_payloads(
     return tuple(results)
 
 
+def _append_identity_from_envelope(
+    envelope: Mapping[str, object],
+) -> _AppendRequestIdentity | None:
+    identity = envelope.get("idempotency")
+    if identity is None:
+        return None
+    if not isinstance(identity, Mapping):
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+    scope = identity.get("scope")
+    key_sha256 = identity.get("key_sha256")
+    request_sha256 = identity.get("request_fingerprint_sha256")
+    if not all(type(value) is str for value in (scope, key_sha256, request_sha256)):
+        raise _IntegrityFailure(CauseCode.ENVELOPE_HASH_MISMATCH)
+    return _AppendRequestIdentity(
+        scope=cast(str, scope),
+        key_sha256=cast(str, key_sha256),
+        request_fingerprint_sha256=cast(str, request_sha256),
+    )
+
+
+def _read_append_tail_envelope_source(path: Path) -> bytes | None:
+    """Read a possible tail Envelope without upgrading known partial bytes.
+
+    A missing, non-regular, reparse, oversized, or malformed file is a known
+    incomplete tail and contributes no idempotency identity. I/O uncertainty
+    is kept distinct and fails the append before any final write.
+    """
+
+    envelope_path = path / "envelope.yaml"
+    try:
+        path_stat = _lstat_if_present(envelope_path)
+    except OSError as exc:
+        raise _StoreIoFailure(stage="tail-identity") from exc
+    if path_stat is None or not stat.S_ISREG(path_stat.st_mode) or (
+        _is_reparse_point(path_stat)
+    ):
+        return None
+    if path_stat.st_size > _ENVELOPE_MAXIMUM_BYTES:
+        return None
+    try:
+        with envelope_path.open("rb") as stream:
+            handle_stat = os.fstat(stream.fileno())
+            if not (
+                stat.S_ISREG(handle_stat.st_mode)
+                and handle_stat.st_dev == path_stat.st_dev
+                and handle_stat.st_ino == path_stat.st_ino
+                and handle_stat.st_mode == path_stat.st_mode
+            ):
+                raise _StoreIoFailure(stage="tail-identity")
+            source = stream.read(_ENVELOPE_MAXIMUM_BYTES + 1)
+    except _StoreIoFailure:
+        raise
+    except OSError as exc:
+        raise _StoreIoFailure(stage="tail-identity") from exc
+    if not _same_identity(envelope_path, path_stat):
+        raise _StoreIoFailure(stage="tail-identity")
+    if type(source) is not bytes or len(source) > _ENVELOPE_MAXIMUM_BYTES:
+        return None
+    return source
+
+
+def _scan_append_store(
+    capture_root: Path,
+    *,
+    scope: str,
+    key_sha256: str,
+    request_sha256: str,
+) -> _AppendStoreScan:
+    """Validate the complete immutable Store, then resolve append identity."""
+
+    chains = tuple(
+        _load_disk_capture_version_chain(item)
+        for item in _locate_capture_items(capture_root)
+    )
+    # Unknown projection machine versions are not silently replaced. Known
+    # missing/corrupt projections remain rebuildable warnings.
+    for chain in chains:
+        _projection_warning_for_read(chain)
+
+    tails: list[_AppendTailObservation] = []
+    for chain in chains:
+        incomplete = chain.chain.incomplete_version
+        if incomplete is None:
+            continue
+        version_path = chain.version_paths.get(incomplete)
+        if version_path is None:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        source = _read_append_tail_envelope_source(version_path)
+        identity = None
+        if source is not None:
+            identity = _decidable_append_tail_identity(
+                source,
+                expected_capture_id=chain.chain.capture_id,
+                expected_version=incomplete,
+                previous_envelope=chain.chain.current.envelope,
+            )
+        tails.append(
+            _AppendTailObservation(
+                disk_chain=chain,
+                version=incomplete,
+                envelope_source=source,
+                identity=identity,
+            )
+        )
+
+    committed_matches: list[_AppendCommittedMatch] = []
+    tail_matches: list[_AppendTailObservation] = []
+    conflict = False
+    for chain in chains:
+        for committed in chain.chain.versions:
+            identity = _append_identity_from_envelope(committed.envelope)
+            if identity is None or (
+                identity.scope != scope or identity.key_sha256 != key_sha256
+            ):
+                continue
+            if identity.request_fingerprint_sha256 != request_sha256:
+                conflict = True
+            else:
+                committed_matches.append(
+                    _AppendCommittedMatch(
+                        disk_chain=chain,
+                        committed=committed,
+                    )
+                )
+    for tail in tails:
+        identity = tail.identity
+        if identity is None or (
+            identity.scope != scope or identity.key_sha256 != key_sha256
+        ):
+            continue
+        if identity.request_fingerprint_sha256 != request_sha256:
+            conflict = True
+        else:
+            tail_matches.append(tail)
+
+    if conflict:
+        raise _IdempotencyConflict
+    if len(committed_matches) > 1 or (
+        not committed_matches and len(tail_matches) > 1
+    ):
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    return _AppendStoreScan(
+        chains=chains,
+        committed_match=(committed_matches[0] if committed_matches else None),
+        tail_match=(tail_matches[0] if tail_matches else None),
+        tails=tuple(tails),
+    )
+
+
+def _append_receipt_from_committed(
+    committed: _CommittedCaptureVersion,
+) -> dict[str, object]:
+    envelope = committed.envelope
+    primary = next(
+        payload
+        for payload in _payload_mappings(envelope)
+        if payload["ordinal"] == 0 and payload["role"] == "primary"
+    )
+    return {
+        "capture_id": envelope["capture_id"],
+        "event_id": envelope["event_id"],
+        "previous_version": envelope["previous_version"],
+        "version": envelope["version"],
+        "primary_payload_sha256": primary["sha256"],
+        "payload_set_sha256": envelope["payload_set_sha256"],
+        "envelope_sha256": envelope["envelope_sha256"],
+        "durability": "durable",
+        "routing_status": "unassigned",
+        "trust_status": "unreviewed-capture",
+        "gbrain_sync_status": "not-requested",
+    }
+
+
+def _append_warnings(
+    disk_chain: _DiskCaptureVersionChain,
+) -> tuple[OperationWarning, ...]:
+    return (
+        _warnings_for_capture_version_chain(disk_chain.chain)
+        + _projection_warning_for_read(disk_chain)
+    )
+
+
+def _success_from_append_match(
+    match: _AppendCommittedMatch,
+) -> AppendCaptureVersionResult:
+    version_path = match.disk_chain.version_paths.get(match.committed.version)
+    if version_path is None:
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    _attest_version_payloads(version_path, match.committed.envelope)
+    return AppendCaptureVersionResult(
+        receipt=_append_receipt_from_committed(match.committed),
+        warnings=_append_warnings(match.disk_chain),
+    )
+
+
+def _adopt_append_tail_candidate(
+    observation: _AppendTailObservation,
+    request: AppendCaptureVersionRequest,
+    *,
+    payload_digest: DigestResult,
+    payload_set_digest: str,
+    request_digest: str,
+    dependencies: _CaptureDependencies,
+) -> _AppendCandidate | None:
+    """Return a candidate only after the existing tail is completely proven."""
+
+    source = observation.envelope_source
+    identity = observation.identity
+    if source is None or identity is None:
+        return None
+    previous_envelope = observation.disk_chain.chain.current.envelope
+    try:
+        envelope = load_envelope(source, require_canonical=True)
+        if not verify_envelope(envelope):
+            return None
+        if (
+            envelope.get("capture_id") != request.capture_id
+            or envelope.get("version") != request.expected_current_version + 1
+            or envelope.get("previous_version")
+            != request.expected_current_version
+            or identity.request_fingerprint_sha256 != request_digest
+            or identity.scope
+            != canonical_idempotency_scope(
+                request.channel,
+                "append_capture_version",
+            )
+            or identity.key_sha256
+            != idempotency_key_sha256(request.idempotency_key)
+            or envelope.get("channel") != request.channel.as_canonical_mapping()
+            or envelope.get("actor") != _ACTOR
+            or envelope.get("delivery_requests") != []
+            or envelope.get("payload_set_sha256") != payload_set_digest
+        ):
+            return None
+        event_id = envelope.get("event_id")
+        if type(event_id) is not str:
+            return None
+        validate_typed_id(event_id, IdKind.EVENT)
+        expected_intent = {
+            **request.user_intent.as_canonical_mapping(),
+            "evidence": {
+                "event_id": event_id,
+                "payload_id": payload_digest.sha256,
+            },
+        }
+        if envelope.get("user_intent") != expected_intent:
+            return None
+        digests = _attest_version_payloads(observation.version_path, envelope)
+        if len(digests) != 1 or (
+            digests[0].byte_size != payload_digest.byte_size
+            or not hmac.compare_digest(digests[0].sha256, payload_digest.sha256)
+        ):
+            return None
+        event: dict[str, object] = {
+            "schema": "knowledgeflow.capture-event",
+            "schema_version": 1,
+            "event_id": event_id,
+            "event_type": "capture.version-appended",
+            "capture_id": request.capture_id,
+            "version": request.expected_current_version + 1,
+            "previous_version": request.expected_current_version,
+            "previous_envelope_sha256": previous_envelope["envelope_sha256"],
+            "envelope_sha256": envelope["envelope_sha256"],
+            "occurred_at": _sample_time(dependencies),
+            "actor": dict(_ACTOR),
+        }
+        event_bytes = dump_capture_event(
+            event,
+            envelope=envelope,
+            previous_envelope=previous_envelope,
+        )
+        return _AppendCandidate(
+            capture_id=request.capture_id,
+            event_id=event_id,
+            previous_version=request.expected_current_version,
+            version=request.expected_current_version + 1,
+            envelope=envelope,
+            envelope_bytes=source,
+            previous_envelope=previous_envelope,
+            event=event,
+            event_bytes=event_bytes,
+            payload_digest=payload_digest,
+            payload_set_sha256=payload_set_digest,
+        )
+    except _StoreIoFailure:
+        raise
+    except (_IntegrityFailure, KeyError, TypeError, ValueError):
+        return None
+
+
 def _attest_append_candidate_at(
     version_path: Path,
     event_path: Path,
@@ -2434,6 +2757,273 @@ def _commit_candidate(
         )
 
 
+def _append_atomic_failure(
+    state: CommitState,
+    *,
+    stage: str,
+) -> FailureResult:
+    return _failure(
+        PublicErrorCode.ATOMIC_COMMIT_FAILED,
+        state,
+        retryable=True,
+        details={"stage": stage},
+    )
+
+
+def _append_disposition_after_event_attempt(
+    staging: _AppendStaging,
+    candidate: _AppendCandidate,
+    *,
+    version_path: Path,
+    event_path: Path,
+    source_stat: os.stat_result,
+    rename_attempted: bool,
+) -> _AppendCommitDisposition:
+    source = _probe_append_source(
+        staging.event_path(candidate.event_id),
+        source_stat,
+    )
+    target = _probe_append_target(event_path)
+    attestation = _AppendTargetAttestation.NOT_RUN
+    if target is _AppendTargetEvidence.PRESENT:
+        attestation = _attest_append_target(
+            version_path,
+            event_path,
+            candidate,
+        )
+    elif target is _AppendTargetEvidence.UNPROVABLE:
+        attestation = _AppendTargetAttestation.UNPROVABLE
+    return _classify_append_event_evidence(
+        rename_attempted=rename_attempted,
+        source=source,
+        target=target,
+        target_attestation=attestation,
+    )
+
+
+def _failure_from_append_disposition(
+    disposition: _AppendCommitDisposition,
+    *,
+    stage: str = "event-commit",
+) -> FailureResult | None:
+    if disposition is _AppendCommitDisposition.COMMITTED:
+        return None
+    if disposition is _AppendCommitDisposition.NOT_COMMITTED:
+        return _append_atomic_failure(
+            CommitState.NOT_COMMITTED,
+            stage=stage,
+        )
+    if disposition is _AppendCommitDisposition.INTEGRITY_UNKNOWN:
+        return _integrity_failure(
+            _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH),
+            CommitState.UNKNOWN,
+        )
+    return _append_atomic_failure(
+        CommitState.UNKNOWN,
+        stage=stage,
+    )
+
+
+def _final_append_chain(
+    item: _LocatedCaptureItem,
+    candidate: _AppendCandidate,
+) -> _DiskCaptureVersionChain | FailureResult:
+    try:
+        disk_chain = _load_disk_capture_version_chain(item)
+        committed = disk_chain.chain.version(candidate.version)
+        if committed is None or (
+            committed.envelope != candidate.envelope
+            or committed.event != candidate.event
+        ):
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        version_path = disk_chain.version_paths.get(candidate.version)
+        if version_path is None:
+            raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+        _attest_append_candidate_at(
+            version_path,
+            item.item_path / "events" / f"{candidate.event_id}.yaml",
+            candidate,
+        )
+        return disk_chain
+    except _UnsupportedMachineSchema:
+        return _append_atomic_failure(
+            CommitState.UNKNOWN,
+            stage="final-readback",
+        )
+    except _IntegrityFailure as exc:
+        return _integrity_failure(exc, CommitState.UNKNOWN)
+    except _StoreIoFailure:
+        return _append_atomic_failure(
+            CommitState.UNKNOWN,
+            stage="final-readback",
+        )
+
+
+def _commit_append_candidate(
+    staging: _AppendStaging,
+    target: _DiskCaptureVersionChain,
+    candidate: _AppendCandidate,
+    *,
+    adopting_tail: bool,
+    dependencies: _CaptureDependencies,
+) -> _DiskCaptureVersionChain | FailureResult:
+    """Commit one append with Event rename as the sole logical commit point."""
+
+    item_path = target.item.item_path
+    version_path = item_path / "versions" / f"{candidate.version:06d}"
+    event_path = item_path / "events" / f"{candidate.event_id}.yaml"
+    staged_event_path = staging.event_path(candidate.event_id)
+
+    if adopting_tail:
+        try:
+            dependencies.durability.write_new_file_durable(
+                staged_event_path,
+                candidate.event_bytes,
+                validator=lambda source: _require_exact_append_event(
+                    source,
+                    candidate,
+                ),
+            )
+            _attest_append_candidate_at(
+                version_path,
+                staged_event_path,
+                candidate,
+            )
+        except (_IntegrityFailure, _StoreIoFailure, DurabilityError, OSError):
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="version-target-conflict",
+            )
+    else:
+        try:
+            _write_append_candidate_metadata(staging, candidate, dependencies)
+            _attest_append_candidate_at(
+                staging.version_path,
+                staged_event_path,
+                candidate,
+            )
+        except _IntegrityFailure as exc:
+            return _integrity_failure(exc, CommitState.NOT_COMMITTED)
+        except (_StoreIoFailure, DurabilityError, OSError):
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="candidate-write",
+            )
+
+        version_before = _probe_append_target(version_path)
+        if version_before is _AppendTargetEvidence.UNPROVABLE:
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="version-target-conflict",
+            )
+        if version_before is _AppendTargetEvidence.PRESENT:
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="version-target-conflict",
+            )
+        try:
+            dependencies.durability.commit_directory_no_replace(
+                staging.version_path,
+                version_path,
+            )
+        except (DestinationAlreadyExistsError, DurabilityError, OSError):
+            try:
+                source_stat = _lstat_if_present(staged_event_path)
+            except OSError:
+                source_stat = None
+            if source_stat is None or not stat.S_ISREG(source_stat.st_mode) or (
+                _is_reparse_point(source_stat)
+            ):
+                return _append_atomic_failure(
+                    CommitState.UNKNOWN,
+                    stage="version-commit",
+                )
+            disposition = _append_disposition_after_event_attempt(
+                staging,
+                candidate,
+                version_path=version_path,
+                event_path=event_path,
+                source_stat=source_stat,
+                rename_attempted=False,
+            )
+            failure = _failure_from_append_disposition(
+                disposition,
+                stage="version-commit",
+            )
+            if failure is not None:
+                return failure
+        try:
+            _attest_append_candidate_at(
+                version_path,
+                staged_event_path,
+                candidate,
+            )
+        except (_IntegrityFailure, _StoreIoFailure):
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="version-readback",
+            )
+
+    try:
+        source_stat = _lstat_if_present(staged_event_path)
+    except OSError:
+        source_stat = None
+    if source_stat is None or not stat.S_ISREG(source_stat.st_mode) or (
+        _is_reparse_point(source_stat)
+    ):
+        return _append_atomic_failure(
+            CommitState.NOT_COMMITTED,
+            stage="event-commit",
+        )
+
+    try:
+        _trigger_fault(
+            _CaptureFaultPoint.BEFORE_APPEND_EVENT_PREFLIGHT,
+            dependencies,
+        )
+    except Exception:
+        return _append_atomic_failure(
+            CommitState.NOT_COMMITTED,
+            stage="event-target-conflict",
+        )
+    event_before = _probe_append_target(event_path)
+    if event_before is _AppendTargetEvidence.PRESENT:
+        return _append_atomic_failure(
+            CommitState.NOT_COMMITTED,
+            stage="event-target-conflict",
+        )
+    if event_before is _AppendTargetEvidence.UNPROVABLE:
+        return _append_atomic_failure(
+            CommitState.UNKNOWN,
+            stage="event-target-conflict",
+        )
+
+    try:
+        dependencies.durability.commit_file_no_replace_same_volume(
+            staged_event_path,
+            event_path,
+            candidate.event_bytes,
+            validator=lambda source: _require_exact_append_event(
+                source,
+                candidate,
+            ),
+        )
+    except (DestinationAlreadyExistsError, DurabilityError, OSError):
+        disposition = _append_disposition_after_event_attempt(
+            staging,
+            candidate,
+            version_path=version_path,
+            event_path=event_path,
+            source_stat=source_stat,
+            rename_attempted=True,
+        )
+        failure = _failure_from_append_disposition(disposition)
+        if failure is not None:
+            return failure
+
+    return _final_append_chain(target.item, candidate)
+
+
 def _initial_projection(
     candidate: _CandidateItem,
     *,
@@ -2559,6 +3149,76 @@ def _write_projection(
                 pass
 
 
+def _write_appended_projection(
+    disk_chain: _DiskCaptureVersionChain,
+    candidate: _AppendCandidate,
+    staging: _AppendStaging,
+    dependencies: _CaptureDependencies,
+) -> bool:
+    """Best-effort projection update after immutable append proof."""
+
+    current = disk_chain.chain.current
+    if (
+        current.version != candidate.version
+        or current.envelope != candidate.envelope
+        or current.event != candidate.event
+    ):
+        return False
+    item_path = disk_chain.item.item_path
+    temporary_path = item_path / f".capture-state-{staging.transaction_id}.tmp"
+    destination_path = item_path / "capture.yaml"
+    temporary_stat: os.stat_result | None = None
+    try:
+        verified_at = _sample_time(dependencies)
+        state = _appended_projection(candidate, verified_at=verified_at)
+        state_bytes = dump_capture_state(
+            state,
+            envelope=candidate.envelope,
+            current_event=candidate.event,
+            previous_envelope=candidate.previous_envelope,
+        )
+        dependencies.durability.write_new_file_durable(
+            temporary_path,
+            state_bytes,
+            validator=lambda source: load_capture_state(
+                source,
+                envelope=candidate.envelope,
+                current_event=candidate.event,
+                previous_envelope=candidate.previous_envelope,
+                require_canonical=True,
+            ),
+        )
+        temporary_stat = _lstat_if_present(temporary_path)
+        if temporary_stat is None or not stat.S_ISREG(temporary_stat.st_mode) or (
+            _is_reparse_point(temporary_stat)
+        ):
+            return False
+        destination_stat = _lstat_if_present(destination_path)
+        if destination_stat is not None and (
+            not stat.S_ISREG(destination_stat.st_mode)
+            or _is_reparse_point(destination_stat)
+        ):
+            return False
+        _trigger_fault(_CaptureFaultPoint.BEFORE_PROJECTION_REPLACE, dependencies)
+        if not _same_identity(temporary_path, temporary_stat):
+            return False
+        dependencies.replace_file(temporary_path, destination_path)
+        dependencies.durability.flush_directory_metadata(item_path)
+        return not _projection_warning_for_read(disk_chain)
+    except Exception:
+        return False
+    finally:
+        if temporary_stat is not None and _same_identity(
+            temporary_path,
+            temporary_stat,
+        ):
+            try:
+                temporary_path.unlink()
+                dependencies.durability.flush_directory_metadata(item_path)
+            except (DurabilityError, OSError):
+                pass
+
+
 def _new_success(
     stored: _StoredItem,
     candidate: _CandidateItem,
@@ -2578,6 +3238,38 @@ def _new_success(
         )
     return CommittedWriteResult(
         receipt=_receipt_from_stored(stored),
+        warnings=warnings,
+    )
+
+
+def _new_append_success(
+    disk_chain: _DiskCaptureVersionChain,
+    candidate: _AppendCandidate,
+    staging: _AppendStaging,
+    dependencies: _CaptureDependencies,
+) -> AppendCaptureVersionResult:
+    committed = disk_chain.chain.version(candidate.version)
+    if committed is None or (
+        committed.envelope != candidate.envelope
+        or committed.event != candidate.event
+    ):
+        raise _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH)
+    projection_valid = _write_appended_projection(
+        disk_chain,
+        candidate,
+        staging,
+        dependencies,
+    )
+    warnings = _warnings_for_capture_version_chain(disk_chain.chain)
+    if not projection_valid:
+        warnings += (
+            OperationWarning(
+                code=WarningCode.PROJECTION_NEEDS_REBUILD,
+                details={"capture_id": candidate.capture_id},
+            ),
+        )
+    return AppendCaptureVersionResult(
+        receipt=_append_receipt_from_committed(committed),
         warnings=warnings,
     )
 
@@ -2657,6 +3349,179 @@ def _capture_while_locked(
     if isinstance(committed, FailureResult):
         return committed
     return _new_success(committed, candidate, staging, dependencies)
+
+
+def _append_while_locked(
+    request: AppendCaptureVersionRequest,
+    *,
+    staging: _AppendStaging,
+    received_at: str,
+    payload_digest: DigestResult,
+    payload_set_digest: str,
+    request_digest: str,
+    scope: str,
+    key_digest: str,
+    dependencies: _CaptureDependencies,
+) -> AppendCaptureVersionOperationResult:
+    try:
+        scan = _scan_append_store(
+            staging.capture_root,
+            scope=scope,
+            key_sha256=key_digest,
+            request_sha256=request_digest,
+        )
+    except _IdempotencyConflict:
+        return _failure(
+            PublicErrorCode.IDEMPOTENCY_CONFLICT,
+            CommitState.NOT_COMMITTED,
+        )
+    except _UnsupportedMachineSchema:
+        return _failure(
+            PublicErrorCode.UNSUPPORTED_STORE_VERSION,
+            CommitState.NOT_COMMITTED,
+        )
+    except _IntegrityFailure as exc:
+        return _integrity_failure(exc, CommitState.NOT_COMMITTED)
+    except _StoreIoFailure as exc:
+        return _io_failure(exc, CommitState.NOT_COMMITTED)
+
+    if scan.committed_match is not None:
+        try:
+            return _success_from_append_match(scan.committed_match)
+        except _UnsupportedMachineSchema:
+            return _failure(
+                PublicErrorCode.UNSUPPORTED_STORE_VERSION,
+                CommitState.UNKNOWN,
+            )
+        except _IntegrityFailure as exc:
+            return _integrity_failure(exc, CommitState.UNKNOWN)
+        except _StoreIoFailure:
+            return _append_atomic_failure(
+                CommitState.UNKNOWN,
+                stage="idempotency-readback",
+            )
+
+    target = next(
+        (
+            chain
+            for chain in scan.chains
+            if chain.chain.capture_id == request.capture_id
+        ),
+        None,
+    )
+    if target is None:
+        return _failure(
+            PublicErrorCode.CAPTURE_NOT_FOUND,
+            CommitState.NOT_COMMITTED,
+        )
+
+    current = target.chain.current
+    current_path = target.version_paths.get(current.version)
+    if current_path is None:
+        return _integrity_failure(
+            _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH),
+            CommitState.NOT_COMMITTED,
+        )
+    try:
+        _attest_version_payloads(current_path, current.envelope)
+    except _IntegrityFailure as exc:
+        return _integrity_failure(exc, CommitState.NOT_COMMITTED)
+    except _StoreIoFailure as exc:
+        return _io_failure(exc, CommitState.NOT_COMMITTED)
+
+    if current.version != request.expected_current_version:
+        return _failure(
+            PublicErrorCode.VERSION_CONFLICT,
+            CommitState.NOT_COMMITTED,
+            details={
+                "current_version": current.version,
+                "expected_current_version": request.expected_current_version,
+            },
+        )
+
+    target_tail = next(
+        (
+            tail
+            for tail in scan.tails
+            if tail.disk_chain.chain.capture_id == request.capture_id
+        ),
+        None,
+    )
+    adopting_tail = target_tail is not None
+    if adopting_tail:
+        if scan.tail_match is not target_tail:
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="version-target-conflict",
+            )
+        try:
+            candidate = _adopt_append_tail_candidate(
+                target_tail,
+                request,
+                payload_digest=payload_digest,
+                payload_set_digest=payload_set_digest,
+                request_digest=request_digest,
+                dependencies=dependencies,
+            )
+        except _StoreIoFailure as exc:
+            return _io_failure(exc, CommitState.NOT_COMMITTED)
+        if candidate is None:
+            return _append_atomic_failure(
+                CommitState.NOT_COMMITTED,
+                stage="version-target-conflict",
+            )
+    else:
+        if scan.tail_match is not None:
+            return _integrity_failure(
+                _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH),
+                CommitState.NOT_COMMITTED,
+            )
+        candidate = _build_append_candidate(
+            request,
+            previous_envelope=current.envelope,
+            received_at=received_at,
+            payload_digest=payload_digest,
+            payload_set_digest=payload_set_digest,
+            request_digest=request_digest,
+            dependencies=dependencies,
+        )
+
+    committed = _commit_append_candidate(
+        staging,
+        target,
+        candidate,
+        adopting_tail=adopting_tail,
+        dependencies=dependencies,
+    )
+    if isinstance(committed, FailureResult):
+        return committed
+    try:
+        return _new_append_success(
+            committed,
+            candidate,
+            staging,
+            dependencies,
+        )
+    except _IntegrityFailure as exc:
+        return _integrity_failure(exc, CommitState.UNKNOWN)
+    except Exception:
+        # Event and version were already proven. A projection/result-path fault
+        # must never invert the immutable commit fact.
+        committed_version = committed.chain.version(candidate.version)
+        if committed_version is None:
+            return _integrity_failure(
+                _IntegrityFailure(CauseCode.EVENT_REFERENCE_MISMATCH),
+                CommitState.UNKNOWN,
+            )
+        return AppendCaptureVersionResult(
+            receipt=_append_receipt_from_committed(committed_version),
+            warnings=(
+                OperationWarning(
+                    code=WarningCode.PROJECTION_NEEDS_REBUILD,
+                    details={"capture_id": candidate.capture_id},
+                ),
+            ),
+        )
 
 
 def _run_capture_text(
@@ -2805,6 +3670,159 @@ def _run_capture_text(
     finally:
         if staging is not None:
             _cleanup_capture_staging(
+                staging,
+                durability=dependencies.durability,
+            )
+
+
+def _run_append_capture_version(
+    request: AppendCaptureVersionRequest,
+    *,
+    config_path: str | os.PathLike[str] | None,
+    path_policy: PathPolicy,
+    dependencies: _CaptureDependencies,
+) -> AppendCaptureVersionOperationResult:
+    if not isinstance(request, AppendCaptureVersionRequest):
+        return _failure(
+            PublicErrorCode.INVALID_INPUT,
+            CommitState.NOT_COMMITTED,
+        )
+    try:
+        received_at = _sample_time(dependencies)
+        local_config, capture_root, _manifest = _load_capture_environment(
+            config_path=config_path,
+            path_policy=path_policy,
+        )
+    except ConfigLoadError as exc:
+        return _failure(exc.code, CommitState.NOT_COMMITTED)
+    except _InitFailure as exc:
+        return FailureResult(
+            error=exc.error,
+            commit_state=CommitState.NOT_COMMITTED,
+        )
+    except (OSError, TypeError, ValueError):
+        return _failure(
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            CommitState.NOT_COMMITTED,
+        )
+
+    staging: _AppendStaging | None = None
+    try:
+        staging = _create_append_staging(
+            capture_root,
+            durability=dependencies.durability,
+            uuid_factory=dependencies.staging_uuid_factory,
+        )
+        chunk_size = min(
+            DEFAULT_CHUNK_SIZE,
+            local_config.capture.inline_text_threshold_bytes,
+        )
+        try:
+            payload_digest = dependencies.durability.write_new_utf8_file_durable(
+                staging.payload_path,
+                request.text,
+                maximum_bytes=local_config.capture.max_text_version_bytes,
+                chunk_size=chunk_size,
+            )
+        except DurabilityError as exc:
+            raise _StoreIoFailure(
+                stage=exc.stage.value,
+                cause_code=CauseCode.PAYLOAD_WRITE_FAILED,
+            ) from exc
+        payload_entry = PayloadSetEntry(
+            ordinal=0,
+            role="primary",
+            kind="text",
+            media_type="text/plain; charset=utf-8",
+            byte_size=payload_digest.byte_size,
+            sha256=payload_digest.sha256,
+        )
+        payload_set_digest = payload_set_sha256((payload_entry,))
+        intent = request.user_intent
+        if not isinstance(intent, UserIntent):
+            raise TypeError("normalized user_intent must be UserIntent")
+        fingerprint = RequestFingerprint(
+            operation="append_capture_version",
+            payload_set_sha256=payload_set_digest,
+            channel=request.channel,
+            payload_metadata=(PayloadMetadata(ordinal=0),),
+            user_intent=intent,
+            capture_id=request.capture_id,
+            expected_current_version=request.expected_current_version,
+        )
+        request_digest = request_fingerprint_sha256(fingerprint)
+        scope = canonical_idempotency_scope(
+            request.channel,
+            "append_capture_version",
+        )
+        key_digest = idempotency_key_sha256(request.idempotency_key)
+
+        locked_result: AppendCaptureVersionOperationResult | None = None
+        try:
+            with dependencies.lock_factory(capture_root):
+                locked_result = _append_while_locked(
+                    request,
+                    staging=staging,
+                    received_at=received_at,
+                    payload_digest=payload_digest,
+                    payload_set_digest=payload_set_digest,
+                    request_digest=request_digest,
+                    scope=scope,
+                    key_digest=key_digest,
+                    dependencies=dependencies,
+                )
+            if locked_result is None:
+                raise _StoreIoFailure(stage="lock-release")
+            return locked_result
+        except CaptureWriteLockError as exc:
+            if locked_result is not None:
+                return locked_result
+            return FailureResult(
+                error=exc.to_operation_error(),
+                commit_state=CommitState.NOT_COMMITTED,
+            )
+    except ByteLimitExceeded as exc:
+        return _failure(
+            PublicErrorCode.TEXT_TOO_LARGE,
+            CommitState.NOT_COMMITTED,
+            details={
+                "maximum_bytes": exc.maximum_bytes,
+                "observed_bytes": exc.byte_size,
+            },
+        )
+    except InvalidTextInputError:
+        return _failure(
+            PublicErrorCode.INVALID_INPUT,
+            CommitState.NOT_COMMITTED,
+        )
+    except _IntegrityFailure as exc:
+        return _integrity_failure(exc, CommitState.NOT_COMMITTED)
+    except _StoreIoFailure as exc:
+        return _io_failure(exc, CommitState.NOT_COMMITTED)
+    except DurabilityError as exc:
+        return _failure(
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            CommitState.NOT_COMMITTED,
+            details={"stage": exc.stage.value},
+        )
+    except DestinationAlreadyExistsError:
+        return _failure(
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            CommitState.NOT_COMMITTED,
+        )
+    except (TypeError, ValueError):
+        return _failure(
+            PublicErrorCode.INVALID_INPUT,
+            CommitState.NOT_COMMITTED,
+        )
+    except OSError:
+        return _failure(
+            PublicErrorCode.CAPTURE_STORE_UNAVAILABLE,
+            CommitState.NOT_COMMITTED,
+        )
+    finally:
+        if staging is not None:
+            _cleanup_append_staging(
                 staging,
                 durability=dependencies.durability,
             )
@@ -3029,6 +4047,22 @@ def capture_text(
     )
 
 
+def append_capture_version(
+    request: AppendCaptureVersionRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+) -> AppendCaptureVersionOperationResult:
+    """Append one complete, immutable Capture version through the C5 transaction."""
+
+    return _run_append_capture_version(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+        dependencies=_CaptureDependencies(),
+    )
+
+
 def get_capture(
     request: GetCaptureRequest,
     *,
@@ -3080,6 +4114,25 @@ def _capture_text_with_dependencies(
     )
 
 
+def _append_capture_version_with_dependencies(
+    request: AppendCaptureVersionRequest,
+    *,
+    config_path: str | os.PathLike[str] | None = None,
+    path_policy: PathPolicy,
+    dependencies: _CaptureDependencies,
+) -> AppendCaptureVersionOperationResult:
+    """Internal deterministic/fault-injection entry point for C5 tests."""
+
+    if not isinstance(dependencies, _CaptureDependencies):
+        raise TypeError("dependencies must be _CaptureDependencies")
+    return _run_append_capture_version(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+        dependencies=dependencies,
+    )
+
+
 def _get_capture_with_dependencies(
     request: GetCaptureRequest,
     *,
@@ -3123,6 +4176,7 @@ __all__ = [
     "CaptureTextOperationResult",
     "GetCaptureOperationResult",
     "ListCapturesOperationResult",
+    "append_capture_version",
     "capture_text",
     "get_capture",
     "list_captures",

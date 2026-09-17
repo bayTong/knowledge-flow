@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=231 capture_tests=216 script_tests=15 next_gate=C5B -->
+<!-- knowledgeflow-doc-status tests=250 capture_tests=235 script_tests=15 next_gate=C5V -->
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-16）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5A 现已实现并单独验证追加请求/结果类型、严格追加 Envelope/Event writer、向后兼容的版本 2 状态投影、marker-first 追加 staging 与安全清理、尾部身份边界及 source/target 提交证据原语。公共包仍刻意不导出或执行 `append_capture_version`，本批没有产生最终追加版本，也没有创建生产 Store。当前为 231 项测试（捕获内核 216 项、维护脚本回归 7 项、文档护栏回归 8 项）。下一功能门禁为仍需单独授权的 C5B，由它把这些原语集成为完整公开追加事务。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-17）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5B 现已把 `append_capture_version` 公开集成为一个完整的 Store 锁事务：全 Store 不可变扫描、幂等优先于 CAS、当前 Payload 完整证明、完全匹配尾部窄采用、版本/Event 无覆盖提交、最终回读和版本 2 投影尝试均已闭合。当前为 250 项测试（捕获内核 235 项、维护脚本回归 7 项、文档护栏回归 8 项）。C5B 仍是尚未 push 的本地批次；下一功能门禁为需单独授权的 C5V，用真实双进程和 4/64 MiB 追加完成阶段验收。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -246,11 +246,11 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture` 与 `list_captures` 已实现并独立版本化；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，首次远端 CI 已通过。但追加、业务事务恢复、受限 CLI 与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，C5A 提交 `63a3250` 与 C5B 批次仍只在本地。追加仍待 C5V 阶段验收；业务事务恢复、受限 CLI 与生产初始化也未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，最小 Windows CI 首次远端运行已通过；这不授权 C5A 或其他后续批次。
-3. 再按 C5–C8 闭合追加、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，C5A/C5B 为已完成的本地批次，最小 Windows CI 首次远端运行已通过；这不授权 C5V 或其他后续批次。
+3. 再按 C5V–C8 闭合追加验收、恢复和受限适配层，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
