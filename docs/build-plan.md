@@ -65,7 +65,7 @@
 | 项目文档 | `README.md`, `README-zh.md`, `CHANGELOG.md` | 中英双语 |
 | 战略愿景 | `docs/second-brain-vision.md` | 核心原则 + 架构总览 + LLM 局限分析 |
 | 开源基础 | `LICENSE`, `.gitignore` | MIT 许可 |
-| 捕获内核 C0–C5B + R0 | `src/knowledgeflow_capture/`, `tests/capture/` | C0–C4V 与 C5-0 已完成、版本化并 push；C5A/C5B 内容与本地验证已完成但尚未 push。四个公开文本操作均已交付，当前 250 项全量通过；`append_capture_version` 尚待 C5V 阶段验收，生产初始化仍未进行 |
+| 捕获内核 C0–C5V + R0 | `src/knowledgeflow_capture/`, `tests/capture/` | C0–C4V 与 C5-0 已完成、版本化并 push；C5A/C5B/C5V 已完成但尚未 push。四个公开文本操作均已交付，当前 253 项全量通过；追加阶段已验收，生产初始化仍未进行 |
 
 ### 当前缺失的
 
@@ -723,7 +723,7 @@ SCHEMA.md 新增：
 ## 十三、实施建议
 
 1. 旧 P0/P1 交付了 prompt、参考脚本和一次长文样例验证；它们是可复用资产，不代表新捕获、路由、批准和回滚链路已经实现。
-2. 新治理链路已完成并版本化 C0–C4V 与 C5-0，相关提交和最小 Windows CI 均已 push；C5A/C5B 内容与 250 项本地验证已完成，完整 append 已公开但尚未通过 C5V。下一功能门禁是需另行授权的 C5V，不能自动进入 C5V、C6、MC-001、GBrain 集成、人工路由或 UI。
+2. 新治理链路已完成并版本化 C0–C4V 与 C5-0，相关提交和最小 Windows CI 均已 push；C5A/C5B/C5V 与 253 项本地验证已完成，完整 append 已通过阶段验收。下一功能门禁是需另行授权的 C6，不能自动进入 C6、MC-001、GBrain 集成、人工路由或 UI。
 3. 四种提取模式（Mode A/A-fast/B/C）已存在于 `prompts/`，但当前只作为待重构的策展地图生成方法，不得自动触发旧 SOP-002。
 4. MC-001 保留为远期候选；应在捕获、人工路由、SOP-000A/000B 和可信写入协议稳定后，再用独立提案确定范围与运行时。
 5. 命名变更（阅读地图→策展地图）已在 v2.1 阶段一次性完成。

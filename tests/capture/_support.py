@@ -19,9 +19,14 @@ from knowledgeflow_capture.locking import (
     _acquire_capture_write_lock,
     acquire_initialization_lock,
 )
-from knowledgeflow_capture.models import CaptureTextRequest, ChannelMetadata
+from knowledgeflow_capture.models import (
+    AppendCaptureVersionRequest,
+    CaptureTextRequest,
+    ChannelMetadata,
+)
 from knowledgeflow_capture.operations import (
     _CaptureDependencies,
+    _append_capture_version_with_dependencies,
     _capture_text_with_dependencies,
     capture_text,
 )
@@ -191,6 +196,40 @@ def _capture_text_at_lock_barrier(
     return _write_result(result, result_path)
 
 
+def _append_capture_version_at_lock_barrier(
+    owned_root: Path,
+    config_path: Path,
+    capture_id: str,
+    expected_current_version: int,
+    text: str,
+    idempotency_key: str,
+    lock_ready_path: Path,
+    lock_gate_path: Path,
+    result_path: Path,
+) -> int:
+    """Pause one real append transaction immediately before lock acquisition."""
+
+    def acquire_after_barrier(capture_root: Path):
+        _write_marker(lock_ready_path)
+        if not _wait_for_gate(lock_gate_path):
+            raise TimeoutError("append lock barrier was not released")
+        return _acquire_capture_write_lock(capture_root)
+
+    result = _append_capture_version_with_dependencies(
+        AppendCaptureVersionRequest(
+            capture_id=capture_id,
+            expected_current_version=expected_current_version,
+            text=text,
+            channel=ChannelMetadata(type="app", instance_id="c5v-acceptance"),
+            idempotency_key=idempotency_key,
+        ),
+        config_path=config_path,
+        path_policy=PathPolicy.test_owned(owned_root),
+        dependencies=_CaptureDependencies(lock_factory=acquire_after_barrier),
+    )
+    return _write_result(result, result_path)
+
+
 def _write_result(result: object, result_path: Path) -> int:
     encoded = json.dumps(
         result.to_dict(),
@@ -250,6 +289,18 @@ def main(argv: list[str] | None = None) -> int:
     barrier_capturer.add_argument("lock_ready_path", type=Path)
     barrier_capturer.add_argument("lock_gate_path", type=Path)
     barrier_capturer.add_argument("result_path", type=Path)
+    barrier_appender = subparsers.add_parser(
+        "append-capture-version-lock-barrier"
+    )
+    barrier_appender.add_argument("owned_root", type=Path)
+    barrier_appender.add_argument("config_path", type=Path)
+    barrier_appender.add_argument("capture_id", type=str)
+    barrier_appender.add_argument("expected_current_version", type=int)
+    barrier_appender.add_argument("text", type=str)
+    barrier_appender.add_argument("idempotency_key", type=str)
+    barrier_appender.add_argument("lock_ready_path", type=Path)
+    barrier_appender.add_argument("lock_gate_path", type=Path)
+    barrier_appender.add_argument("result_path", type=Path)
     arguments = parser.parse_args(argv)
     if arguments.command == "hold-lock":
         return _hold_lock(
@@ -300,6 +351,18 @@ def main(argv: list[str] | None = None) -> int:
         return _capture_text_at_lock_barrier(
             arguments.owned_root,
             arguments.config_path,
+            arguments.text,
+            arguments.idempotency_key,
+            arguments.lock_ready_path,
+            arguments.lock_gate_path,
+            arguments.result_path,
+        )
+    if arguments.command == "append-capture-version-lock-barrier":
+        return _append_capture_version_at_lock_barrier(
+            arguments.owned_root,
+            arguments.config_path,
+            arguments.capture_id,
+            arguments.expected_current_version,
             arguments.text,
             arguments.idempotency_key,
             arguments.lock_ready_path,
