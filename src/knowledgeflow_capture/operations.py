@@ -3338,7 +3338,7 @@ def _load_capture_environment(
     *,
     config_path: str | os.PathLike[str] | None,
     path_policy: PathPolicy,
-) -> tuple[LocalConfig, Path, CaptureStoreManifest]:
+) -> tuple[Path, LocalConfig, Path, CaptureStoreManifest]:
     if not isinstance(path_policy, PathPolicy):
         raise ConfigLoadError(PublicErrorCode.CONFIG_INVALID)
     selected = resolve_config_path(config_path)
@@ -3358,7 +3358,33 @@ def _load_capture_environment(
                 retryable=False,
             )
         )
-    return local_config, local_config.capture.root, manifest
+    return selected, local_config, local_config.capture.root, manifest
+
+
+def _locked_config_binding_is_current(
+    config_path: Path,
+    expected: LocalConfig,
+    *,
+    path_policy: PathPolicy,
+) -> None:
+    """Reject a writer that waited on a Store superseded by migration."""
+
+    try:
+        current = read_local_config_file(
+            config_path,
+            path_policy=path_policy,
+        )
+    except ConfigLoadError as exc:
+        raise _StoreIoFailure(stage="config-binding-changed") from exc
+    if (
+        ntpath.normcase(str(current.capture.root))
+        != ntpath.normcase(str(expected.capture.root))
+        or current.capture.inline_text_threshold_bytes
+        != expected.capture.inline_text_threshold_bytes
+        or current.capture.max_text_version_bytes
+        != expected.capture.max_text_version_bytes
+    ):
+        raise _StoreIoFailure(stage="config-binding-changed")
 
 
 def _capture_while_locked(
@@ -3599,9 +3625,11 @@ def _run_capture_text(
         )
     try:
         received_at = _sample_time(dependencies)
-        local_config, capture_root, _manifest = _load_capture_environment(
-            config_path=config_path,
-            path_policy=path_policy,
+        selected_config, local_config, capture_root, _manifest = (
+            _load_capture_environment(
+                config_path=config_path,
+                path_policy=path_policy,
+            )
         )
     except ConfigLoadError as exc:
         return _failure(exc.code, CommitState.NOT_COMMITTED)
@@ -3679,6 +3707,11 @@ def _run_capture_text(
                 _trigger_fault(
                     _CaptureFaultPoint.AFTER_LOCK_ACQUIRED,
                     dependencies,
+                )
+                _locked_config_binding_is_current(
+                    selected_config,
+                    local_config,
+                    path_policy=path_policy,
                 )
                 _recover_abandoned_capture_staging(
                     capture_root,
@@ -3767,9 +3800,11 @@ def _run_append_capture_version(
         )
     try:
         received_at = _sample_time(dependencies)
-        local_config, capture_root, _manifest = _load_capture_environment(
-            config_path=config_path,
-            path_policy=path_policy,
+        selected_config, local_config, capture_root, _manifest = (
+            _load_capture_environment(
+                config_path=config_path,
+                path_policy=path_policy,
+            )
         )
     except ConfigLoadError as exc:
         return _failure(exc.code, CommitState.NOT_COMMITTED)
@@ -3849,6 +3884,11 @@ def _run_append_capture_version(
                 _trigger_fault(
                     _CaptureFaultPoint.AFTER_LOCK_ACQUIRED,
                     dependencies,
+                )
+                _locked_config_binding_is_current(
+                    selected_config,
+                    local_config,
+                    path_policy=path_policy,
                 )
                 _recover_abandoned_capture_staging(
                     capture_root,
@@ -3934,9 +3974,11 @@ def _run_get_capture(
         return _read_failure(PublicErrorCode.INVALID_INPUT)
 
     try:
-        _local_config, capture_root, _manifest = _load_capture_environment(
-            config_path=config_path,
-            path_policy=path_policy,
+        _selected_config, _local_config, capture_root, _manifest = (
+            _load_capture_environment(
+                config_path=config_path,
+                path_policy=path_policy,
+            )
         )
     except ConfigLoadError as exc:
         return _read_failure(exc.code)
@@ -4036,9 +4078,11 @@ def _run_list_captures(
         return _read_failure(PublicErrorCode.INVALID_INPUT)
 
     try:
-        _local_config, capture_root, manifest = _load_capture_environment(
-            config_path=config_path,
-            path_policy=path_policy,
+        _selected_config, _local_config, capture_root, manifest = (
+            _load_capture_environment(
+                config_path=config_path,
+                path_policy=path_policy,
+            )
         )
     except ConfigLoadError as exc:
         return _read_failure(exc.code)

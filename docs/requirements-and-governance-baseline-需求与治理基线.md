@@ -1,6 +1,6 @@
 # KnowledgeFlow 需求与治理基线
 
-> 状态：Approved Design；治理原则已确认，四个本地文本操作、C5V 与 C6A/C6B 恢复能力已完成<br>
+> 状态：Approved Design；治理原则已确认，四个本地文本操作、C5V 与 C6A–C6C 恢复/迁移能力已完成<br>
 > 整理日期：2026-08-31<br>
 > 确认日期：2026-09-01<br>
 > C3A/C3B 完成日期：2026-09-10<br>
@@ -338,8 +338,8 @@ knowledge-hub/                 # 可选：只保存 KB 注册表和全局 Intake
 
 主题级优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准。推荐顺序：
 
-1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3–C5 与 C6A/C6B 已逐批闭合。C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；C5A/C5B/C5V、C6A `84ee1d7`、C6B 与 265 项本地验证已完成，下一功能门禁为 C6C。
-2. 按 C6B、C6C、C7–C8 逐批验收重建、迁移和机器适配接口。
+1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3–C6 已逐批闭合。C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；C5A/C5B/C5V、C6A `84ee1d7`、C6B `f686941`、C6C 与 274 项本地验证已完成，下一功能门禁为需单独授权的 C7。
+2. 在另行授权后按 C7–C8 逐批验收机器适配接口与 MVP-0 全链路。
 3. 增加人工路由与 SOP-000A 执行边界。
 4. 实证 GBrain 未审核镜像和查询隔离。
 5. 定义 SOP-000B。

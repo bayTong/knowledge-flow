@@ -19,6 +19,12 @@ from knowledgeflow_capture.locking import (
     _acquire_capture_write_lock,
     acquire_initialization_lock,
 )
+from knowledgeflow_capture.migration import (
+    _MigrationDependencies,
+    _MigrationFaultPoint,
+    _migrate_capture_store_with_dependencies,
+    migrate_capture_store,
+)
 from knowledgeflow_capture.models import (
     AppendCaptureVersionRequest,
     CaptureTextRequest,
@@ -265,6 +271,38 @@ def _rebuild_derived_state_c6(
     return _write_result(result, result_path)
 
 
+def _migrate_store_c6(
+    owned_root: Path,
+    config_path: Path,
+    source_root: Path,
+    target_root: Path,
+    expected_store_id: str,
+    result_path: Path,
+    fault_point: str | None = None,
+) -> int:
+    if fault_point is None:
+        result = migrate_capture_store(
+            config_path=config_path,
+            source_root=source_root,
+            target_root=target_root,
+            expected_store_id=expected_store_id,
+            path_policy=PathPolicy.test_owned(owned_root),
+        )
+    else:
+        result = _migrate_capture_store_with_dependencies(
+            config_path=config_path,
+            source_root=source_root,
+            target_root=target_root,
+            expected_store_id=expected_store_id,
+            path_policy=PathPolicy.test_owned(owned_root),
+            dependencies=_MigrationDependencies(
+                fault_point=_MigrationFaultPoint(fault_point),
+                fault_hook=_exit_at_fault_point,
+            ),
+        )
+    return _write_result(result, result_path)
+
+
 def _capture_text_at_lock_barrier(
     owned_root: Path,
     config_path: Path,
@@ -421,6 +459,14 @@ def main(argv: list[str] | None = None) -> int:
     c6_rebuilder.add_argument("config_path", type=Path)
     c6_rebuilder.add_argument("result_path", type=Path)
     c6_rebuilder.add_argument("--fault-point", type=str)
+    c6_migrator = subparsers.add_parser("migrate-store-c6")
+    c6_migrator.add_argument("owned_root", type=Path)
+    c6_migrator.add_argument("config_path", type=Path)
+    c6_migrator.add_argument("source_root", type=Path)
+    c6_migrator.add_argument("target_root", type=Path)
+    c6_migrator.add_argument("expected_store_id", type=str)
+    c6_migrator.add_argument("result_path", type=Path)
+    c6_migrator.add_argument("--fault-point", type=str)
     arguments = parser.parse_args(argv)
     if arguments.command == "hold-lock":
         return _hold_lock(
@@ -513,6 +559,16 @@ def main(argv: list[str] | None = None) -> int:
         return _rebuild_derived_state_c6(
             arguments.owned_root,
             arguments.config_path,
+            arguments.result_path,
+            arguments.fault_point,
+        )
+    if arguments.command == "migrate-store-c6":
+        return _migrate_store_c6(
+            arguments.owned_root,
+            arguments.config_path,
+            arguments.source_root,
+            arguments.target_root,
+            arguments.expected_store_id,
             arguments.result_path,
             arguments.fault_point,
         )
