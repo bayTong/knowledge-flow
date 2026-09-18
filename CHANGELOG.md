@@ -33,6 +33,9 @@
 - **完成 C4V 读取阶段验收**：保持生产代码、公共契约与磁盘 schema 不变，新增 2 项公共 API 组合验收，使用运行时生成的真实 4 MiB/64 MiB 正文证明 `capture_text → list_captures → get_capture` 的身份、哈希、字节、稳定幂等回执及有界 I/O 一致；另以公开写入验证静态多页无重复/遗漏，以及页间受控新增只按 keyset 边界可见、从空游标重启获得新鲜视图。GET-01–GET-16、LIST-01–LIST-19、C3V 真实边界与竞态矩阵均重跑通过，全量增至 214 项（捕获内核 199 项、维护与文档脚本 15 项），普通与严格 `ResourceWarning` 模式均通过。本批由独立提交 `1e38f2f` 闭合并已 push 至 `origin/main`；未创建生产配置或 Store。
 - **完成 C5-0 追加写入契约收口**：冻结关键字追加请求、独立精确成功结果、`1..999998` expected 上界和必填幂等 key；明确锁内完整性/幂等/目标/CAS 优先级、已提交同 key 命中优先于 CAS、同请求唯一 N+1 尾部窄续封、Event rename 三态现场证据、追加投影时间语义、独立追加 staging 所有权和 APP-01–APP-24。同步 C-035–C-042 与 C5A/C5B/C5V 停点；未修改生产代码、磁盘 schema/golden 或公开 API，当前全量仍为 214 项。本批由独立提交 `ea530ad` 闭合，并于 2026-09-16 push 至 `origin/main`；C5A 尚未授权。
 - **建立最小 Windows CI 门禁**：提交 `c4d2c7b` 新增 GitHub Actions `windows-latest` / Python 3.13 验证，在 `main` push、Pull Request 与手动触发时运行普通和严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 与确定性文档检查；actions 使用完整提交 SHA 固定且只授予 `contents: read`。该提交已于 2026-09-16 push，首次远端运行 `35075692046` 的全部步骤成功；这只建立开发验收门禁，不部署项目、不创建生产配置或 Store，也不授权 C5A。
+- **完成 C5 追加阶段**：C5A `63a3250` 实现严格追加请求/结果、版本 2 Event/Projection、独立 staging 及提交证据原语；C5B `ab2a613` 公开完整 `append_capture_version`，闭合幂等优先于 CAS、当前 Payload attestation、唯一尾部窄续封、版本/Event 无覆盖提交、最终回读和投影 warning；C5V 以真实双进程同 key/不同 key 竞争及真实 4/64 MiB append → list/get 完成 APP-01–APP-24 验收，当时全量 253 项。
+- **完成 C6A 业务事务崩溃恢复**：提交 `84ee1d7` 为每个 capture/append staging 增加 Windows 内核存活租约，只清理可证明归属且已经放弃的固定树；9 个 capture 与 7 个 append `os._exit()` 边界均由新进程恢复，活跃、未知、旧式、额外对象、reparse 与身份变化对象保持不动。当时普通与严格全量均为 258 项。
+- **完成 C6B 派生状态重建**：新增与四个日常文本操作分离的 `recovery.rebuild_capture_store_derived_state`。操作在 Store 写锁内先完整验证全部已提交 Item/Version/Event/Envelope、所有 Payload 实际哈希与幂等唯一性，再逐项原子重建缺失、损坏或落后的 `capture.yaml`；只恢复空的幂等/outbox 目录骨架，不发明索引或 job schema，也不修复 staging、未提交尾部或损坏原件。新增 7 项 REC-01–REC-03、写前失败、未知格式保留及真实中断续建回归后全量为 265 项。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
 

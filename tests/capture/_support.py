@@ -33,6 +33,12 @@ from knowledgeflow_capture.operations import (
     capture_text,
 )
 from knowledgeflow_capture.paths import PathPolicy
+from knowledgeflow_capture.recovery import (
+    _RebuildDependencies,
+    _RebuildFaultPoint,
+    _rebuild_capture_store_derived_state_with_dependencies,
+    rebuild_capture_store_derived_state,
+)
 from knowledgeflow_capture.store import (
     _InitFaultPoint,
     _StoreDependencies,
@@ -236,6 +242,29 @@ def _append_capture_version_c6(
     return _write_result(result, result_path)
 
 
+def _rebuild_derived_state_c6(
+    owned_root: Path,
+    config_path: Path,
+    result_path: Path,
+    fault_point: str | None = None,
+) -> int:
+    if fault_point is None:
+        result = rebuild_capture_store_derived_state(
+            config_path=config_path,
+            path_policy=PathPolicy.test_owned(owned_root),
+        )
+    else:
+        result = _rebuild_capture_store_derived_state_with_dependencies(
+            config_path=config_path,
+            path_policy=PathPolicy.test_owned(owned_root),
+            dependencies=_RebuildDependencies(
+                fault_point=_RebuildFaultPoint(fault_point),
+                fault_hook=_exit_at_fault_point,
+            ),
+        )
+    return _write_result(result, result_path)
+
+
 def _capture_text_at_lock_barrier(
     owned_root: Path,
     config_path: Path,
@@ -387,6 +416,11 @@ def main(argv: list[str] | None = None) -> int:
     c6_appender.add_argument("idempotency_key", type=str)
     c6_appender.add_argument("result_path", type=Path)
     c6_appender.add_argument("--fault-point", type=str)
+    c6_rebuilder = subparsers.add_parser("rebuild-derived-state-c6")
+    c6_rebuilder.add_argument("owned_root", type=Path)
+    c6_rebuilder.add_argument("config_path", type=Path)
+    c6_rebuilder.add_argument("result_path", type=Path)
+    c6_rebuilder.add_argument("--fault-point", type=str)
     arguments = parser.parse_args(argv)
     if arguments.command == "hold-lock":
         return _hold_lock(
@@ -472,6 +506,13 @@ def main(argv: list[str] | None = None) -> int:
             arguments.expected_current_version,
             arguments.text,
             arguments.idempotency_key,
+            arguments.result_path,
+            arguments.fault_point,
+        )
+    if arguments.command == "rebuild-derived-state-c6":
+        return _rebuild_derived_state_c6(
+            arguments.owned_root,
+            arguments.config_path,
             arguments.result_path,
             arguments.fault_point,
         )

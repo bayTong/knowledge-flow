@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=258 capture_tests=243 script_tests=15 next_gate=C6B -->
+<!-- knowledgeflow-doc-status tests=265 capture_tests=250 script_tests=15 next_gate=C6C -->
 
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-17）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5V 已完成追加阶段验收，C6A 现又闭合业务事务崩溃恢复：9 个 capture 与 7 个 append `os._exit()` 边界均能由新进程恢复，同时活跃、未知、旧式、reparse 与身份变化的 staging 保持不动。当前为 258 项测试（捕获内核 243 项、维护脚本回归 7 项、文档护栏回归 8 项）。C5A `63a3250`、C5B `ab2a613`、C5V 与 C6A 均为尚未 push 的本地批次；下一门禁为 C6B 派生状态重建。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-17）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5V 追加阶段验收、C6A 业务事务崩溃恢复和 C6B 派生状态重建现均已在本地完成。C6B 在写入前完整验证不可变 Item/Version/Event/Payload，原子重建缺失、损坏或落后的 `capture.yaml`，只恢复空的 MVP-0 `indexes/idempotency` 与 outbox 目录骨架，并能在进程中断后继续完成，且不触碰未知 staging 或未提交尾部。当前为 265 项测试（捕获内核 250 项、维护脚本回归 7 项、文档护栏回归 8 项）。C5A `63a3250`、C5B `ab2a613`、C5V、C6A `84ee1d7` 与 C6B 均为尚未 push 的本地批次；下一门禁为 C6C Store 迁移。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -179,14 +179,15 @@ knowledge-flow/
 │       ├── manifest.py               C2A Capture Store 身份契约
 │       ├── locking.py                C2B/C3B Windows 初始化锁与 Store 写锁
 │       ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
-│       ├── store.py                  C2B–C4A 初始化恢复、staging 与版本链纯原语
-│       └── operations.py             C3 capture_text 与 C4B/C4C 读取操作
+│       ├── store.py                  C2B–C6B 初始化恢复、staging 与版本链纯原语
+│       ├── operations.py             C3–C5 四个受治理文本操作
+│       └── recovery.py               C6B 显式派生状态重建操作
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
 │   │   ├── unit/                     C0–C4A 单元与平台测试
-│   │   ├── integration/              C2B–C4C 事务、读取、真实边界与并发测试
-│   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 243 项）
+│   │   ├── integration/              C2B–C6B 事务、读取、重建、真实边界与并发测试
+│   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 250 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
@@ -246,11 +247,11 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 追加阶段验收和 C6A 业务事务崩溃恢复也已通过；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，C5A `63a3250`、C5B `ab2a613`、C5V 与 C6A 仍只在本地。派生状态重建、迁移、受限 CLI 与生产初始化尚未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 追加阶段验收、C6A 业务事务崩溃恢复和 C6B 派生状态重建也已通过；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，C5A `63a3250`、C5B `ab2a613`、C5V、C6A `84ee1d7` 与 C6B 仍只在本地。Store 迁移、受限 CLI 与生产初始化尚未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，C5A/C5B/C5V/C6A 为已完成的本地批次，最小 Windows CI 首次远端运行已通过。
-3. 下一步按 C6B 重建、C6C 迁移和 C7–C8 受限适配/总验收继续闭合，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，C5A/C5B/C5V/C6A/C6B 为已完成的本地批次，最小 Windows CI 首次远端运行已通过。
+3. 下一步按 C6C 迁移和 C7–C8 受限适配/总验收继续闭合，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。

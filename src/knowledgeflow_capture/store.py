@@ -946,7 +946,9 @@ def _read_config(
         _fail(PublicErrorCode.CONFIG_INVALID, stage="config-parse")
 
 
-def _inspect_store(capture_root: Path) -> CaptureStoreManifest | None:
+def _inspect_store_identity(capture_root: Path) -> CaptureStoreManifest | None:
+    """Validate only the Store root and immutable manifest identity."""
+
     root_stat = _lstat_if_present(capture_root)
     if root_stat is None:
         return None
@@ -971,7 +973,39 @@ def _inspect_store(capture_root: Path) -> CaptureStoreManifest | None:
     except ManifestLoadError as exc:
         _fail(exc.code)
 
+    return manifest
+
+
+def _inspect_store(capture_root: Path) -> CaptureStoreManifest | None:
+    manifest = _inspect_store_identity(capture_root)
+    if manifest is None:
+        return None
+
     for parts in CAPTURE_STORE_REQUIRED_DIRECTORIES:
+        candidate = capture_root.joinpath(*parts)
+        candidate_stat = _lstat_if_present(candidate)
+        if candidate_stat is None or not stat.S_ISDIR(candidate_stat.st_mode) or (
+            _is_reparse_point(candidate_stat)
+        ):
+            _fail(PublicErrorCode.CAPTURE_STORE_NOT_INITIALIZED)
+    return manifest
+
+
+def _inspect_store_for_derived_rebuild(
+    capture_root: Path,
+) -> CaptureStoreManifest | None:
+    """Inspect a Store while allowing only rebuildable directories to be absent.
+
+    ``outbox`` and ``indexes`` are derived state.  Their topology and contents
+    are validated by the rebuild operation under the Store write lock.  The
+    immutable Item root plus the staging/journal control roots must still be
+    present before that lock can be acquired.
+    """
+
+    manifest = _inspect_store_identity(capture_root)
+    if manifest is None:
+        return None
+    for parts in (("items",), (".staging",), ("journal",)):
         candidate = capture_root.joinpath(*parts)
         candidate_stat = _lstat_if_present(candidate)
         if candidate_stat is None or not stat.S_ISDIR(candidate_stat.st_mode) or (
