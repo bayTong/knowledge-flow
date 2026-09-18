@@ -7,7 +7,7 @@
 > 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
 > 以结构化策展地图作为人机之间的审查界面。
 
-> **当前状态（2026-09-18）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。C4V 读取阶段验收提交 `1e38f2f`、C5-0 契约提交 `ea530ad` 和最小 Windows CI 提交 `c4d2c7b` 均已同步到 `origin/main`，首次干净 runner 运行 `35075692046` 已通过。C5V 追加阶段验收及 C6A 业务事务崩溃恢复、C6B 派生状态重建、C6C Store 迁移均已在本地完成。C6C 要求显式给出源路径、目标路径与 Store ID，先验证源、再有界复制，只接受空目标或可按字节证明兼容的目标；目标完整验证通过后才在同目录原子替换机器配置，且永不自动删除源。切换前已经等待旧 Store 锁的写请求会在锁内复核配置，不会在切换后回写源造成 A/B 分叉。当前为 274 项测试（捕获内核 259 项、维护脚本回归 7 项、文档护栏回归 8 项）。C5A `63a3250`、C5B `ab2a613`、C5V、C6A `84ee1d7`、C6B `f686941` 与 C6C 均为尚未 push 的本地批次；下一门禁是需单独授权的 C7 受限 CLI。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-18）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。捕获内核截至 C6C 的全部工作已同步到 `origin/main`：C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e`。最小 Windows CI 运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 针对 `ea8f84e` 首次即通过，包括普通/严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。C6C 要求显式给出源路径、目标路径与 Store ID，先验证源、再有界复制，只接受空目标或可按字节证明兼容的目标；目标完整验证通过后才在同目录原子替换机器配置，且永不自动删除源。切换前已经等待旧 Store 锁的写请求会在锁内复核配置，不会在切换后回写源造成 A/B 分叉。当前为 274 项测试（捕获内核 259 项、维护脚本回归 7 项、文档护栏回归 8 项）。下一门禁是需单独授权的 C7 受限 CLI。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -248,10 +248,10 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 追加阶段验收及 C6 恢复、重建、迁移三批也已通过；C4V 提交 `1e38f2f`、C5-0 提交 `ea530ad` 与最小 Windows CI 提交 `c4d2c7b` 均已 push，C5A `63a3250`、C5B `ab2a613`、C5V、C6A `84ee1d7`、C6B `f686941` 与 C6C 仍只在本地。受限 CLI、C8 总验收与生产初始化尚未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 追加阶段验收及 C6 恢复、重建、迁移三批也已通过；截至 C6C 提交 `ea8f84e` 的全部工作已 push 至 `origin/main`，Windows CI 运行 `35319645501` 已通过。受限 CLI、C8 总验收与生产初始化尚未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C4V 与 C5-0 已完成、版本化并 push，C5A–C6C 为已完成的本地批次，最小 Windows CI 首次远端运行已通过。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C6C 均已完成并版本化，捕获内核基线截至 `ea8f84e` 已 push，其干净 Windows CI 运行已通过。
 3. 另行授权后按 C7 受限适配和 C8 总验收继续闭合，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
 4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
 

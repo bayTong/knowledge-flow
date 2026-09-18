@@ -338,7 +338,7 @@ knowledge-hub/                 # 可选：只保存 KB 注册表和全局 Intake
 
 主题级优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准。推荐顺序：
 
-1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3–C6 已逐批闭合。C4V `1e38f2f`、C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 均已 push，首次远端 CI 已通过；C5A/C5B/C5V、C6A `84ee1d7`、C6B `f686941`、C6C 与 274 项本地验证已完成，下一功能门禁为需单独授权的 C7。
+1. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C3–C6 已逐批闭合并版本化。截至 C6C `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过 274 项普通/严格全量及工程检查；下一功能门禁为需单独授权的 C7。
 2. 在另行授权后按 C7–C8 逐批验收机器适配接口与 MVP-0 全链路。
 3. 增加人工路由与 SOP-000A 执行边界。
 4. 实证 GBrain 未审核镜像和查询隔离。

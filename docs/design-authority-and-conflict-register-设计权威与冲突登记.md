@@ -23,15 +23,16 @@
 > C4V 完成与版本化收口日期：2026-09-14（独立提交 `1e38f2f`；已 push 至 `origin/main`）<br>
 > C5-0 内容与本地验证日期：2026-09-14（独立提交 `ea530ad`；2026-09-16 已 push 至 `origin/main`）<br>
 > 最小 Windows CI 首次通过日期：2026-09-16（提交 `c4d2c7b`；远端运行 `35075692046`）<br>
-> C5A 内容与本地验证日期：2026-09-16（本独立提交；未 push）<br>
-> C5B 内容与本地验证日期：2026-09-17（独立提交 `ab2a613`；未 push）<br>
-> C5V 阶段验收日期：2026-09-17（本独立提交；未 push）<br>
-> C6A 业务事务崩溃恢复日期：2026-09-17（独立提交 `84ee1d7`；未 push）<br>
-> C6B 派生状态重建日期：2026-09-17（独立提交 `f686941`；未 push）<br>
-> C6C Store 迁移日期：2026-09-18（本独立提交；未 push）<br>
+> C5A 内容与本地验证日期：2026-09-16（独立提交 `63a3250`；2026-09-18 已 push 至 `origin/main`）<br>
+> C5B 内容与本地验证日期：2026-09-17（独立提交 `ab2a613`；2026-09-18 已 push 至 `origin/main`）<br>
+> C5V 阶段验收日期：2026-09-17（独立提交 `a9913e2`；2026-09-18 已 push 至 `origin/main`）<br>
+> C6A 业务事务崩溃恢复日期：2026-09-17（独立提交 `84ee1d7`；2026-09-18 已 push 至 `origin/main`）<br>
+> C6B 派生状态重建日期：2026-09-17（独立提交 `f686941`；2026-09-18 已 push 至 `origin/main`）<br>
+> C6C Store 迁移日期：2026-09-18（独立提交 `ea8f84e`；已 push 至 `origin/main`）<br>
+> C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
 > 当前状态同步日期：2026-09-18<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V 与 C5-0 记为已完成并已 push；最小 Windows CI 已建立并首次通过。C5A–C6C 也已在本地完成；C7–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
+> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5 与 C6 记为已完成并已 push；截至 `ea8f84e` 的 Windows CI 已首次通过。C7–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
 
 ## 1. 为什么需要本文件
 
@@ -312,6 +313,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 ## 12. 下一步顺序
 
 1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C4V、C5-0 与最小 Windows CI 已同步到 `origin/main`，C5A–C6C 已在本地逐批完成。下一功能门禁为需单独授权的 C7 受限 CLI。
+2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C6C 已逐批完成并版本化，截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。下一功能门禁为需单独授权的 C7 受限 CLI。
 3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。
