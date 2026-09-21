@@ -1,6 +1,6 @@
 # Prompt 模板使用说明
 
-> **状态说明（2026-09-09）**：SOP-001 系列当前只作为策展地图提取/覆盖审计模板使用，产物应进入 `proposals/curation-maps/` 并停在人工审核处。下文调用次数只统计当前活跃的提取/审计调用，不包含已暂停的旧策展写入。`sop-002-curator.md` 已暂停执行，不能用于真实 KB 写入，等待新的精确版本绑定、精确 diff、事务和回滚协议。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **状态说明（2026-09-21）**：SOP-001 系列当前只作为 `full-map` 或分层知识处理的候选实验模板使用，产物应进入 `proposals/curation-maps/` 或其他明确的未审核派生层，并停在人工审核处。这里的模式和调用次数是历史实验口径，不是当前路由器的固定阈值，也不构成语义完整性保证；内容规模路由、Source Ledger、Evidence Bundle 和覆盖边界以 [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) 为准。`sop-002-curator.md` 已暂停执行，不能用于真实 KB 写入，等待新的精确版本绑定、精确 diff、事务和回滚协议。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 
 本文档说明 `prompts/` 目录下的 LLM-agnostic 提示词模板的使用方式、提取模式选择、覆盖报告机制、以及如何接入不同的 LLM 工具。
 
@@ -8,7 +8,7 @@
 
 ## 一、提取模式选择
 
-KnowledgeFlow 提供四种提取模式，按成本和可靠性递进：
+KnowledgeFlow 保留四种历史提取模式，供方法论实验比较；它们不代表当前已冻结的产品路由：
 
 | 模式 | 当前活跃的提取/审计调用 | 覆盖报告 | 适用场景 |
 |------|-------------------|---------|---------|
@@ -20,8 +20,8 @@ KnowledgeFlow 提供四种提取模式，按成本和可靠性递进：
 ### 模式选择决策
 
 ```
-if 源文字数 > 10000:
-    → 至少模式 B（长文注意力衰减显著）
+if 需要实验固定旧模式且源文字数 > 10000:
+    → 至少模式 B（仅作历史实验基线）
 
 else if 源文字数 < 3000 且用户确认使用快速路径:
     → 模式 A-fast（1 次活跃 LLM 调用，覆盖报告为自检）
@@ -29,7 +29,7 @@ else if 源文字数 < 3000 且用户确认使用快速路径:
 else:
     → 模式 A（默认 2 次活跃 LLM 调用，覆盖报告为独立审计）
 
-人审策展地图时发现遗漏 → 升级到更高模式重新提取整篇。
+人审或 gold set 实验发现问题 → 记录到 Source Ledger，并按实验设计选择升级、局部重提或切换 Profile。
 ```
 
 ---
@@ -60,7 +60,7 @@ else:
 
 | 文件 | 用途 |
 |------|------|
-| `extraction-interface.md` | **权威格式参考**。定义所有提取字段和覆盖报告的格式规范。所有 prompt 模板以此为准 |
+| `extraction-interface.md` | **旧 SOP-001 实验模板内部的格式参考**。不构成当前产品路由或持久化契约 |
 
 ---
 
@@ -109,7 +109,7 @@ Call 4：sop-001-modeBC-assembler.md (full)      → 第 6-10 节（完整组装
 
 ## 四、覆盖报告说明
 
-策展地图第 10 节是覆盖报告——提供不需要领域知识的覆盖异常信号。人审时**先看覆盖报告（约 30 秒），再看内容**。
+策展地图第 10 节是覆盖报告——只能提供结构异常信号，不证明语义完整。人审时可先看覆盖报告，再查看具体证据和区段状态；“约 30 秒”只表示异常筛查，不表示完成语义审核。
 
 三种覆盖报告类型：
 

@@ -4,11 +4,10 @@
 
 <!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7 -->
 
-> Solving the curation paradox — a two-stage pipeline that separates LLM-powered
-> exhaustive extraction from human semantic curation, with an auditable curation map
-> as the interface between them.
+> Solving the curation paradox — separating profile-based, evidence-bound processing
+> from human semantic curation, with traceable processing artifacts as the review surface.
 
-> **Current status (2026-09-18):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. All capture-kernel work through C6C is synchronized with `origin/main`: C5A `63a3250`, C5B `ab2a613`, C5V `a9913e2`, C6A `84ee1d7`, C6B `f686941`, and C6C `ea8f84e`. Minimal Windows CI run [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) passed on the first attempt for `ea8f84e`, including the ordinary and strict `ResourceWarning` suites, `compileall`, `pip check`, and the deterministic document check. C6C explicitly binds source path, target path, and Store ID; it validates the source before creating the target, performs bounded cross-volume-capable copying, accepts only an empty or byte-proven compatible target, fully validates the copied Store, then atomically replaces the same-directory machine config while retaining the source. Writers that waited on the old Store recheck the config after taking its lock and cannot diverge the source after the switch. The current suite is 274 tests (259 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). The next gate is the separately authorized C7 restricted CLI. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-21):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. All capture-kernel work through C6C is synchronized with `origin/main`: C5A `63a3250`, C5B `ab2a613`, C5V `a9913e2`, C6A `84ee1d7`, C6B `f686941`, and C6C `ea8f84e`. Minimal Windows CI run [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) passed on the first attempt for `ea8f84e`, including the ordinary and strict `ResourceWarning` suites, `compileall`, `pip check`, and the deterministic document check. C6C explicitly binds source path, target path, and Store ID; it validates the source before creating the target, performs bounded cross-volume-capable copying, accepts only an empty or byte-proven compatible target, fully validates the copied Store, then atomically replaces the same-directory machine config while retaining the source. Writers that waited on the old Store recheck the config after taking its lock and cannot diverge the source after the switch. The current suite is 274 tests (259 capture-kernel tests, 7 maintenance-script regressions, and 8 document-guard regressions). The direction closure now approves the governance red lines: no promise of semantic zero omission, no silent processing gaps, evidence-bound candidates, and no automatic promotion of RAG/graph output to trusted knowledge. The three Profile defaults, Source Ledger persistence contract, and retrieval implementation remain Draft and are not authorized for implementation. The next gate is the separately authorized C7 restricted CLI. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -21,6 +20,7 @@
 | Design philosophy | [Philosophy](#philosophy) |
 | Current design authority & conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Capture & routing design | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
+| Progressive knowledge refinement & coverage boundaries | [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
 | C3 blocking behavior decisions | [`docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md`](docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) |
 | MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | Post-C3 assessment & implementation plan (Draft) | [`docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md`](docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) |
@@ -46,13 +46,13 @@ The paradox: **the responsibility for curation lies with the human (only you kno
 
 Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the LLM curate directly. The LLM reads the source, decides what's worth a page, writes summaries, assigns tags, builds links. This is fast and frictionless, but it has an unfixable defect: **LLM omissions are far harder to repair than LLM noise.** If the LLM over-extracts (noise), you delete the extra pages in seconds. If the LLM misses a critical concept, you never know it was skipped — because there's no curation map, no intermediate artifact between the raw source and the finished wiki. The reasoning is entirely inside the LLM's black box.
 
-KnowledgeFlow takes a different position — **redistribute responsibility rather than make the LLM smarter**:
+KnowledgeFlow takes a different position — **redistribute responsibility and make the limits explicit, rather than assume semantic completeness**:
 
-- **LLM handles exhaustive extraction** — no filtering, no importance judgment (hard constraint C5). Every extraction is anchored to a source location (C2), uncertainty is explicitly marked (C3), and agent suggestions are structurally isolated from facts (C4). The output is a structured curation map
-- **You handle semantic judgment** — mark each entry in the curation map as "ingest," "ignore," or "need more sources." You don't need to trust the LLM's judgment; you only need to verify that it extracted everything (verifiable through section-by-section coverage and source citations)
+- **LLM generates profile-based candidates** — summaries, entities, relationships, factual claims, or evidence bundles can be produced for a selected Profile; every candidate is anchored to a source location (C2), uncertainty is explicitly marked (C3), and suggestions are structurally isolated from facts (C4)
+- **You handle semantic judgment** — review an overview, evidence bundle, or curation proposal and mark it "ingest," "ignore," or "need more sources." A Source Ledger shows what is processed, deferred, or failed; coverage signals do not prove semantic completeness
 - **A restricted writer performs the target-state write** — the replacement SOP-002 will process only precisely approved changes under SCHEMA, transaction, and rollback constraints. It has not been redesigned yet; the legacy write prompt must not be run
 
-The two-stage pipeline isn't primarily about efficiency — it's about **auditability**.
+The pipeline isn't primarily about efficiency — it's about **auditability, evidence binding, and controlled promotion**. The system does not promise one-pass semantic zero omission; it promises preserved sources, visible processing state, traceable candidates, and exact approval before trusted writes.
 
 ---
 
@@ -60,12 +60,12 @@ The two-stage pipeline isn't primarily about efficiency — it's about **auditab
 
 Following from the paradox above, the specific failures of existing tools can be precisely located:
 
-**The issue isn't insufficient LLM capability — it's a misallocation of roles.** When the LLM is placed in the curator's seat, its strength (exhaustive scanning — not missing anything) is sidelined, and its weakness (judging what matters to you) is pushed to the frontline. Two failure modes dominate:
+**The issue is not only LLM capability — it is a mismatch between role and verification boundary.** LLMs are useful for large-scale candidate generation, structured extraction, and evidence organization, but can still omit, compress, or misread long material. Putting them directly in the trusted curator's seat amplifies two failure modes:
 
 - **Omissions**: The LLM decides a concept isn't important enough and skips it. Without reading the original source, you'll never know what was left out
 - **Over-simplification**: The LLM produces a wiki page that reads well, but you can't tell whether it represents everything the source contained or just the subset the LLM chose to include. You lose a sense of control — the output looks reasonable, but you have no measure of the gap between source and product
 
-KnowledgeFlow's design goal is therefore not "a better curation algorithm" — it's **pulling judgment authority back to the human side, demoting the LLM from curator to extraction tool, and proving that in this role, the LLM can perform more reliably and thoroughly than a human would.**
+KnowledgeFlow's design goal is therefore not "a better curation algorithm" or a zero-omission promise — it's **pulling trusted judgment back to the human side, reducing silent omission through deterministic segmentation, processing ledgers, evidence binding, and layered paths, then measuring semantic recall with gold-set experiments.**
 
 ---
 
@@ -76,21 +76,19 @@ Raw Source
     │
     ▼
 ┌──────────────────────────────────┐
-│  Phase 1: Rough Reader (粗读器)   │
+│  Phase 1: Profile-based processing │
 │                                    │
 │  · Captures raw material + SHA256 │
-│  · Exhaustive annotation — every  │
-│    entity, concept, relationship, │
-│    and factual claim, anchored to │
-│    exact source locations          │
-│  · Uncertainty classification     │
-│    (5 categories, not binary)     │
-│  · Gap analysis + SCHEMA proposals│
+│  · Deterministic segmentation +   │
+│    Source Ledger                  │
+│  · `full-map` / `hierarchical-map`│
+│    / `retrieval-first`            │
+│  · Summaries, candidates, and     │
+│    Evidence Bundles               │
 │  · Zero wiki pages created        │  ← Hard constraint
 │                                    │
-│  Output: Curation Map (策展地图)   │
-│  A structured, auditable artifact │
-│  with 10 sections (incl. coverage) │
+│  Output: Ledger, overview/map,    │
+│  Evidence Bundles, and candidates │
 └──────────────────┬───────────────┘
                    │
                    ▼
@@ -133,11 +131,11 @@ The rough reader operates under 7 hard constraints (C1–C7), five of which are 
 | C2: Every extraction must cite its source location | ☒ | Traceability = verifiability = correctability |
 | C3: Uncertainty must be explicitly marked | ☒ | The core value of the rough reader over direct curation |
 | C4: Agent suggestions must be structurally separated from facts | ☒ | Prevents suggestion contamination of the factual layer |
-| C5: Never filter by importance — extract everything | ☒ | Agent omissions are harder to fix than agent noise |
-| C6: Ultra-long sources must list "sections not yet read" | ☑ | Transparency about coverage boundaries |
+| C5: Never silently discard; defer or layer only with an explicit state | ☒ | Processing gaps must not look complete |
+| C6: Deterministically segment long sources and keep a processing ledger | ☑ | Make processed, deferred, and failed boundaries visible |
 | C7: Implicit relationships can be extracted but must be flagged as "speculative" + confidence ≤ medium | ☑ | Speculation must never masquerade as certainty |
 
-Telling an LLM "you should try to do X" gets diluted. Telling it "you must never do Y" creates an auditable compliance checkpoint.
+The mechanically auditable guarantees are preservation, segmentation, status, and evidence binding. Semantic recall still requires gold-set comparison and controlled experiments; item counts or coverage reports alone cannot prove it.
 
 ### 2. Two-Stage Pipeline with a Human Audit Surface
 
@@ -197,6 +195,7 @@ knowledge-flow/
 │   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
 │   ├── second-brain-vision.md       Strategic vision（战略愿景）
 │   ├── curation-paradox.md          The curation paradox argument
+│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      Approved requirements and governance
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
@@ -209,7 +208,8 @@ knowledge-flow/
 │   ├── post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md  Draft post-C3 plan
 │   ├── research/                         Non-authoritative historical research inputs
 │   │   ├── README.md                    Scope, provenance, and use rules
-│   │   └── 2026-09-11/                 Archived assessment and review texts
+│   │   ├── 2026-09-11/                 Archived assessment and review texts
+│   │   └── 2026-09-19/                 Direction assessment and synthesis (non-authoritative input)
 │   ├── adaptive-extraction-plan.md  Adaptive extraction tiers design
 │   ├── improvement-action-plan.md   Evaluation findings & fix checklist（评估整改清单）
 │   ├── gbrain-integration-plan.md   GBrain engine integration plan（GBrain 集成方案）
@@ -252,10 +252,11 @@ The complete capture MVP is not implemented yet. Public `capture_text`, `get_cap
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
 2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0 through C6C are complete and versioned; the capture-kernel baseline through `ea8f84e` is pushed, and its clean Windows CI run passed.
-3. After separate authorization, complete the C7 restricted adapter and C8 final acceptance before adding manual routing, SOP-000A, and the unreviewed GBrain mirror.
-4. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
+3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
+4. After separate authorization, complete the C7 restricted adapter and C8 final acceptance first. Once C8 passes, a production Capture Store and a minimal inbox limited to existing Capture capabilities may be authorized separately for dogfooding; in parallel, establish scale/structure baselines in isolated temporary Stores, then freeze the Segment/Ledger/Profile/Evidence Bundle contracts and run a local-retrieval comparison experiment.
+5. Add manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, and the unreviewed GBrain mirror only after that evidence exists. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
-The existing `prompts/sop-001-*` files remain useful for studying curation-map extraction and coverage auditing, but outputs now belong under `proposals/curation-maps/` and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
+The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
 
 ---
 

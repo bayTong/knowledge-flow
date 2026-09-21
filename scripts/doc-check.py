@@ -37,6 +37,7 @@ ROUTE_ALLOWLIST = frozenset(
         "docs/improvement-action-plan.md",
         "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
         "docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md",
+        "docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md",
         "docs/research/README.md",
         "docs/second-brain-vision.md",
         "docs/sop-v2-full.md",

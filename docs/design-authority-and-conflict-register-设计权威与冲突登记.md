@@ -30,7 +30,8 @@
 > C6B 派生状态重建日期：2026-09-17（独立提交 `f686941`；2026-09-18 已 push 至 `origin/main`）<br>
 > C6C Store 迁移日期：2026-09-18（独立提交 `ea8f84e`；已 push 至 `origin/main`）<br>
 > C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
-> 当前状态同步日期：2026-09-18<br>
+> 渐进式处理方向红线确认日期：2026-09-21（具体方法与实现仍为 Draft）<br>
+> 当前状态同步日期：2026-09-21<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5 与 C6 记为已完成并已 push；截至 `ea8f84e` 的 Windows CI 已首次通过。C7–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
 
@@ -59,7 +60,7 @@
 
 | 主题 | 当前权威 | 状态 | 其他文档如何处理 |
 |---|---|---|---|
-| 产品目标、知识策展悖论、语义写入原则 | [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md) | Approved Design | README、愿景和路线图只作解释，不得反向覆盖治理红线 |
+| 产品目标、知识策展悖论、语义完整性承诺、无静默缺口、证据与信任边界 | [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md) | Approved Design | README、愿景、路线图和 Draft 方法规范只作解释或实验，不得反向覆盖治理红线 |
 | 文档优先级、冲突登记、功能门禁 | 本文件 | Approved Design | 发现新冲突先登记，再修改对应规范 |
 | 临时 KB 创建与 `provisional` 生命周期 | [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) | Approved Design | 旧 SOP-000 在冷启动、领域前置和 SCHEMA 前置方面被取代 |
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
@@ -70,6 +71,7 @@
 | MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C6C 已完成；下一功能门禁为需单独授权的 C7 受限 CLI |
 | C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动扩展到 C7 及后续实现 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
+| 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
 | 可信知识写入、精确批准和回滚 | 尚待重构的 SOP-002 | Blocking Draft | 旧 SOP-002 不得作为自动语义写入授权 |
@@ -77,7 +79,7 @@
 | GBrain、第二大脑、可视化、QQ 的长期路线 | `gbrain-integration-plan.md`、`build-plan.md`、`second-brain-vision.md`、`qq-qa-bot-plan.md` | Planning | 不得阻塞 MVP，也不得绕过本文件的人工闸门 |
 | 现有 Lint、链接和 index 脚本 | `scripts/` | Existing Reference Implementation | 只证明旧知识库维护能力，不证明捕获、路由、审批或回滚已经实现 |
 
-## 4. 已冻结的八项最小决策
+## 4. 已冻结的八项 MVP-0 最小决策
 
 ### D-001：本地 Capture Store 是捕获规范真源
 
@@ -125,6 +127,35 @@ GBrain 完全不可用时，本地捕获仍然成功；未接入 GBrain 的 Know
 
 这一限制不删除 Envelope 对未来 Payload 类型的表达能力，只限制第一轮实现和验收范围。
 
+## 4A. 已确认的四项方向红线
+
+以下红线于 2026-09-21 获得方向确认，可以约束后续设计，但不表示具体方法已经实证有效，也不授权实现新的持久化 schema、RAG 或候选图谱。
+
+### D-009：不承诺语义零遗漏，承诺处理状态和证据可见
+
+KnowledgeFlow 不把 LLM 的“提取一切”作为可证明的系统保证。系统真正承诺的是：原料不丢失、声明覆盖整个 Capture 版本时每个确定性区段都有状态；只处理子集时明确记录选择边界、理由以及未选区段的 `out-of-scope`/`deferred` 状态；知识候选有来源证据，未处理和失败不会被静默显示为已完成。
+
+### D-010：深度处理允许分层和按需，不要求统一完整地图
+
+内容可以根据规模、结构、风险、问题和审核预算采用高覆盖策展、分层理解或检索优先等不同策略，不得用一个固定全文阈值强制所有材料生成完整地图。Capture v1 的 `processing_mode` 仍只表达用户处理意图；三类 Profile 的名称、默认映射和路由规则属于下节 Draft 假设。
+
+### D-011：RAG 和动态图谱属于派生候选层
+
+检索结果、摘要、问答和图谱候选不能仅因生成或可检索就获得可信知识身份。候选应从带 Capture 版本和 Source Segment 定位的证据中生成，并经过独立的合并、冲突和批准流程。
+
+### D-012：覆盖指标必须区分处理记账、证据绑定和语义召回
+
+处理记账和证据绑定可以成为机械门禁；语义召回率只能通过人工 gold set 和对照实验估计。节级密度、全景概括对照和多 Pass 分歧只能作为异常信号。
+
+## 4B. 待验证的方法与实现假设（Draft）
+
+以下假设用于组织实验，不得作为已实现能力或自动执行授权：
+
+1. `full-map`、`hierarchical-map`、`retrieval-first` 是三类处理策略的当前工作名称；它们的默认适用范围和切换规则仍待真实材料验证。
+2. Source Segment 和 Source Ledger 可用于机械表达处理边界；具体分段稳定性、事件格式、投影布局和迁移规则尚未冻结。
+3. Source Ledger 的确定性清单和状态投影可以重建；人工审核、批准、拒绝和延期必须另有不可变审计事件或等价规范记录，不能只保存在可覆盖状态中。
+4. 本地全文/BM25/向量/层次索引、Evidence Bundle、候选图谱、自动路由阈值和质量门槛均须经过实验与各自功能门禁。
+
 ## 5. 统一术语
 
 | 术语 | 定义 |
@@ -140,6 +171,11 @@ GBrain 完全不可用时，本地捕获仍然成功；未接入 GBrain 的 Know
 | Raw | 已完成来源、哈希和归档记录的不可变原料层 |
 | Proposal | 尚未获准改变可信知识的语义工件 |
 | Trusted Wiki | 只接受获批精确变更的可信知识层 |
+| Source Segment | Capture 版本经确定性切分得到的可追踪源文单元 |
+| Source Ledger | 由 Capture/Segment 事实、处理事件和人工决策记录计算出的台账投影；物理格式仍为 Draft，人工决定本身不能仅存在可覆盖投影中 |
+| Processing Profile | 对内容选择高覆盖策展、分层理解或检索优先等派生策略的 Draft 工作概念，不是 Capture v1 输入值 |
+| Evidence Bundle | 一次查询、审核或提案所使用并绑定来源版本/区段的证据集合 |
+| Knowledge Candidate | 尚未获准进入可信知识层的实体、关系、主张或摘要候选 |
 | 捕获热路径 | 从接收输入到返回本地耐久成功之间的同步操作集合 |
 
 ## 6. 最小链路
@@ -156,7 +192,9 @@ GBrain 完全不可用时，本地捕获仍然成功；未接入 GBrain 的 Know
   -> Git 批量备份（异步）
   -> 人工路由或路由提案
   -> raw 归档
-  -> SOP-001 生成策展地图
+  -> 确定性分段、Source Ledger 和派生检索底座（C8 后经独立门禁）
+  -> 按获批处理策略生成概要、局部/完整策展提案或 Evidence Bundle（当前 Profile 细节为 Draft）
+  -> 候选图谱/Promotion Proposal（仍在未审核层）
   -> 人工批准精确变更
   -> SOP-000B / SOP-002 写入可信知识
 ```
@@ -273,6 +311,11 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-046 | 自动在读取或幂等重试中修投影会破坏既有只读/动态 warning 语义；逐项边验原件边写又可能在后续发现损坏时留下误导性的“部分成功” | 新增与四个日常文本操作分离的显式管理操作 `recovery.rebuild_capture_store_derived_state`。它先在 Store 写锁内完整验证全部 Item/Version/Event、全部已提交 Payload 哈希、幂等唯一性和派生目录格式，全部通过后才应用；每个 `capture.yaml` 以同目录临时文件耐久写入并原子替换，进程中断后再次运行只补剩余项。未知 projection schema、未知派生文件、未知 staging、未提交尾部和损坏原件均不修复、不删除；版本 1 的重建验证时间是本次证明时间，版本 >1 的 `updated_at` 仍绑定当前 Event | 2026-09-17 由 C6B 解决；REC-01、中断后新进程续建及写前失败测试验证 |
 | C-047 | 跨盘 Store 迁移若依赖 rename、只比较 Manifest 或直接改配置，可能启用部分/损坏副本；简单覆盖非空目标又会破坏外来数据 | 显式管理操作 `migration.migrate_capture_store` 必须同时绑定配置、源路径、目标路径和预期 Store ID。在配置初始化锁与源/目标 Store 锁下，先完整验证源，再以不超过 1 MiB 的块复制稳定树；目标只能为空或逐文件字节数/哈希匹配的兼容子集。源 `.staging/` 内容和锁文件状态不迁移，但稳定 Item 中逻辑不可见的未提交尾部按原字节保留。目标字节快照与语义均完整通过后，才以同目录临时文件 + `os.replace` 切换配置；源永不自动删除。完整已复制的兼容部分目标可续传；损坏或单文件部分写入的目标失败关闭，不宣称自动修复 | 2026-09-18 由 C6C 解决；MIG-01–MIG-05、真实进程中断、失败回退与幂等重放验证 |
 | C-048 | 写请求可能在配置切换前已读到旧根，但在迁移释放旧 Store 锁后才获锁；若不复核，会在切换后回写源并造成 A/B 分叉 | `capture_text` 与 `append_capture_version` 在获得已选 Store 锁后、执行恢复或任何最终修改前，必须重读同一配置并比对 root 与大小阈值。绑定已变更时返回 `capture_store_unavailable + not-committed`，内部阶段为 `config-binding-changed`，且只清理本请求自有 staging；读操作可以完成已开始的只读快照，不会制造分叉 | 2026-09-18 由 C6C 解决；真实等待写进程与迁移切换竞态验证 |
+| C-049 | “穷举提取一切”被当作系统保证，但 LLM 语义召回不可由提示词或节级数量证明 | 不承诺语义零遗漏；将处理记账、证据绑定和语义召回分开。前两项可设机械门禁，语义召回必须由人工 gold set 和对照实验估计 | 2026-09-21：方向红线 Approved Design；具体评测方法仍为 Draft |
+| C-050 | 固定完整策展地图会把长文 token 成本和人工审核成本线性转嫁给用户 | 允许高覆盖策展、分层理解和检索优先等不同策略，不强制统一完整地图；三个 Profile 名称、默认适用范围和阈值暂不冻结 | 2026-09-21：分层/按需红线 Approved Design；Profile 细节仍为 Draft |
+| C-051 | 现有 `deep-curation` 容易被理解为必须生成完整地图，且路由只按字数阈值选择 Mode A/B/C | `deep-curation` 仍是用户处理意图，不等价于固定 Profile；实际策略可综合规模、结构、风险、复用价值和审核预算，字数不能单独决定 | 2026-09-21：意图边界 Approved Design；自动路由仍为 Draft |
+| C-052 | RAG、摘要、问答和动态知识图谱可能被误当作可信知识或第二真源 | 所有检索和图谱结果均属可重建派生层或 Knowledge Candidate；候选必须绑定 Capture 版本和来源区段，不能从最终回答文本直接晋升 | 2026-09-21：信任边界 Approved Design；候选层物理实现仍为 Draft |
+| C-053 | 用户只问过的内容形成查询偏置，未被问到的全局主题可能永远不会进入动态图谱 | 查询驱动候选必须显式披露查询偏置，不能宣称全局覆盖；是否采用全局结构索引、抽样及其周期由实验决定 | 2026-09-21：风险边界 Approved Design；缓解机制仍为 Draft |
 
 面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，统一收录在[MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；本登记保留规范性裁决，避免在多个权威入口复制并逐渐漂移。
 
@@ -289,6 +332,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
+| 渐进式知识处理 | C8 完成；Source Segment、Source Ledger、三类 Processing Profile、Evidence Bundle、候选知识状态和覆盖指标完成方法论实验并通过各自设计门禁 |
 | 人工路由 | Route Record、幂等和错误纠正流程 |
 | 新建临时 KB | SOP-000A 执行契约与路径/Git 输入确认 |
 | 激活 KB | SOP-000B 获批并具备失败回滚 |
@@ -312,7 +356,8 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 
 ## 12. 下一步顺序
 
-1. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-2. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C6C 已逐批完成并版本化，截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。下一功能门禁为需单独授权的 C7 受限 CLI。
-3. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
-4. 纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构。
+1. D-009–D-012 的治理红线已于 2026-09-21 确认；第 4B 节和渐进式规范中的方法/实现细节继续保持 Draft，不修改 Capture v1 或现有实现。
+2. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
+3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C6C 已逐批完成并版本化，截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。方向收口不改变下一功能门禁：仍为需单独授权的 C7 受限 CLI。
+4. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
+5. 先完成 C7 和 C8；在纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构或渐进式处理实验。

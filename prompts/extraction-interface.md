@@ -1,6 +1,8 @@
 # 提取接口技术规范
 
-> 本文档定义了 SOP-001 策展地图中所有提取项和覆盖报告的数据格式、字段约束、边界情况处理。所有 prompt 模板（sop-001-modeA.md、sop-001-modeA-fast.md、sop-001-modeA-auditor.md、sop-001-modeB-pass1-entities-claims.md、sop-001-modeBC-pass2-relationships.md、sop-001-modeC-pass1-entities.md、sop-001-modeC-pass3-claims.md、sop-001-modeBC-assembler.md）的提取和覆盖报告格式以本文档为权威参考
+> **实验性旧版资产——不得作为产品保证：** 本文件只定义旧 SOP-001 实验模板内部的格式，不是当前产品路由或持久化契约。其中“完整”“全部”“穷举”等措辞只表示实验指令，不构成语义零遗漏保证。产物必须记录声明范围和来源证据、进入未审核派生层，并停在人工审核处；不得自动触发可信知识写入。当前边界见[渐进式知识提炼规范](../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)。
+>
+> 本文档定义了旧 SOP-001 实验模板中提取项和覆盖报告的数据格式、字段约束、边界情况处理。所有 prompt 模板（sop-001-modeA.md、sop-001-modeA-fast.md、sop-001-modeA-auditor.md、sop-001-modeB-pass1-entities-claims.md、sop-001-modeBC-pass2-relationships.md、sop-001-modeC-pass1-entities.md、sop-001-modeC-pass3-claims.md、sop-001-modeBC-assembler.md）在该实验范围内以本文档为内部格式参考
 
 ---
 

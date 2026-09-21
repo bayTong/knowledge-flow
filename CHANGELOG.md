@@ -38,6 +38,7 @@
 - **完成 C6B 派生状态重建**：新增与四个日常文本操作分离的 `recovery.rebuild_capture_store_derived_state`。操作在 Store 写锁内先完整验证全部已提交 Item/Version/Event/Envelope、所有 Payload 实际哈希与幂等唯一性，再逐项原子重建缺失、损坏或落后的 `capture.yaml`；只恢复空的幂等/outbox 目录骨架，不发明索引或 job schema，也不修复 staging、未提交尾部或损坏原件。新增 7 项 REC-01–REC-03、写前失败、未知格式保留及真实中断续建回归后全量为 265 项。
 - **完成 C6C Store 迁移**：新增与四个日常文本操作分离的 `migration.migrate_capture_store`，要求显式源/目标路径与预期 Store ID；持配置锁和源/目标 Store 写锁，先完整验证源，再以不超过 1 MiB 的块复制稳定树，只接受空目标或逐文件大小/哈希完全匹配的兼容子集，目标字节快照与语义复核均通过后才用同目录临时文件原子替换配置，且永不删除源。写操作取得旧 Store 锁后新增配置绑定复核，阻止切换前排队的请求在切换后回写源。新增 9 项 MIG-01–MIG-05、真实进程复制/切换中断、失败回退、幂等重放与旧写请求竞态回归后全量为 274 项。
 - **同步 C5A–C6C 并通过远端门禁**：C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e` 已于 2026-09-18 同步至 `origin/main`；Windows CI 运行 `35319645501` 在干净 `windows-latest` / Python 3.13 runner 上首次通过普通与严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。
+- **完成方向事实收口并区分批准层级**：确认“不承诺语义零遗漏、不允许静默处理缺口、候选必须绑定证据、RAG/图谱输出不得自动成为可信知识”等治理红线；新增[渐进式知识提炼规范](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)，将 `full-map`、`hierarchical-map`、`retrieval-first` 的默认路由、Source Ledger 物理契约、检索栈和候选图谱实现明确保留为待实验 Draft。同步 README、需求基线、捕获路由、Capture Envelope、策展悖论、长期规划、提示词说明和设计冲突登记；2026-09-19 两份研究输入已编目为非权威材料。未修改 Capture v1、生产代码、测试契约或生产 Store。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
 

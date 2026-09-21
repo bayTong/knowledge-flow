@@ -4,10 +4,10 @@
 
 <!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7 -->
 
-> 解决知识策展悖论的实践 — 将 LLM 穷举提取与人类语义策展分离为两阶段管线，
-> 以结构化策展地图作为人机之间的审查界面。
+> 解决知识策展悖论的实践 — 将 LLM 的分层、证据绑定处理与人类语义策展分离，
+> 以可追溯的处理工件作为人机之间的审查界面。
 
-> **当前状态（2026-09-18）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。捕获内核截至 C6C 的全部工作已同步到 `origin/main`：C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e`。最小 Windows CI 运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 针对 `ea8f84e` 首次即通过，包括普通/严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。C6C 要求显式给出源路径、目标路径与 Store ID，先验证源、再有界复制，只接受空目标或可按字节证明兼容的目标；目标完整验证通过后才在同目录原子替换机器配置，且永不自动删除源。切换前已经等待旧 Store 锁的写请求会在锁内复核配置，不会在切换后回写源造成 A/B 分叉。当前为 274 项测试（捕获内核 259 项、维护脚本回归 7 项、文档护栏回归 8 项）。下一门禁是需单独授权的 C7 受限 CLI。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-21）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。捕获内核截至 C6C 的全部工作已同步到 `origin/main`：C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e`。最小 Windows CI 运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 针对 `ea8f84e` 首次即通过，包括普通/严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。C6C 要求显式给出源路径、目标路径与 Store ID，先验证源、再有界复制，只接受空目标或可按字节证明兼容的目标；目标完整验证通过后才在同目录原子替换机器配置，且永不自动删除源。切换前已经等待旧 Store 锁的写请求会在锁内复核配置，不会在切换后回写源造成 A/B 分叉。当前为 274 项测试（捕获内核 259 项、维护脚本回归 7 项、文档护栏回归 8 项）。本轮已确认“方向事实收口”的治理红线：不承诺语义零遗漏，不允许静默处理缺口，候选必须绑定证据，RAG/候选图谱不能自动成为可信知识；三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft，尚未获得实现授权。下一门禁是需单独授权的 C7 受限 CLI。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -21,6 +21,7 @@
 | 设计背后的思维方式 | [设计哲学](#设计哲学) |
 | 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | 捕获与路由设计 | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
+| 渐进式知识提炼与覆盖边界 | [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
 | C3 阻塞性行为决策 | [`docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md`](docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) |
 | MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | C3 后综合评估与实施方案（Draft） | [`docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md`](docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) |
@@ -46,13 +47,13 @@
 
 大多数 AI 知识管理工具的解法是**无视前提二**——让 LLM 直接做策展。LLM 读了原料，判断哪些值得建页面，写摘要、打标签、建链接。这个方案快、无摩擦，但有一个不可修复的缺陷：**LLM 的遗漏比噪音更难修复**。LLM 如果过度提取（噪音），你删掉多余的页面只需要几秒钟。LLM 如果漏掉了一个关键概念，你根本不知道它没提取——因为从原料到成品的推理过程完全在 LLM 黑箱里，没有任何中间工件可以审查。
 
-KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
+KnowledgeFlow 的解法是**重新分配责任并显式记录边界**，而非假设 LLM 能保证语义完整：
 
-- **LLM 负责穷举提取**——不筛选、不判断重要性（C5 硬约束）。每条提取锚定到原文位置（C2），不确定的地方显式标记（C3），建议严格隔离在事实之外（C4）。产出是一份结构化策展地图
-- **人类负责语义判断**——在策展地图上逐条标记「确认入库」「忽略」「待更多原料」。你不需要信任 LLM 的判断力，你只需要信任它确实提取了所有东西（可通过逐段覆盖率和原文引用验证）
+- **LLM 负责按 Profile 生成候选**——可生成概要、实体、关系、事实主张或证据包；每条候选锚定到原文位置（C2），不确定的地方显式标记（C3），建议严格隔离在事实之外（C4）
+- **人类负责语义判断**——在总览、证据包或策展提案上标记「确认入库」「忽略」「待更多原料」。处理台账说明哪些区段已处理、延迟或失败；覆盖信号不能单独证明语义完整
 - **目标态由受限写入器执行写入**——新的 SOP-002 只处理经过精确批准的变更，在 SCHEMA、事务和回滚约束下执行；该环节仍待重构，当前不得运行旧版写入提示词
 
-两阶段管线的核心不是效率——是**可审查性**。
+两阶段管线的核心不是效率——是**可审查性、证据绑定和受控提升**。系统不承诺一次性提取全部语义；它承诺原料不丢失、处理状态可见、候选可回溯，且只有精确批准的对象才能进入可信知识层。
 
 ---
 
@@ -60,12 +61,12 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 
 承接上面的悖论框架，现有工具的具体问题可以精确定位：
 
-**问题不在 LLM 的能力不够——在角色分配错了。** 当 LLM 被放在策展人的位置上时，它的强项（不遗漏——穷举扫描长文本）被搁置，它的弱项（判断什么对你重要）被推到决策前线。结果就是两种典型的失败模式：
+**问题不只在 LLM 的能力，也在角色和验证边界的错配。** LLM 适合大规模候选生成、结构化提取和证据整理，但在长文中仍可能遗漏、压缩或误解；把它直接放在可信策展人的位置上会放大两种失败模式：
 
 - **遗漏**：LLM 觉得一个概念不够重要，跳过了。你不看原料原文就永远不知道它漏了什么
 - **过度简化**：LLM 写了一页 wiki 页面，但你无法判断「这页信息是原料中仅有的，还是 LLM 自己挑出来的子集」。你失去了控制感——成品看起来合理，但你不知道它和原料之间的差距有多大
 
-因此 KnowledgeFlow 的设计目标不是「更好的策展算法」，而是**把判断权拉回人类这边，把 LLM 从策展人降为提取工具人——然后证明，在这个位置上，LLM 可以比人类做得更稳定、更彻底。**
+因此 KnowledgeFlow 的设计目标不是「更好的策展算法」或不现实的零遗漏承诺，而是**把可信判断拉回人类这边，通过确定性分段、处理台账、证据绑定和分层路径降低静默遗漏风险，并用 gold set 实验评估语义召回。**
 
 ---
 
@@ -76,21 +77,18 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
     │
     ▼
 ┌──────────────────────────────────┐
-│  第一阶段：粗读器（SOP-001）       │
+│  第一阶段：按 Profile 的处理层       │
 │                                    │
 │  · 捕获原料 + SHA256 溯源指纹     │
-│  · 全景概括——逐段缩写拼接整合，    │
-│    先理解整体再进入细节            │
-│  · 穷举提取——每条标注 7 个字段    │
-│    （标识符/名称/层次/描述/        │
-│     来源引用/置信度/不确定原因）   │
+│  · 确定性分段 + Source Ledger      │
+│  · `full-map` / `hierarchical-map` │
+│    / `retrieval-first`             │
+│  · 概要、候选提取和 Evidence Bundle│
 │  · 5 种不确定原因分类              │
-│  · 关系提取（显式 + 隐式推测）    │
-│  · 缺口分析 + SCHEMA 建议         │
-│  · Agent 建议严格隔离在独立节      │
+│  · 候选关系与 SCHEMA 建议隔离       │
 │  · ☒ 不得创建任何 wiki 页面       │
 │                                    │
-│  产出：策展地图（10 节，含覆盖报告）  │
+│  产出：处理台账、概要/地图、证据包及候选 │
 └──────────────────┬───────────────┘
                    │
                    ▼
@@ -133,11 +131,11 @@ KnowledgeFlow 的解法是**重新分配责任**，而非让 LLM 更聪明：
 | C2 | 每条提取必须有原文引用 | ☒ | 可追溯 = 可验证 = 可修正 |
 | C3 | 不确定必须显式标记，不得假装确定 | ☒ | 这是粗读器区别于直接策展的核心价值 |
 | C4 | Agent 建议必须和事实节严格分离 | ☒ | 防止建议污染事实层 |
-| C5 | 不得做重要性筛选——穷举提取 | ☒ | 漏掉比噪音更难修复 |
-| C6 | 超长原料必须列出未细读的章节 | ☑ | 你知道地图的覆盖边界 |
+| C5 | 不得静默丢弃；允许延迟、分层和按需处理，但必须记录状态 | ☒ | 处理缺口不能伪装成已完成 |
+| C6 | 超长原料必须确定性分段并建立处理台账 | ☑ | 你能看到处理、延迟和失败边界 |
 | C7 | 隐式关系可提取但须标推测 + 置信度 ≤ 中 | ☑ | 不让推测冒充确定 |
 
-告诉 LLM「你应该尽量做到 X」会被它稀释为差不多但不同的做法。告诉它「你绝对不能做 Y」是一个可审计的硬性检查点——违反就是违反，不需要判断「它做得好不好」。
+系统真正可机械审计的是保存、分段、状态和证据绑定；语义召回仍需通过人工 gold set 和对照实验估计，不能由条目数量或覆盖报告单独证明。
 
 ### 2. 两阶段管线 + 人类审查断点
 
@@ -197,6 +195,7 @@ knowledge-flow/
 │   ├── build-plan.md                建设规划与路线图（外置第二大脑建设规划）
 │   ├── second-brain-vision.md       战略愿景
 │   ├── curation-paradox.md          策展悖论论述
+│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      已确认的需求与治理原则
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
@@ -209,7 +208,8 @@ knowledge-flow/
 │   ├── post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md  C3 后综合实施草案
 │   ├── research/                         非权威历史研究输入
 │   │   ├── README.md                    边界、来源与使用规则
-│   │   └── 2026-09-11/                 归档的评估与复核文本
+│   │   ├── 2026-09-11/                 归档的评估与复核文本
+│   │   └── 2026-09-19/                 方向评估与综合讨论（非权威输入）
 │   ├── adaptive-extraction-plan.md  自适应提取分层设计方案
 │   ├── improvement-action-plan.md   评估发现与整改清单
 │   ├── gbrain-integration-plan.md   GBrain 引擎集成方案
@@ -252,10 +252,11 @@ knowledge-flow/
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C6C 均已完成并版本化，捕获内核基线截至 `ea8f84e` 已 push，其干净 Windows CI 运行已通过。
-3. 另行授权后按 C7 受限适配和 C8 总验收继续闭合，然后增加人工路由、SOP-000A 和 GBrain 未审核镜像。
-4. SOP-000B 与新 SOP-002 完成精确批准、事务和回滚设计后，才开放可信 wiki 写入。
+3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
+4. 经单独授权后先完成 C7 受限适配器与 C8 总验收；C8 通过后可另行授权生产 Capture Store 和仅使用现有 Capture 能力的最小收件箱 dogfood，同时用隔离临时 Store 做规模/结构基线实验，再冻结 Segment/Ledger/Profile/Evidence Bundle 契约并开展本地检索对照实验。
+5. 实验证据形成后再增加人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
 
-现有 `prompts/sop-001-*` 仍可用于研究策展地图提取和覆盖审计，但产物应进入 `proposals/curation-maps/`，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
+现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
 
 ---
 

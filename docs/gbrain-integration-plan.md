@@ -1,7 +1,7 @@
 # KnowledgeFlow × GBrain 集成研究（历史研究与远期候选）
 
 > **状态：Draft（部分内容已被当前治理基线取代；2026-09-01）**
-> 本文保留 GBrain 能力盘点、Dream/Minions、安全风险和可视化研究价值。正文中的“已决策”、阶段清单、命令、工期和远程架构均形成于旧基线，未经 2026-09-01 重新批准，不得执行。捕获第一原件、Global Intake、最小 GBrain POC 和人工闸门只以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及 [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)为准。
+> 本文保留 GBrain 能力盘点、Dream/Minions、安全风险和可视化研究价值。正文中的“已决策”、阶段清单、命令、工期和远程架构均形成于旧基线，未经 2026-09-01 重新批准，不得执行；其中“LLM 穷举提取”是历史方法论表达，不是语义零遗漏保证。渐进式处理、Source Ledger、Evidence Bundle 和候选层边界以[渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。捕获第一原件、Global Intake、最小 GBrain POC 和人工闸门只以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及 [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)为准。
 > GBrain 本地源码快照位于 `E:\Workstation\code_space\gbrain-master`（v0.46.28.0，用户于 2026-08-24 获取；2026-09-03 只读复核该目录存在且没有可用于确认提交 HEAD 的 `.git` 元数据）。
 
 当前唯一获批的 GBrain 近端结论是：先完成本地 Capture Store；随后才可做一个可关闭、可重试的异步 POC，将未审核文本通过薄适配器直接写入专用本地 PGLite 范围 `knowledgeflow-intake`。POC 默认 keyless、非联邦，不同步现有 KB，不启用 Dream、Minions、自动语义加工、OAuth 或远程身份。本文其余内容全部是以后逐项重新提案的候选资料。
@@ -29,7 +29,7 @@
 
 ### 1.1 两者关系:方法论 ↔ 引擎,天然互补
 
-**KnowledgeFlow** 解决了「知识策展悖论」——LLM 穷举提取、人做语义判断、两阶段管线,
+**KnowledgeFlow** 试图解决「知识策展悖论」——机器按处理 Profile 组织来源证据、人做语义判断、分阶段受控提升,
 但它是纯方法论:只有 SOP 规范、prompt 模板和 Python 参考脚本,**没有存储、检索、图谱和运行时**。
 
 **GBrain** 是成熟的引擎:Postgres/PGLite 存储、混合检索(向量 + BM25 + 图)、

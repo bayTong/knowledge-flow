@@ -431,7 +431,7 @@ Envelope 顶层采用“字段存在，但值可以按 schema 为 `null`”的�
 `user_intent` 只能记录用户明确表达的内容：
 
 - 用户明确说出已有 KB，才写 `target_kb_id`。
-- 用户明确要求深度整理，才写 `processing_mode: deep-curation`。
+- 用户明确要求深度整理，才写 `processing_mode: deep-curation`。该值只表示用户允许进入较深语义处理，不承诺固定的 SOP、完整策展地图或语义零遗漏；实际处理策略属于后续可重建的派生决定，当前 Profile 工作名称、默认映射和路由规则仍为 Draft，必须经对应门禁批准。
 - 用户明确要求创建一个给定名称的新 KB，才写 `requested_new_kb_name`。
 - 模型猜测、历史习惯和相似度结果不得写进 `user_intent`。
 - 模型建议必须进入 Route Proposal，并引用该版本哈希。
