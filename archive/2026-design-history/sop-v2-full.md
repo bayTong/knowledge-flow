@@ -1,9 +1,11 @@
 # KnowledgeFlow — 旧版完整 SOP 体系 v2.2（部分已暂停）
 
-> **状态：Partially Superseded（2026-09-01）**
-> 本文件仍可作为旧版策展地图格式、覆盖审计和知识库维护方法的参考，但不再是全主题权威。捕获、Global Intake、临时 KB、策展地图存放路径和可信写入权限分别以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、[捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)、[Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)及 [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)为准。
+> **归档说明（2026-09-21）**：本文已退出当前文档集，只保留旧策展地图、覆盖审计和 SOP-003 等历史参考。旧 SOP-002 继续暂停，不能据本文执行可信写入；当前阅读顺序见 [`docs/README.md`](../../docs/README.md)。
+
+> **状态：Historical / Partially Superseded（2026-09-21）**
+> 本文件仍可作为旧版策展地图格式、覆盖审计和知识库维护方法的参考，但不再是全主题权威。捕获、Global Intake、临时 KB、策展地图存放路径和可信写入权限分别以[设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)、[捕获与路由规范](../../docs/capture-and-routing-spec-捕获与路由规范.md)、[Capture Envelope v1](../../docs/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)及 [SOP-000A](../../docs/sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)为准。
 > 旧 SOP-002 允许的自动领域扩展、标签注册和直接 wiki 写入暂停执行，等待绑定精确版本、精确 diff、事务和回滚的新 SOP-002。
-> 本文中的 C5“穷举提取”、固定提取模式和覆盖报告仅是旧版方法参考；不得解释为语义完整性保证。内容规模路由、Source Ledger、Evidence Bundle 和候选知识边界以[渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。
+> 本文中的 C5“穷举提取”、固定提取模式和覆盖报告仅是旧版方法参考；不得解释为语义完整性保证。内容规模路由、Source Ledger、Evidence Bundle 和候选知识边界以[渐进式知识提炼规范](../../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。
 >
 > 文档基线：v2.2（含 10 节策展地图与自适应提取；当前执行边界以主题级权威文件为准）
 > 修订时间：2026-07-06

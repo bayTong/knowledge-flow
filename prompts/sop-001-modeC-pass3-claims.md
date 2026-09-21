@@ -9,7 +9,7 @@
 > 第 1–3 节由 `sop-001-modeC-pass1-entities.md` 完成，第 4 节由 `sop-001-modeBC-pass2-relationships.md` 完成，本轮不重复。
 > 第 6–10 节由 `sop-001-modeBC-assembler.md` 完成。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 
 ---
 

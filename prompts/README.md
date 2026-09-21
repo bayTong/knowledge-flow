@@ -174,5 +174,5 @@ Step 3：决定是否升级
 
 ---
 
-完整 SOP 规范见 [`docs/sop-v2-full.md`](../docs/sop-v2-full.md)。
-架构设计与修改方案见 [`docs/adaptive-extraction-plan.md`](../docs/adaptive-extraction-plan.md)。
+旧版完整 SOP 的历史参考见 [`archive/2026-design-history/sop-v2-full.md`](../archive/2026-design-history/sop-v2-full.md)。
+旧 Mode A/B/C 架构与修改方案见 [`archive/2026-design-history/adaptive-extraction-plan.md`](../archive/2026-design-history/adaptive-extraction-plan.md)；当前方法边界以 [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。

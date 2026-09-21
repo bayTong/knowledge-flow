@@ -18,19 +18,11 @@
 | How to get started | [Quick Start](#quick-start) |
 | Real-world usage data | [In Practice](#in-practice) |
 | Design philosophy | [Philosophy](#philosophy) |
-| Current design authority & conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
-| Capture & routing design | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
-| Progressive knowledge refinement & coverage boundaries | [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
-| C3 blocking behavior decisions | [`docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md`](docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) |
-| MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
-| Post-C3 assessment & implementation plan (Draft) | [`docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md`](docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) |
-| Historical research inputs (non-authoritative) | [`docs/research/README.md`](docs/research/README.md) |
-| Legacy SOP reference (partially superseded) | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
-| Build plan & roadmap | [`docs/build-plan.md`](docs/build-plan.md) |
-| Strategic vision | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
-| Audit findings & fix checklist | [`docs/improvement-action-plan.md`](docs/improvement-action-plan.md) |
-| v1.0 → v2.0 changelog | [`CHANGELOG.md`](CHANGELOG.md) |
-| v1.0 archive | [`archive/v1.0/`](archive/v1.0/) |
+| Documentation hub and numbered reading order | [`docs/README.md`](docs/README.md) |
+| Sole L0 product requirements and governance baseline | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
+| Current design authority and conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| Current MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
 
@@ -191,29 +183,19 @@ knowledge-flow/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
 ├── docs/
-│   ├── sop-v2-full.md               Legacy SOP collection (partly superseded)
-│   ├── build-plan.md                Build plan & roadmap（外置第二大脑建设规划）
-│   ├── second-brain-vision.md       Strategic vision（战略愿景）
-│   ├── curation-paradox.md          The curation paradox argument
-│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
+│   ├── README.md                    Sole documentation hub and numbered reading order
+│   ├── requirements-and-governance-baseline-需求与治理基线.md      Sole L0 requirements and governance baseline
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
-│   ├── requirements-and-governance-baseline-需求与治理基线.md      Sole L0 product requirements and governance baseline
-│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
-│   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual routing design
+│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Current coding batches and authorization gates
+│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Implementation choices and test matrix
+│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      C3 details retained through C8
+│   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
-│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      Approved C3 blocking behavior decisions
-│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Approved capture root and text-operation design
-│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Approved implementation choices and test matrix
-│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Approved coding batches and authorization gates
-│   ├── post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md  Draft post-C3 plan
-│   ├── research/                         Non-authoritative historical research inputs
-│   │   ├── README.md                    Scope, provenance, and use rules
-│   │   ├── 2026-09-11/                 Archived assessment and review texts
-│   │   └── 2026-09-19/                 Direction assessment and synthesis (non-authoritative input)
-│   ├── adaptive-extraction-plan.md  Adaptive extraction tiers design
-│   ├── improvement-action-plan.md   Evaluation findings & fix checklist（评估整改清单）
-│   ├── gbrain-integration-plan.md   GBrain engine integration plan（GBrain 集成方案）
-│   └── qq-qa-bot-plan.md            QQ Q&A bot plan（QQ 问答机器人方案）
+│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Four text-operation contract
+│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
+│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
+│   └── research/
+│       └── README.md                Non-authoritative research-input index
 ├── prompts/                          LLM-agnostic prompt templates（提示词模板）
 │   ├── README.md                    Template usage guide
 │   ├── sop-001-modeA.md             Default: single-pass extraction (sections 1-9)
@@ -239,7 +221,9 @@ knowledge-flow/
 │   ├── curation-map-example.md      Historical 25K-line curation-map example (raw source absent)
 │   └── wiki-page-example.md         Resulting wiki page after curation
 └── archive/
-    └── v1.0/                         v1.0 historical archive
+    ├── 2026-design-history/
+    │   └── README.md                  Index for nine archived plans, vision, and SOP files
+    └── v1.0/
         ├── README.md                  v1.0 limitations overview
         └── sop-v1-original.md        v1.0 original SOP
 ```

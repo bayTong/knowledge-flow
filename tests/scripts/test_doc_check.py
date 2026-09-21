@@ -89,7 +89,7 @@ knowledge-flow/
             "docs/research/README.md",
             "# Research\n\n[Input](2026-09-11/input.md)\n",
         )
-        self._write(root, "docs/link-source.md", "[Build](build-plan.md)\n")
+        self._write(root, "docs/link-source.md", "[Index](README.md)\n")
         tracked = {
             path.relative_to(root).as_posix()
             for path in root.rglob("*")
@@ -145,8 +145,8 @@ knowledge-flow/
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             tracked, untracked = self._fixture(root)
-            tracked.remove("docs/build-plan.md")
-            untracked.add("docs/build-plan.md")
+            tracked.remove("docs/README.md")
+            untracked.add("docs/README.md")
 
             report = self.module.check_repository(
                 root,
@@ -162,7 +162,7 @@ knowledge-flow/
             tracked, untracked = self._fixture(root)
             chinese = (root / "README-zh.md").read_text(encoding="utf-8")
             chinese = "\n".join(
-                line for line in chinese.splitlines() if "docs/build-plan.md" not in line
+                line for line in chinese.splitlines() if "docs/README.md" not in line
             ) + "\n"
             self._write(root, "README-zh.md", chinese)
 

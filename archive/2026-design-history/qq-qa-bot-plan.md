@@ -1,6 +1,8 @@
 # QQ 智能问答机器人 · 方案设计（v0.1）
 
-> **状态：Draft（可选通道规划；2026-09-01）**：QQ 只是一种未来验证入口，不属于捕获 MVP 主线，也不能成为唯一原件或绕过人工批准。当前实施顺序以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)为准；本文中的平台、模型、价格和工期都必须在实施前重新核验。
+> **归档说明（2026-09-21）**：本文已退出当前路线图，仅保留 QQ 渠道和 Agent 运行时的历史调研。平台能力、价格和网络条件均需重新核验；当前阅读顺序见 [`docs/README.md`](../../docs/README.md)。
+
+> **状态：Historical（原可选通道规划 Draft；2026-09-01）**：QQ 只是一种未来验证入口，不属于捕获 MVP 主线，也不能成为唯一原件或绕过人工批准。当前实施顺序以[设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)为准；本文中的平台、模型、价格和工期都必须在实施前重新核验。
 >
 > 目标：基于知识库做智能问答，QQ 作为消息通道，DeepSeek Harness（dsh）作为 Agent 运行时。
 > 本文与 [`gbrain-integration-plan.md`](gbrain-integration-plan.md)（存储/检索引擎）、[`second-brain-vision.md`](second-brain-vision.md)（多知识库与主动检索）并列，回答「问答入口怎么搭」。

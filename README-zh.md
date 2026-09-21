@@ -19,19 +19,11 @@
 | 粗读器如何处理不确定性 | [不确定性处理](#不确定性处理) |
 | 真实使用数据 | [实践数据](#实践数据) |
 | 设计背后的思维方式 | [设计哲学](#设计哲学) |
+| 文档总入口与编号阅读顺序 | [`docs/README.md`](docs/README.md) |
+| 唯一 L0 产品需求与治理基线 | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
 | 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
-| 捕获与路由设计 | [`docs/capture-and-routing-spec-捕获与路由规范.md`](docs/capture-and-routing-spec-捕获与路由规范.md) |
-| 渐进式知识提炼与覆盖边界 | [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
-| C3 阻塞性行为决策 | [`docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md`](docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) |
-| MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
-| C3 后综合评估与实施方案（Draft） | [`docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md`](docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) |
-| 历史研究输入（非权威） | [`docs/research/README.md`](docs/research/README.md) |
-| 旧版 SOP 参考（部分被取代） | [`docs/sop-v2-full.md`](docs/sop-v2-full.md) |
-| 建设规划与路线图 | [`docs/build-plan.md`](docs/build-plan.md) |
-| 战略愿景 | [`docs/second-brain-vision.md`](docs/second-brain-vision.md) |
-| 评估发现与整改清单 | [`docs/improvement-action-plan.md`](docs/improvement-action-plan.md) |
-| v1.0 → v2.0 变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
-| v1.0 历史归档 | [`archive/v1.0/`](archive/v1.0/) |
+| 当前 MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| 版本与阶段变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
 
@@ -191,29 +183,19 @@ knowledge-flow/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
 ├── docs/
-│   ├── sop-v2-full.md               旧版 SOP 全集（部分已被新设计取代）
-│   ├── build-plan.md                建设规划与路线图（外置第二大脑建设规划）
-│   ├── second-brain-vision.md       战略愿景
-│   ├── curation-paradox.md          策展悖论论述
-│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
-│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
+│   ├── README.md                    唯一文档阅读地图与编号顺序
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      唯一 L0 产品需求与治理基线
-│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
+│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
+│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       当前编码批次与授权门禁
+│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  实现选择与测试矩阵
+│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      C8 前保留的 C3 细粒度决策
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
-│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      已批准的 C3 阻塞性行为决策
-│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           捕获根目录与四个文本操作已批准设计
-│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  已批准的实现选择与测试矩阵
-│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       已批准的编码批次与授权门禁
-│   ├── post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md  C3 后综合实施草案
-│   ├── research/                         非权威历史研究输入
-│   │   ├── README.md                    边界、来源与使用规则
-│   │   ├── 2026-09-11/                 归档的评估与复核文本
-│   │   └── 2026-09-19/                 方向评估与综合讨论（非权威输入）
-│   ├── adaptive-extraction-plan.md  自适应提取分层设计方案
-│   ├── improvement-action-plan.md   评估发现与整改清单
-│   ├── gbrain-integration-plan.md   GBrain 引擎集成方案
-│   └── qq-qa-bot-plan.md            QQ 问答机器人方案
+│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           四个文本操作契约
+│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
+│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
+│   └── research/
+│       └── README.md                非权威研究输入索引
 ├── prompts/                          LLM-agnostic 提示词模板
 │   ├── README.md                    模板使用说明
 │   ├── sop-001-modeA.md             默认：单次提取（第 1-9 节）
@@ -239,7 +221,9 @@ knowledge-flow/
 │   ├── curation-map-example.md      历史策展地图样例（25K 行；原始材料未收录）
 │   └── wiki-page-example.md         wiki 页面样例（策展入库产出）
 └── archive/
-    └── v1.0/                         v1.0 历史版本归档
+    ├── 2026-design-history/
+    │   └── README.md                  九份旧方案、愿景与 SOP 的归档索引
+    └── v1.0/
         ├── README.md                  v1.0 局限性说明
         └── sop-v1-original.md        v1.0 原始 SOP
 ```

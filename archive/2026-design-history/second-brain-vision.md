@@ -1,6 +1,8 @@
 # 外置第二大脑 · 战略愿景
 
-> **状态：Draft（战略愿景；2026-09-01）**：本文表达长期方向，不是当前实现说明。捕获第一原件、人工闸门、渐进式知识处理和 MVP 顺序以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及[渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准；文中的“穷举提取”是历史方法论表达，不是语义零遗漏保证；“人审 → 策展入库”必须等待新 SOP-002 的精确批准、事务和回滚协议。
+> **归档说明（2026-09-21）**：本文的产品目标已被[需求与治理基线](../../docs/requirements-and-governance-baseline-需求与治理基线.md)吸收；这里只保留愿景演进背景，不再定义当前范围或顺序。当前阅读顺序见 [`docs/README.md`](../../docs/README.md)。
+
+> **状态：Historical（原战略愿景 Draft；2026-09-01）**：本文表达长期方向，不是当前实现说明。捕获第一原件、人工闸门、渐进式知识处理和 MVP 顺序以[设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)及[渐进式知识提炼规范](../../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准；文中的“穷举提取”是历史方法论表达，不是语义零遗漏保证；“人审 → 策展入库”必须等待新 SOP-002 的精确批准、事务和回滚协议。
 >
 > 本文档描述外置第二大脑项目的核心理念和架构总览。
 > 长期阶段候选见 [`docs/build-plan.md`](build-plan.md)，当前执行顺序仍以设计权威登记为准。

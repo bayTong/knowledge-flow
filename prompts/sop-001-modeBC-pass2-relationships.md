@@ -8,7 +8,7 @@
 > 第 1–3 节由 Pass 1（`sop-001-modeB-pass1-entities-claims.md` 或 `sop-001-modeC-pass1-entities.md`）完成，本轮不重复。
 > 第 5 节及后续由 `sop-001-modeBC-assembler.md` 完成（Mode B 时论点已在 Pass 1 提取，Mode C 时由 Pass 3 提取后传入 assembler）。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 > 提取接口规范：`extraction-interface.md`
 
 ---

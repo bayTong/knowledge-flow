@@ -1,6 +1,6 @@
 # 参考实现脚本
 
-本目录包含四个纯 Python 标准库脚本。前三个把 SOP-003 健康检查与 SOP-000 导航维护做成可复现命令，是旧版 SOP-003 知识库维护规则的**参考实现**，不是独立的第二套规则；`doc-check.py` 则只检查 KnowledgeFlow 仓库自身的确定性文档事实。对应业务检查口径暂以 `docs/sop-v2-full.md` 的 SOP-003 章节为准；主题级优先关系见 `docs/design-authority-and-conflict-register-设计权威与冲突登记.md`。
+本目录包含四个纯 Python 标准库脚本。前三个把 SOP-003 健康检查与 SOP-000 导航维护做成可复现命令，是旧版 SOP-003 知识库维护规则的**参考实现**，不是独立的第二套规则；`doc-check.py` 则只检查 KnowledgeFlow 仓库自身的确定性文档事实。对应业务检查口径暂以 `archive/2026-design-history/sop-v2-full.md` 的 SOP-003 历史章节为准；主题级优先关系见 `docs/design-authority-and-conflict-register-设计权威与冲突登记.md`。
 
 这些脚本不实现也不证明 Capture Store、Global Intake、路由、批准绑定、GBrain 镜像或可信写入回滚已经交付。`index-generator.py --write` 只应对明确选择的现有 KB 使用。
 
@@ -15,7 +15,7 @@ python scripts/doc-check.py       [仓库路径] [--json]               # Git �
 
 `doc-check.py` 不理解所有自然语言，也不替代人工设计复核。它只检查：中英文 README 的路由目标集合和结构树已列文件、现行项目 Markdown 的相对链接、`docs/` 下未跟踪 Markdown、历史研究输入索引，以及六份状态文档中的测试数量/下一门禁锚点。历史研究正文和 v1.0 归档不作为现行语义解析。通过返回 `0`，发现确定性漂移返回 `1`，仓库/Git 前置条件无效返回 `2`。
 
-`lint.py` 输出的每条消息带 `[检查N]` 前缀,与 `docs/sop-v2-full.md` SOP-003 的检查项编号一一对应:
+`lint.py` 输出的每条消息带 `[检查N]` 前缀,与 `archive/2026-design-history/sop-v2-full.md` SOP-003 的检查项编号一一对应:
 
 | 编号 | 检查项 | 级别 | 说明 |
 |---|---|---|---|

@@ -11,7 +11,7 @@
 > 第 5 节由 `sop-001-modeC-pass3-claims.md` 完成。
 > 第 6–10 节由 `sop-001-modeBC-assembler.md` 完成。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 > 提取接口规范：`extraction-interface.md`
 
 ---

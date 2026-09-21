@@ -31,14 +31,16 @@
 > C6C Store 迁移日期：2026-09-18（独立提交 `ea8f84e`；已 push 至 `origin/main`）<br>
 > C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
 > 渐进式处理方向红线确认日期：2026-09-21（具体方法与实现仍为 Draft）<br>
-> R1 产品需求总收口内容与本地验证日期：2026-09-21（尚未 commit/push；不改变下一功能门禁）<br>
+> R1 产品需求总收口内容与本地验证日期：2026-09-21（本地提交 `fa00c7e`；尚未 push；不改变下一功能门禁）<br>
+> 2026-09-21 研究输入登记日期：2026-09-21（本地提交 `3967047`；尚未 push；不改变下一功能门禁）<br>
+> D1A/D1B 文档信息架构内容与本地验证日期：2026-09-21（随本批完成本地版本化；尚未 push；不改变下一功能门禁）<br>
 > 当前状态同步日期：2026-09-21<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5 与 C6 记为已完成并已 push；截至 `ea8f84e` 的 Windows CI 已首次通过。C7–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
 
 ## 1. 为什么需要本文件
 
-项目同时存在旧版完整 SOP、长期建设路线、GBrain 集成方案，以及新形成的需求基线、捕获规范和 Capture Envelope。它们形成于不同阶段，不能再用“最后修改时间”或“文件名看起来最完整”判断谁优先。
+项目同时保存已归档的旧版完整 SOP、长期建设路线和 GBrain 集成研究，也维护当前需求基线、捕获规范和 Capture Envelope。它们形成于不同阶段，不能用“最后修改时间”或“文件名看起来最完整”判断谁优先；阅读入口统一见[文档阅读地图](README.md)。
 
 从本文件确认之日起，项目采用两条规则：
 
@@ -70,14 +72,14 @@
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 冻结读取语义，C5-0 冻结追加契约，C6A 冻结事务恢复边界；C6B/C6C 管理操作与四个日常文本操作分离 |
 | MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 后 214 项；C5A 后 231 项；C5B 后 250 项；C5V 后 253 项；C6A 后 258 项；C6B 后 265 项；C6C 后当前 274 项通过 |
 | MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C6C 已完成；下一功能门禁为需单独授权的 C7 受限 CLI |
-| C3 后评估、建议顺序和待裁决清单 | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Draft | 记录分析、批次建议和执行事实；不覆盖本文件或主题权威，也不自动扩展到 C7 及后续实现 |
+| C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由当前编码方案、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
 | SOP-000B：KB 激活 | 尚未定义 | Blocking Draft | 在 `provisional` KB 激活前必须完成 |
 | 可信知识写入、精确批准和回滚 | 尚待重构的 SOP-002 | Blocking Draft | 旧 SOP-002 不得作为自动语义写入授权 |
 | GBrain 未审核镜像最小接入 | 本文件第 8 节 + Capture Envelope 第 13 节 | Approved Design | 仅批准 POC 边界；旧 GBrain 集成方案只作远期能力研究，不是 MVP 接入指令 |
-| GBrain、第二大脑、可视化、QQ 的长期路线 | `gbrain-integration-plan.md`、`build-plan.md`、`second-brain-vision.md`、`qq-qa-bot-plan.md` | Planning | 不得阻塞 MVP，也不得绕过本文件的人工闸门 |
+| GBrain、第二大脑、可视化、QQ 的长期路线 | [2026 设计历史归档](../archive/2026-design-history/README.md)中的 GBrain、建设规划、第二大脑愿景与 QQ 方案 | Historical | 不得阻塞 MVP，也不得绕过本文件的人工闸门；如需重启任一方向，先形成新的范围提案 |
 | 现有 Lint、链接和 index 脚本 | `scripts/` | Existing Reference Implementation | 只证明旧知识库维护能力，不证明捕获、路由、审批或回滚已经实现 |
 
 ## 4. 已冻结的八项 MVP-0 最小决策

@@ -6,7 +6,7 @@
 > 第 10 节「覆盖报告」由独立审计员（`sop-001-modeA-auditor.md`）生成——提取与覆盖审查分离。
 > 如源文 > 10000 字，自动触发 Mode B（2 Pass 分治提取，更可靠）。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 > 提取接口规范：`extraction-interface.md`
 
 ---

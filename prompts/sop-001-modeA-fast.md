@@ -7,7 +7,7 @@
 > 适用条件：源文 < 3000 字，用户对单次提取质量有信心。
 > 如需独立审计，使用默认路径 Mode A（`sop-001-modeA.md` + `sop-001-modeA-auditor.md`）。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 > 提取接口规范：`extraction-interface.md`
 
 ---

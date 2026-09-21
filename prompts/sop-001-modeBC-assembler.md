@@ -7,7 +7,7 @@
 > **Mode B（轻量组装）**：不对照源文重读。第 7、8 节只基于 Pass 输出生成，并明确能力边界；覆盖报告仅基于 Pass 输出的交叉对比。
 > **Mode C（完整组装）**：对照源文重读。含缺口分析、SCHEMA 建议、深度不确定聚合。覆盖报告为交叉校验。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 > 提取接口规范：`extraction-interface.md`
 
 ---

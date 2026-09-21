@@ -6,7 +6,7 @@
 > 第 4 节「关系清单」由 Mode B Pass 2（`sop-001-modeBC-pass2-relationships.md`）完成——关系提取在独立轮次中进行，不在此合并。
 > 第 6–10 节由组装器（`sop-001-modeBC-assembler.md`）完成。
 >
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-001」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-001」章
 > 提取接口规范：`extraction-interface.md`
 
 ---

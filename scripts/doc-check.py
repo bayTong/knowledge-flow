@@ -29,18 +29,10 @@ from urllib.parse import unquote
 ROUTE_ALLOWLIST = frozenset(
     {
         "CHANGELOG.md",
-        "archive/v1.0/",
-        "docs/build-plan.md",
-        "docs/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md",
-        "docs/capture-and-routing-spec-捕获与路由规范.md",
+        "docs/README.md",
         "docs/design-authority-and-conflict-register-设计权威与冲突登记.md",
-        "docs/improvement-action-plan.md",
         "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
-        "docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md",
-        "docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md",
-        "docs/research/README.md",
-        "docs/second-brain-vision.md",
-        "docs/sop-v2-full.md",
+        "docs/requirements-and-governance-baseline-需求与治理基线.md",
     }
 )
 
@@ -55,7 +47,6 @@ STATUS_ANCHOR_FILES = (
     "docs/design-authority-and-conflict-register-设计权威与冲突登记.md",
     "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
     "docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md",
-    "docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md",
 )
 
 RESEARCH_INDEX = "docs/research/README.md"

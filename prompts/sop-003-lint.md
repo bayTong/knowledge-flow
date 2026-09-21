@@ -1,7 +1,7 @@
 # SOP-003 知识库健康扫描（Lint）
 
 > 知识库的定期健康检查。定位问题 → 给出原因与解决方案 → 等待用户决定。
-> 完整 SOP 规范：`docs/sop-v2-full.md`「SOP-003」章
+> 旧版 SOP 历史参考：`archive/2026-design-history/sop-v2-full.md`「SOP-003」章
 
 ---
 

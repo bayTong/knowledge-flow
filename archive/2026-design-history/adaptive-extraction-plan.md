@@ -1,6 +1,8 @@
 # 自适应提取分层 —— 修改方案
 
-> **状态：Draft（方法分册；2026-09-01）**：提取分层和覆盖审计方法可继续作为候选实验；本文的 Mode/阈值和“穷举”用语不构成语义零遗漏保证，当前内容规模路由、Source Ledger、Evidence Bundle 和覆盖边界以[渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。文中把 `sop-002-curator.md` 计入调用次数并在审核后直接写 wiki 的部分已经被当前治理基线取代，只保留为历史成本口径。当前流程在人工审核提案后停止，等待新 SOP-002。权威边界见[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **归档说明（2026-09-21）**：本文已退出当前文档集，仅保留旧 Mode A/B/C、调用次数和覆盖审计方案的形成过程。当前阅读顺序见 [`docs/README.md`](../../docs/README.md)；不得据本文直接启动实现或恢复旧 SOP-002。
+
+> **状态：Historical（原 Draft 方法分册；2026-09-01）**：提取分层和覆盖审计方法可继续作为候选实验；本文的 Mode/阈值和“穷举”用语不构成语义零遗漏保证，当前内容规模路由、Source Ledger、Evidence Bundle 和覆盖边界以[渐进式知识提炼规范](../../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。文中把 `sop-002-curator.md` 计入调用次数并在审核后直接写 wiki 的部分已经被当前治理基线取代，只保留为历史成本口径。当前流程在人工审核提案后停止，等待新 SOP-002。权威边界见[设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 >
 > **调用次数换算（2026-09-09）**：本文正文中的 A=3、A-fast=2、B=4、C=5 是旧历史总数，均包含 1 次现已暂停的策展写入；当前活跃的提取/审计调用统一为 A=2、A-fast=1、B=3、C=4，以 `prompts/README.md` 为准。
 >

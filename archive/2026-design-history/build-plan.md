@@ -1,6 +1,8 @@
 # 外置第二大脑 · 建设规划
 
-> **状态：Draft（长期规划；2026-09-01）**：本文保留旧阶段划分和长期候选能力，不再决定当前实施顺序；捕获 MVP、人工闸门、渐进式知识处理和文档优先级以[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)及[渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。文中与旧 SOP-002、自动语义写入或 GBrain 主线化相关的阶段必须在对应功能门禁完成后重新提案、确认和排期。
+> **归档说明（2026-09-21）**：本文已退出当前路线图，只保留长期候选能力和旧阶段划分的设计历史。当前阅读顺序见 [`docs/README.md`](../../docs/README.md)；任何候选能力都必须重新提案和授权。
+
+> **状态：Historical（原长期规划 Draft；2026-09-01）**：本文保留旧阶段划分和长期候选能力，不再决定当前实施顺序；捕获 MVP、人工闸门、渐进式知识处理和文档优先级以[设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)及[渐进式知识提炼规范](../../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)为准。文中与旧 SOP-002、自动语义写入或 GBrain 主线化相关的阶段必须在对应功能门禁完成后重新提案、确认和排期。
 >
 > 本文档是外置第二大脑项目的长期路线图。战略愿景见 [`docs/second-brain-vision.md`](second-brain-vision.md)
 > 从知识策展工具到 AI 外置第二大脑的完整演进方案
