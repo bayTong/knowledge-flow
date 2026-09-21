@@ -31,6 +31,7 @@
 > C6C Store 迁移日期：2026-09-18（独立提交 `ea8f84e`；已 push 至 `origin/main`）<br>
 > C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
 > 渐进式处理方向红线确认日期：2026-09-21（具体方法与实现仍为 Draft）<br>
+> R1 产品需求总收口内容与本地验证日期：2026-09-21（尚未 commit/push；不改变下一功能门禁）<br>
 > 当前状态同步日期：2026-09-21<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5 与 C6 记为已完成并已 push；截至 `ea8f84e` 的 Windows CI 已首次通过。C7–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
@@ -60,7 +61,7 @@
 
 | 主题 | 当前权威 | 状态 | 其他文档如何处理 |
 |---|---|---|---|
-| 产品目标、知识策展悖论、语义完整性承诺、无静默缺口、证据与信任边界 | [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md) | Approved Design | README、愿景、路线图和 Draft 方法规范只作解释或实验，不得反向覆盖治理红线 |
+| 顶层产品需求：目标用户、核心任务、功能/非功能需求、版本范围、成功信号、知识策展悖论、无静默缺口、证据与信任边界 | [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md) | Approved Design | 本文件是唯一 L0 顶层需求入口；README、愿景、路线图和 Draft 方法规范只作解释或实验，不得建立并行总需求或反向覆盖治理红线 |
 | 文档优先级、冲突登记、功能门禁 | 本文件 | Approved Design | 发现新冲突先登记，再修改对应规范 |
 | 临时 KB 创建与 `provisional` 生命周期 | [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) | Approved Design | 旧 SOP-000 在冷启动、领域前置和 SCHEMA 前置方面被取代 |
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
@@ -316,6 +317,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-051 | 现有 `deep-curation` 容易被理解为必须生成完整地图，且路由只按字数阈值选择 Mode A/B/C | `deep-curation` 仍是用户处理意图，不等价于固定 Profile；实际策略可综合规模、结构、风险、复用价值和审核预算，字数不能单独决定 | 2026-09-21：意图边界 Approved Design；自动路由仍为 Draft |
 | C-052 | RAG、摘要、问答和动态知识图谱可能被误当作可信知识或第二真源 | 所有检索和图谱结果均属可重建派生层或 Knowledge Candidate；候选必须绑定 Capture 版本和来源区段，不能从最终回答文本直接晋升 | 2026-09-21：信任边界 Approved Design；候选层物理实现仍为 Draft |
 | C-053 | 用户只问过的内容形成查询偏置，未被问到的全局主题可能永远不会进入动态图谱 | 查询驱动候选必须显式披露查询偏置，不能宣称全局覆盖；是否采用全局结构索引、抽样及其周期由实验决定 | 2026-09-21：风险边界 Approved Design；缓解机制仍为 Draft |
+| C-054（R1） | 产品目标、治理、主题规范、实现状态和路线分散在多份文档；若再新建一份“完整 PRD”，会产生第二个总需求真源，同时现有基线仍有 GBrain 首落、已批准 Profile、零遗漏审核和旧路线等漂移 | 保留并增强现有需求与治理基线，使其成为唯一 L0 顶层需求入口；用稳定 `FR-*`/`NFR-*` ID、版本范围、成功信号和追踪矩阵连接 L1 主题规范与 L2 实施证据。字段、schema、错误码和测试不复制进 L0；已识别漂移同步修正 | 2026-09-21：R1 内容与本地验证已完成，版本化待授权；不改变 Capture v1、现有实现或 C7 下一门禁 |
 
 面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，统一收录在[MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；本登记保留规范性裁决，避免在多个权威入口复制并逐渐漂移。
 
@@ -356,7 +358,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 
 ## 12. 下一步顺序
 
-1. D-009–D-012 的治理红线已于 2026-09-21 确认；第 4B 节和渐进式规范中的方法/实现细节继续保持 Draft，不修改 Capture v1 或现有实现。
+1. D-009–D-012 的治理红线已于 2026-09-21 确认；R1 同日把现有需求基线收口为唯一 L0 顶层需求入口，并建立稳定需求 ID 与追踪矩阵。第 4B 节和渐进式规范中的方法/实现细节继续保持 Draft，不修改 Capture v1 或现有实现。
 2. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
 3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C6C 已逐批完成并版本化，截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。方向收口不改变下一功能门禁：仍为需单独授权的 C7 受限 CLI。
 4. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。

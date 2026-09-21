@@ -197,7 +197,7 @@ knowledge-flow/
 │   ├── curation-paradox.md          The curation paradox argument
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
-│   ├── requirements-and-governance-baseline-需求与治理基线.md      Approved requirements and governance
+│   ├── requirements-and-governance-baseline-需求与治理基线.md      Sole L0 product requirements and governance baseline
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract

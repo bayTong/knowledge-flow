@@ -197,7 +197,7 @@ knowledge-flow/
 │   ├── curation-paradox.md          策展悖论论述
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
-│   ├── requirements-and-governance-baseline-需求与治理基线.md      已确认的需求与治理原则
+│   ├── requirements-and-governance-baseline-需求与治理基线.md      唯一 L0 产品需求与治理基线
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
