@@ -18,8 +18,9 @@
 > C6B 派生状态重建日期：2026-09-17（独立提交 `f686941`；2026-09-18 已 push 至 `origin/main`）<br>
 > C6C Store 迁移日期：2026-09-18（独立提交 `ea8f84e`；已 push 至 `origin/main`）<br>
 > C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
+> C7-0 CLI 适配映射确认日期：2026-09-21（C7A 尚未实现）<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
-> 边界：本文定义调用方可见的四个日常文本操作；C6A 不增加公开参数，C6B/C6C 的显式管理操作与四操作分离；C7–C8、生产目录和外部接入仍未完成
+> 边界：本文定义调用方可见的四个日常文本操作及 C7 CLI 的一对一适配边界；C6A 不增加公开参数，C6B/C6C 的显式管理操作与四操作分离；C7A–C8、生产目录和外部接入仍未完成
 
 ## 0. 结论先行
 
@@ -625,6 +626,26 @@ C6A 自动化只证明进程崩溃边界：9 个 capture 与 7 个 append 内部
 
 `migration.migrate_capture_store` 是另一个显式管理入口，不是第五个日常文本操作，也未从包顶层 `__init__.py` 重导出。它只处理一个已初始化 Store 的本地路径迁移，不变更 Store ID、Capture/Version/Event 身份、Envelope/Payload 哈希或四操作契约。迁移结果只返回源/目标、是否本次切换配置、复制/复用文件与字节数、验证 Item/Version 数量及源已保留事实；不返回写操作的 `saved`、`commit_state` 或动态 warning。
 
+## 7A. C7 受限 CLI 适配映射
+
+C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线协议的命令、帧、字段白名单、退出码和资源边界以[实现拆解与测试矩阵第 3.7 节](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约)为准；本节只冻结它与四操作的语义映射：
+
+| CLI 操作 | 构造的既有请求 | 正文方向 | 核心结果映射 |
+|---|---|---|---|
+| `capture_text` | `CaptureTextRequest` | stdin → 已完整验证的临时输入 stream | `CommittedWriteResult` / `FailureResult` 原样进入响应头 |
+| `append_capture_version` | `AppendCaptureVersionRequest` | stdin → 已完整验证的临时输入 stream | `AppendCaptureVersionResult` / `FailureResult` 原样进入响应头 |
+| `get_capture` | `GetCaptureRequest`，CLI 临时文件作为 `body_sink` | 核心 sink → 验证完成后 stdout | `GetCaptureResult` 先进入响应头，随后发送同长度正文；失败不发正文 |
+| `list_captures` | `ListCapturesRequest` | 无 | `ListCapturesResult` / `FailureResult` 原样进入响应头 |
+
+以下边界不可由适配层改变：
+
+1. request object 构造成功后，配置/Store 选择、完整性、幂等、CAS、锁、Event 提交点、三态提交证据、回执和 warning 全部仍由现有四操作决定。
+2. CLI 对命令、头、正文和 EOF 的校验必须在核心调用前完成；因此写帧错误是 `invalid_input + not-committed`，不能先保存再因尾随 byte 报错。
+3. CLI 为帧接收读取配置上限只是一项资源预检；核心必须重新读取/验证配置。预检不能扫描 Item、决定幂等命中、分配 ID、创建 Store staging 或推断提交结果。
+4. 响应头新增的 `schema`、`schema_version` 和统一 `body_length_bytes` 属于传输封装；其余字段必须来自现有 `to_dict()`，不得翻译错误码、删改 details、固化动态 warning 或把未知提交状态降级为未提交。
+5. exit 0/2/70 只表示“完整成功帧 / 完整公共失败帧 / 无可靠完整帧”，调用方仍必须以 JSON 中的 `ok`、error code 和 `commit_state` 判断业务结果。
+6. 临时输入/输出 spool 不是新副本、版本、缓存真源或恢复依据；C7 不改变任何 Store schema，也不把正文、preview、幂等键或本机路径写入命令行、JSON 诊断或 stderr。
+
 ## 8. 错误码
 
 | 错误码 | 适用操作 | 含义 | 重试方式 |
@@ -727,4 +748,4 @@ C6A 自动化只证明进程崩溃边界：9 个 capture 与 7 个 append 内部
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5A `63a3250`、C5B `ab2a613` 与 C5V `a9913e2` 已闭合追加阶段；C6A `84ee1d7` 以事务租约、保守扫描和 16 个真实进程终止边界闭合业务崩溃恢复，C6B `f686941` 闭合 REC-01–REC-03 与显式派生状态重建，C6C `ea8f84e` 闭合 MIG-01–MIG-05、显式 Store 迁移和旧写请求防分叉，当前 274 项全量通过。截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。生产 Store、GBrain 与路由仍未实现，下一门禁为需单独授权的 C7 受限 CLI。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5A `63a3250`、C5B `ab2a613` 与 C5V `a9913e2` 已闭合追加阶段；C6A `84ee1d7` 以事务租约、保守扫描和 16 个真实进程终止边界闭合业务崩溃恢复，C6B `f686941` 闭合 REC-01–REC-03 与显式派生状态重建，C6C `ea8f84e` 闭合 MIG-01–MIG-05、显式 Store 迁移和旧写请求防分叉，当前 274 项全量通过。截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。C7-0 已冻结 CLI 与四操作的一对一映射但未实现代码；生产 Store、GBrain 与路由仍未实现，下一门禁为需单独授权的 C7A。

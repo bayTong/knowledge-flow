@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7 -->
+<!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7A -->
 
-> 状态：Approved Design；C6A–C6C 已完成，当前 274 项全量通过；下一功能门禁为 C7 受限 CLI（未授权）<br>
+> 状态：Approved Design；C7-0 CLI 契约收口已完成，当前 274 项全量基线不变；下一功能门禁为 C7A 协议能力（未授权）<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -33,8 +33,9 @@
 > C6B 派生状态重建日期：2026-09-17（独立提交 `f686941`；2026-09-18 已 push 至 `origin/main`）<br>
 > C6C Store 迁移日期：2026-09-18（独立提交 `ea8f84e`；已 push 至 `origin/main`）<br>
 > C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
+> C7-0 CLI 契约收口日期：2026-09-21（文档内容与本地验证；尚未 commit/push）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：本文定义实现与测试要求；C6A/C6B/C6C 已闭合崩溃恢复、派生状态重建与 Store 迁移；C7–C8、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由与 UI 尚未实施
+> 边界：本文定义实现与测试要求；C7-0 只完成 CLI 设计收口，C7A/C7B/C7V 与 C8、生产 `E:\KnowledgeFlowData`、GBrain、LLM、KB 路由及 UI 尚未实施
 
 ## 0. 结论先行
 
@@ -48,7 +49,7 @@
 6. 存储继续使用已批准的 YAML 契约；捕获包已在 C0 隔离并锁定 `PyYAML==6.0.3`，但安全子集、schema 和规范发射仍由项目自己的受限 codec 控制。
 7. 调用适配层使用 JSON 元数据和原始 UTF-8 流；正文不能作为命令行参数，避免转义错误、长度限制和进程列表泄露。
 
-以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A–C6C 已逐批闭合并版本化；C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e` 已于 2026-09-18 同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。这不授权 C7、创建生产目录或接入外部系统。
+以上方案及第 13 节九项技术选择已于 2026-09-02 获批。C0–C2（含 C2B-3 崩溃恢复）已逐批授权并完成；[C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，成功回执、固定错误消息与幂等命中警告语义于 2026-09-09 完成编码前收口。C3A–C6C 已逐批闭合并版本化；C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e` 已于 2026-09-18 同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。C7-0 已于 2026-09-21 完成 CLI 文档契约收口；这不授权 C7A、创建生产目录或接入外部系统。
 
 ## 1. 当前项目基线
 
@@ -202,7 +203,90 @@ UUID 使用 48 位 Unix 毫秒、version 7、RFC variant `10` 和 74 位操作�
 - `get_capture`：结构化结果返回元数据和 `body_length_bytes`；正文先在 Store 外磁盘 spool 中以不超过 1 MiB 的块完成全量验证，再通过调用方提供的二进制 sink 返回，避免把 64 MiB 文本强行嵌入 JSON 或内存。
 - `list_captures`：只返回列表元数据和 160 code point 预览，可以完整使用 JSON。
 - 命令行不得接收 `--text "完整正文"`；否则正文可能受 shell 转义、命令长度和进程列表暴露影响。
-- CLI 的精确帧格式属于 M0-E12，但无论如何不能改变四操作的身份、幂等、哈希和版本语义。
+- CLI 的精确帧格式由第 3.7 节冻结；它只能适配四个既有操作，不能改变身份、幂等、哈希、版本、错误优先级或提交状态语义。
+
+### 3.7 C7 v1 受限 CLI 契约
+
+#### 3.7.1 命令面
+
+安装后的唯一入口名为 `knowledgeflow-capture`，v1 只接受以下四种形式：
+
+```text
+knowledgeflow-capture capture_text [--config <absolute-path>]
+knowledgeflow-capture get_capture [--config <absolute-path>]
+knowledgeflow-capture list_captures [--config <absolute-path>]
+knowledgeflow-capture append_capture_version [--config <absolute-path>]
+```
+
+- 操作名与 Python 公共操作名完全一致，不再建立连字符别名；操作名必须紧跟入口名，可选 `--config` 只能出现一次并位于其后。
+- `--config` 若出现，值必须是 Windows 本地绝对路径；省略时继续使用 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml`。相对路径、未知选项、额外位置参数、缺失值、重复选项和未知操作均按 `invalid_input` 处理。
+- v1 不提供 `--text`、Store 初始化、恢复、重建、迁移、路由、GBrain、LLM、测试策略切换或任意文件系统访问参数。`-h`、`--help` 和 `--version` 也不属于这个机器协议；使用它们与其他无效调用一样返回结构化失败帧，而不是输出另一种人类文本协议。
+- 操作名只在命令行出现；请求 JSON 不再重复 `operation` 字段，避免两处声明不一致。
+
+#### 3.7.2 stdin 请求帧
+
+请求帧是“一个 JSON 头 + 精确长度正文 + EOF”：
+
+```text
+<single-line UTF-8 JSON><LF or CRLF><exact body_length_bytes raw bytes><EOF>
+```
+
+固定解析规则：
+
+1. 规范发送方必须发 LF；接收方同时接受一个 CRLF。裸 CR、UTF-8 BOM、头部前置字节或头部内换行均拒绝。
+2. JSON 头在行终止符之前最多 65,536 byte；超限时不继续无界缓存。
+3. JSON 必须是严格 UTF-8 的单个 object：拒绝重复 key、`NaN`/`Infinity`、非 object 顶层、孤立 surrogate、类型不符和任意层级未知字段。JSON 对象 key 顺序不参与语义。
+4. 三个公共字段始终必填：`schema` 必须为 `knowledgeflow.capture-cli-request`，`schema_version` 必须为整数 `1`，`body_length_bytes` 必须为非负整数；JSON boolean 不得冒充整数。
+5. `capture_text` 与 `append_capture_version` 要求 `body_length_bytes >= 1`；`get_capture` 与 `list_captures` 必须为 `0`。正文是原始 UTF-8 字节，不是 JSON string；正文开头不得是 UTF-8 BOM。
+6. 适配器在调用四操作前，以不超过 1 MiB 的块把正文写入 Store 外、适配器独占的磁盘临时文件，同时严格验证 UTF-8、声明长度、提前 EOF 和正文后的额外任意 byte。多余换行或第二个 JSON 行也属于额外 byte；不能忽略或猜测修复。
+7. 写操作在开始正文临时文件前，先用同一受限配置解析器和受信 `PathPolicy` 读取所选配置，只把 `max_text_version_bytes` 用作帧接收上限；声明值超限直接返回 `text_too_large`。完整帧验证通过后，核心操作仍重新读取并验证配置，核心继续是 Store、事务和错误语义真源。
+8. 固定先后顺序是“命令/头部 schema → 写入配置与声明上限预检 → 正文/EOF 验证 → 请求对象构造 → 核心操作”。因此前一步已经失败时适配器可以立即关闭 stdin，不承诺继续排空调用方尚未发送的正文。
+
+四个操作的顶层业务字段如下；“可选”表示省略时使用既有 Python 请求对象默认值，显式 `null` 只在表中标明的字段允许：
+
+| 操作 | 必填业务字段 | 可选业务字段 | 正文 |
+|---|---|---|---|
+| `capture_text` | `channel` | `idempotency_key`（string/null）、`user_intent`（object/null） | 必须有 |
+| `append_capture_version` | `capture_id`、`expected_current_version`、`channel`、`idempotency_key`（非空 string） | `user_intent`（object/null） | 必须有 |
+| `get_capture` | `capture_id` | `version`（integer/null） | 禁止 |
+| `list_captures` | 无 | `routing_status`、`created_after`、`created_before`、`limit`、`cursor`（除 `limit` 外均可为 null） | 禁止 |
+
+嵌套对象也使用白名单：
+
+- `channel` 必须是 object，必填 `type`、`instance_id`，可选 `external_ref`、`source_created_at`（均可为 null）。
+- `user_intent` 若非 null 必须是 object，可选 `target_kb_id`、`processing_mode`、`requested_new_kb_name`（均可为 null）；省略或 null 都归一化为既有空 `UserIntent`。
+- 字符串、时间、Capture ID、版本、游标、limit、渠道 token、处理模式和幂等键的值域不由 CLI 另立一套规则，统一复用四操作请求类型的现有校验。
+
+#### 3.7.3 stdout 响应帧
+
+退出码为 0 或 2 时，stdout 必须恰好是一个完整响应帧：
+
+```text
+<single-line UTF-8 JSON><LF><exact body_length_bytes raw bytes><EOF>
+```
+
+- JSON 头固定先发 `schema: "knowledgeflow.capture-cli-response"`、`schema_version: 1`、`body_length_bytes`，随后按既有结果 `to_dict()` 的稳定字段顺序发出操作结果；使用无 BOM、无多余空白、禁止非有限数的 UTF-8 JSON 和 LF。
+- `get_capture` 成功时，CLI 所有的 `body_length_bytes` 必须与核心结果及随后正文长度完全一致，且头中只出现一次该字段。其余成功和全部失败的长度固定为 `0`，不得发送正文。
+- CLI 不重写核心的 `ok`、`saved`、`commit_state`、回执、warning 或 error。命令/帧/字段校验失败映射为固定 `invalid_input`；若已经可靠识别为两个写操作之一，失败还必须带 `commit_state: not-committed`，其他无效调用不伪造提交状态。
+- `get_capture` 不能把核心 sink 直接连到 stdout。适配器先让核心写入 Store 外的独占磁盘临时文件；核心成功返回后才发结果头，再以不超过 1 MiB 的块转发正文。这样完整性失败不会在错误头之前泄出正文。
+- 输入与输出临时文件都不是 Capture Store、规范真源或恢复证据；文件名不可进入协议或诊断，适配器只清理自己创建且仍持有的对象。
+
+#### 3.7.4 退出码、stderr 与敏感信息
+
+| 退出码 | 含义 | stdout | stderr |
+|---:|---|---|---|
+| `0` | `ok: true` 且整个响应帧已成功写完并 flush | 完整成功帧 | 空 |
+| `2` | 可预期调用/协议/配置/Store/四操作失败，且整个失败帧已成功写完并 flush | 完整 `ok: false` 帧 | 空 |
+| `70` | 适配器未捕获的内部故障，或 stdout 已无法可靠形成完整帧 | 必须按不可信/不完整处理，可能为空或部分写出 | 只允许固定 ASCII 行 `knowledgeflow-capture: internal failure` |
+
+JSON 中的结构化 error code 是业务语义真源，退出码不能细分或覆盖它。默认不输出 traceback、异常文本、正文、正文预览、幂等键、配置路径、Store 路径、临时文件名或本机用户名；调用方必须在看到 `70` 时丢弃全部 stdout，不能尝试从部分帧恢复。
+
+#### 3.7.5 生产策略与测试能力隔离
+
+- 已安装入口的 `main()` 只从受信任的包/安装上下文构造 `PathPolicy.production`：源码 checkout 中必须保护整个仓库根，普通安装中至少保护已安装包目录，并继续保护系统临时目录。无法可靠建立该边界时失败关闭。
+- CLI 参数、JSON 和环境变量均不能指定、放宽或切换 `PathPolicy`，也不能注入 reader、writer、时钟、UUID、锁或故障点。
+- 子进程集成测试继续只使用测试持有的临时 Store：测试包可调用不导出、不安装的私有 runner 并注入 `PathPolicy.test_owned`；该能力不能进入 console entry、`__all__`、命令选项、环境变量或发布包测试外接口。
+- 另设真实 `knowledgeflow-capture` 入口的无写入 smoke test，证明安装入口、生产策略和无测试后门；任何功能性子进程测试都不得因此创建真实机器配置或生产 Store。
 
 ## 4. 机器本地配置
 
@@ -562,13 +646,16 @@ Python import、包和机器契约名称使用英文，属于此前双语命名�
 | M0-E11A | C6A 业务事务崩溃恢复 | E7–E10V | **2026-09-17 已完成：每事务 `active.lock` 存活租约、保守 staging 扫描、9 个 capture + 7 个 append 真实 `os._exit()` 边界及 reparse/身份变化负向验证闭合；新增 5 项后 258 项全绿** |
 | M0-E11B | C6B 投影/幂等/空 outbox 重建 | M0-E11A | **2026-09-17 已完成：显式管理操作在全量不可变验证后原子重建 `capture.yaml`，恢复空目录骨架而不发明索引/job 格式；REC-01–REC-03、重复运行、未知格式、写前失败和进程中断续建闭合，265 项全绿** |
 | M0-E11C | C6C Store 迁移 | M0-E11B | **2026-09-18 已完成：显式源/目标/Store ID、稳定树有界复制、兼容目标证明、目标完整复核、同目录原子配置切换、失败回退、源保留及旧写请求防分叉通过；新增 9 项后 274 项全绿** |
-| M0-E12 | JSON/文本流 CLI 适配 | E6–E11C | stdin 使用 JSON 头 + 精确长度正文；stdout 使用 JSON 结果头 + `get_capture` 精确长度正文 |
-| M0-V1 | 全故障注入和并发验证 | E6–E12 | 第 10 节全部自动化场景通过 |
+| M0-D6 | C7-0 CLI 契约冻结 | E6–E11C | **2026-09-21 已冻结四命令、请求字段、严格帧、预验证 spool、统一响应头、退出码、脱敏及生产/测试 policy 隔离；未创建 CLI 代码或入口** |
+| M0-E12A | C7A CLI 协议能力与安全原语 | M0-D6 | 严格参数/JSON/字段解析、请求映射、输入/输出磁盘 spool、规范结果编码和私有可注入 runner 通过；不安装 console entry |
+| M0-E12B | C7B 四操作适配与安装入口 | M0-E12A | 四操作 dispatch、生产 `PathPolicy`、`knowledgeflow-capture` entry 与缩小阈值子进程闭环；不创建生产 Store |
+| M0-E12V | C7V CLI 阶段验收 | M0-E12B | CLI-01–CLI-26、真实 4/64 MiB、双进程、干净安装 smoke 及全量回归通过 |
+| M0-V1 | 全故障注入和并发验证 | E6–E12V | 第 10 节全部自动化场景通过 |
 | M0-V2 | 迁移演练 | E11、V1 | **C6C 已完成首次临时 A→B 复制—校验—切换及四操作验收；C8 仍须纳入全量复跑** |
 | M0-V3 | Windows 人工耐久验收 | V1–V2 | 强制终止恢复通过；断电声明按实测校准 |
 | M0-R1 | 实现审查和状态升级 | V1–V3 | 规范与实现一致后，才从 Approved Design 升为 Effective |
 
-不得把 E7 的“能保存一次”当作 MVP 完成。E8–E12 和 V1–V3 是可恢复性承诺的一部分。
+不得把 E7 的“能保存一次”当作 MVP 完成。E8–E12V 和 V1–V3 是可恢复性承诺的一部分。
 
 ## 9. 四操作完成定义
 
@@ -846,6 +933,39 @@ C6A 已以 5 个自动化测试方法覆盖 16 个真实子进程崩溃边界：
 | MIG-04 | B 验收通过后改配置 | **已通过：目标完整字节快照与语义验证后同目录原子替换配置，四操作随后只在 B 正常工作** |
 | MIG-05 | 迁移完成前 | **已通过：任何失败和成功路径均不自动删除 A；切换后重放只验证，不重复复制** |
 
+### 10.9 C7 受限 CLI
+
+C7A/C7B 先在缩小阈值和测试持有的临时 Store 上闭合单元与子进程集成；C7V 再运行真实 4 MiB/64 MiB、并发、安装入口和全量回归。测试编号固定如下：
+
+| ID | 场景 | 预期 |
+|---|---|---|
+| CLI-01 | 四个精确操作名及参数顺序 | 只接受第 3.7.1 节四种形式；未知/重复/额外参数为结构化 `invalid_input` |
+| CLI-02 | `capture_text` 头映射 | channel、可选幂等键和意图精确构造既有请求；省略/null 按契约归一化 |
+| CLI-03 | `append_capture_version` 头映射 | Capture ID、expected、channel、必填 key 和意图精确构造既有请求 |
+| CLI-04 | `get_capture` / `list_captures` 头映射 | 版本、过滤器、limit、cursor 复用现有值域和默认值，不另造语义 |
+| CLI-05 | LF、CRLF 与响应规范字节 | 两种输入终止符均接受；输出始终为无 BOM、紧凑 JSON + LF，字段顺序稳定 |
+| CLI-06 | 头部 65,536 byte 边界、超限、BOM、裸 CR、缺少行终止 | 精确边界接受；其他情况有界拒绝且不调用核心 |
+| CLI-07 | 重复 key、非 object、未知字段、错误类型、NaN/Infinity、孤立 surrogate | 全部为 `invalid_input`，解析器不宽松修复 |
+| CLI-08 | 写操作零长度、读操作非零长度 | `invalid_input`；已识别写操作带 `not-committed` |
+| CLI-09 | 正文早于声明长度 EOF | `invalid_input + not-committed`，无最终 Item/Version/Event |
+| CLI-10 | 正文后额外一个 byte、换行或第二 JSON 行 | 调用核心前拒绝，不能先提交再报帧错 |
+| CLI-11 | 正文非法 UTF-8 或以 BOM 开头 | `invalid_input + not-committed`，临时输入安全清理 |
+| CLI-12 | 写帧配置预检与声明长度超过配置上限 | 复用配置错误；超限为 `text_too_large` 且 details 精确，不接收无界正文 |
+| CLI-13 | 任一命令/帧/请求构造失败 | exit 2、完整零正文失败帧；Store 字节快照不变，stdout/stderr 无敏感数据 |
+| CLI-14 | `capture_text` 子进程往返与同 key 重放 | 回执、commit state、哈希和动态 warning 与 Python API 一致 |
+| CLI-15 | `append_capture_version` 子进程往返、幂等优先和 CAS | 版本/Event/三态结果与 Python API 一致，不由适配器重排错误 |
+| CLI-16 | `list_captures` 空页、多页和坏游标 | 只发 JSON 结果头、`body_length_bytes: 0`，分页语义不变 |
+| CLI-17 | `get_capture` 成功 | 完整验证后先发头、再发精确正文；三个长度事实一致且正文不进 JSON |
+| CLI-18 | `get_capture` 不存在、完整性失败或未知 schema | 失败头长度为 0，stdout 不出现任何正文前缀 |
+| CLI-19 | CLI 所有的 get 临时 sink 失败 | 复用 `output_write_failed`、exit 2、零正文，不泄露临时路径 |
+| CLI-20 | 真实 4 MiB/64 MiB capture/append/get | stdin、临时文件、核心与 stdout 转发单次块均不超过 1 MiB；字节/哈希精确 |
+| CLI-21 | 四操作成功、公共失败、内部失败 | exit code 分别严格为 0、2、70；0/2 必有完整可解析帧 |
+| CLI-22 | 所有成功/公共失败及故障路径的 stderr/日志 | 0/2 时为空；70 时只有固定行；无正文、preview、key、路径、异常或 traceback |
+| CLI-23 | stdout 在头或正文中途写入/flush 失败 | exit 70；不补写第二个 JSON，调用方按契约丢弃全部部分输出 |
+| CLI-24 | 生产 entry 与测试策略隔离 | 真实入口只能构造生产 policy；不存在参数/JSON/环境变量测试后门 |
+| CLI-25 | 安装后 console script smoke test | 干净环境可发现入口；无效只读调用结构化失败，不创建配置或 Store |
+| CLI-26 | 两个真实 CLI 进程同 key 写入竞争 | 继续由既有 Store 锁/幂等语义收敛为同一事实，不出现适配层重复提交 |
+
 ## 11. 故障注入方案
 
 ### 11.1 注入原则
@@ -955,7 +1075,7 @@ before_append_receipt_returned
 | 门禁 | 通过条件 | 通过前禁止 |
 |---|---|---|
 | G0 技术选择 | **已于 2026-09-02 通过** | 未通过时禁止创建包或安装依赖 |
-| G0.5 编码方案 | **C0–C6C 已逐批通过并版本化，截至 `ea8f84e` 已 push 且 Windows CI `35319645501` 首次通过；下一功能门禁为未授权的 C7** | C7 及后续未授权批次的业务代码和真实 Store |
+| G0.5 编码方案 | **C0–C6C 已逐批通过并版本化，截至 `ea8f84e` 已 push 且 Windows CI `35319645501` 首次通过；C7-0 已完成文档契约收口，下一功能门禁为未授权的 C7A** | C7A 及后续未授权批次的业务代码和真实 Store |
 | G1 测试骨架与基础原语 | **已于 2026-09-02 通过：自动发现并通过 30 项测试** | 实现 Store 或四操作 |
 | G2A 配置与身份 | **已于 2026-09-03 通过：CFG/MAN 全绿，自动发现总计 48 项测试** | 创建任何 Store 或初始化锁 |
 | G2B 初始化 | **已于 2026-09-04 通过：LOCK/DUR/INIT/FI 全绿，自动发现总计 85 项测试** | 使用真实生产 root |
@@ -978,4 +1098,4 @@ before_append_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3V 时为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后当前为 274 项。完整追加事务、真实双进程、真实 4/64 MiB、APP-01–APP-24、16 个业务进程崩溃边界、REC-01–REC-03 及 MIG-01–MIG-05 均已通过；下一功能门禁为需单独授权的 C7 受限 CLI。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在 C8 通过后、用户另行明确要求“初始化生产 Capture Store”时才允许创建。
+以上选择已确认，本文保持 `Approved Design`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3V 时为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后当前为 274 项。完整追加事务、真实双进程、真实 4/64 MiB、APP-01–APP-24、16 个业务进程崩溃边界、REC-01–REC-03 及 MIG-01–MIG-05 均已通过；C7-0 已冻结 CLI v1 契约但未增加测试或代码，下一功能门禁为需单独授权的 C7A。真实 `E:\KnowledgeFlowData\capture-store` 仍只有在 C8 通过后、用户另行明确要求“初始化生产 Capture Store”时才允许创建。

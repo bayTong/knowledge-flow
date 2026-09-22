@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7 -->
+<!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7A -->
 
 > 解决知识策展悖论的实践 — 将 LLM 的分层、证据绑定处理与人类语义策展分离，
 > 以可追溯的处理工件作为人机之间的审查界面。
 
-> **当前状态（2026-09-21）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。捕获内核截至 C6C 的全部工作已同步到 `origin/main`：C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e`。最小 Windows CI 运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 针对 `ea8f84e` 首次即通过，包括普通/严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。C6C 要求显式给出源路径、目标路径与 Store ID，先验证源、再有界复制，只接受空目标或可按字节证明兼容的目标；目标完整验证通过后才在同目录原子替换机器配置，且永不自动删除源。切换前已经等待旧 Store 锁的写请求会在锁内复核配置，不会在切换后回写源造成 A/B 分叉。当前为 274 项测试（捕获内核 259 项、维护脚本回归 7 项、文档护栏回归 8 项）。本轮已确认“方向事实收口”的治理红线：不承诺语义零遗漏，不允许静默处理缺口，候选必须绑定证据，RAG/候选图谱不能自动成为可信知识；三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft，尚未获得实现授权。下一门禁是需单独授权的 C7 受限 CLI。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-21）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。捕获内核截至 C6C 的全部工作已同步到 `origin/main`：C5A `63a3250`、C5B `ab2a613`、C5V `a9913e2`、C6A `84ee1d7`、C6B `f686941` 与 C6C `ea8f84e`。最小 Windows CI 运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 针对 `ea8f84e` 首次即通过，包括普通/严格 `ResourceWarning` 全量测试、`compileall`、`pip check` 和确定性文档检查。C6C 要求显式给出源路径、目标路径与 Store ID，先验证源、再有界复制，只接受空目标或可按字节证明兼容的目标；目标完整验证通过后才在同目录原子替换机器配置，且永不自动删除源。切换前已经等待旧 Store 锁的写请求会在锁内复核配置，不会在切换后回写源造成 A/B 分叉。当前为 274 项测试（捕获内核 259 项、维护脚本回归 7 项、文档护栏回归 8 项）。本轮已确认“方向事实收口”的治理红线：不承诺语义零遗漏，不允许静默处理缺口，候选必须绑定证据，RAG/候选图谱不能自动成为可信知识；三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft，尚未获得实现授权。C7-0 已冻结受限 CLI v1 的命令、严格请求/响应帧、退出码、资源边界、脱敏规则和生产/测试策略隔离，但尚未创建 CLI 代码。下一门禁是需单独授权的 C7A 协议能力。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
