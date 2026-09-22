@@ -1,8 +1,8 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-<!-- knowledgeflow-doc-status tests=274 capture_tests=259 script_tests=15 next_gate=C7A -->
+<!-- knowledgeflow-doc-status tests=293 capture_tests=278 script_tests=15 next_gate=C7B -->
 
-> 状态：Approved Design；C7-0 CLI 契约收口已完成，当前 274 项全量基线不变；下一功能门禁为 C7A 协议能力（未授权）<br>
+> 状态：Approved Design；C7A 私有 CLI 协议能力已完成本地实现与验证，当前 293 项全量通过；下一功能门禁为 C7B 四操作适配与安装入口（未授权）<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -34,10 +34,11 @@
 > R1 产品需求总收口内容与本地验证日期：2026-09-21（本地提交 `fa00c7e`；尚未 push；不改变下一功能门禁）<br>
 > 2026-09-21 研究输入登记日期：2026-09-21（本地提交 `3967047`；尚未 push；不改变下一功能门禁）<br>
 > D1A/D1B 文档信息架构内容与本地验证日期：2026-09-21（随本批完成本地版本化；尚未 push；不改变下一功能门禁）<br>
-> C7-0 CLI 契约收口日期：2026-09-21（文档内容与本地验证；尚未 commit/push）<br>
-> 当前状态同步日期：2026-09-21<br>
+> C7-0 CLI 契约收口日期：2026-09-21（独立本地提交 `dbe8329`；尚未 push）<br>
+> C7A 协议能力与安全原语完成并独立版本化日期：2026-09-22（尚未 push）<br>
+> 当前状态同步日期：2026-09-22<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5 与 C6 记为已完成并已 push，并把 C7-0 记为仅完成本地文档契约收口；截至 `ea8f84e` 的 Windows CI 已首次通过。C7A–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
+> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5 与 C6 记为已完成并已 push，把 C7-0 记为本地提交 `dbe8329`，并把 C7A 记为已完成内容、本地验证和独立版本化但尚未 push；截至 `ea8f84e` 的 Windows CI 已首次通过。C7B–C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
 
 ## 1. 为什么需要本文件
 
@@ -58,7 +59,7 @@
 | `Superseded` | 对应主题已经被新规范取代，仅供迁移和历史追溯 |
 | `Historical` | 完整历史版本，不再参与当前设计决策 |
 
-当前项目已完成并独立版本化 C3 写入内核、C4 读取阶段、C5 追加阶段以及 C6 崩溃恢复、派生状态重建和 Store 迁移；完整 MVP-0 仍缺受限 CLI 与全量验收，因此本轮新规范最高状态仍为 `Approved Design`，不标记为 `Effective`。
+当前项目已完成并独立版本化 C3 写入内核、C4 读取阶段、C5 追加阶段、C6 崩溃恢复/派生状态重建/Store 迁移以及 C7A 私有协议层；完整 MVP-0 仍缺生产 CLI 分派/安装、CLI 阶段验收与全量验收，因此本轮新规范最高状态仍为 `Approved Design`，不标记为 `Effective`。
 
 ## 3. 主题级权威矩阵
 
@@ -71,8 +72,8 @@
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 冻结读取语义，C5-0 冻结追加契约，C6A 冻结事务恢复边界；C6B/C6C 管理操作与四个日常文本操作分离 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 后 214 项；C5A 后 231 项；C5B 后 250 项；C5V 后 253 项；C6A 后 258 项；C6B 后 265 项；C6C 后当前 274 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C7-0 已完成文档契约收口；下一功能门禁为需单独授权的 C7A 协议能力 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 后 214 项；C5A 后 231 项；C5B 后 250 项；C5V 后 253 项；C6A 后 258 项；C6B 后 265 项；C6C 后 274 项；C7A 后当前 293 项通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C7A 已完成本地内容、验证与独立版本化但尚未 push；下一功能门禁为需单独授权的 C7B |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由当前编码方案、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
@@ -321,10 +322,10 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-052 | RAG、摘要、问答和动态知识图谱可能被误当作可信知识或第二真源 | 所有检索和图谱结果均属可重建派生层或 Knowledge Candidate；候选必须绑定 Capture 版本和来源区段，不能从最终回答文本直接晋升 | 2026-09-21：信任边界 Approved Design；候选层物理实现仍为 Draft |
 | C-053 | 用户只问过的内容形成查询偏置，未被问到的全局主题可能永远不会进入动态图谱 | 查询驱动候选必须显式披露查询偏置，不能宣称全局覆盖；是否采用全局结构索引、抽样及其周期由实验决定 | 2026-09-21：风险边界 Approved Design；缓解机制仍为 Draft |
 | C-054（R1） | 产品目标、治理、主题规范、实现状态和路线分散在多份文档；若再新建一份“完整 PRD”，会产生第二个总需求真源，同时现有基线仍有 GBrain 首落、已批准 Profile、零遗漏审核和旧路线等漂移 | 保留并增强现有需求与治理基线，使其成为唯一 L0 顶层需求入口；用稳定 `FR-*`/`NFR-*` ID、版本范围、成功信号和追踪矩阵连接 L1 主题规范与 L2 实施证据。字段、schema、错误码和测试不复制进 L0；已识别漂移同步修正 | 2026-09-21：R1 内容与本地验证已由本地提交 `fa00c7e` 闭合、尚未 push；不改变 Capture v1 或现有实现 |
-| C-055（C7-0） | 旧 C7 只说“操作名 + JSON 头 + 正文”，未固定入口名、精确操作名、字段白名单、头上限和严格 JSON；不同调用方可能各自发明不兼容协议 | 入口固定为 `knowledgeflow-capture`，操作名严格复用四个 Python 名称；只接受操作后的可选绝对 `--config`。请求 schema/version、每操作及嵌套字段白名单、65,536 byte 头上限、LF/CRLF 和严格 JSON/UTF-8 规则以实现矩阵第 3.7 节为准 | 2026-09-21：C7-0 Approved Design；C7A 尚未实现 |
-| C-056（C7-0） | 若核心操作已经提交后适配器才检查短正文、尾随 byte 或第二 JSON 行，CLI 会出现“返回帧错误但事实已保存”的危险反转 | 写操作先预检配置大小上限，再把声明正文以不超过 1 MiB 的块完整验证到 Store 外独占磁盘 spool，并确认 EOF 后才调用核心；任何帧错误均为 `invalid_input + not-committed`。核心随后重新验证配置并保持事务语义真源 | 2026-09-21：C7-0 Approved Design；CLI-08–CLI-13/20 验收 |
-| C-057（C7-0） | `get_capture` 核心先写 sink，CLI 却必须先发结果头；退出码、部分 stdout 和 stderr 若不冻结，也可能让机器调用方误判或泄露正文/路径 | CLI 用第二个 Store 外输出 spool 接住已验证正文，核心成功后才发头和精确正文。exit 0/2/70 分别只代表完整成功帧、完整公共失败帧、无可靠完整帧；0/2 stderr 为空，70 只发固定行，所有路径禁止 traceback 和敏感值 | 2026-09-21：C7-0 Approved Design；CLI-17–CLI-23 验收 |
-| C-058（C7-0） | 生产 CLI 必须拒绝源码/临时目录，子进程测试却只能使用临时 Store；若用公开 flag 或环境变量切换 policy，就会把测试能力变成生产绕过口 | 安装入口只从可信包/安装上下文构造生产 `PathPolicy`，不得从参数、JSON 或环境变量覆盖。测试只经不导出、不安装的私有 runner 注入 `PathPolicy.test_owned`；另用真实入口无写入 smoke test 证明没有后门 | 2026-09-21：C7-0 Approved Design；CLI-24/25 验收 |
+| C-055（C7-0） | 旧 C7 只说“操作名 + JSON 头 + 正文”，未固定入口名、精确操作名、字段白名单、头上限和严格 JSON；不同调用方可能各自发明不兼容协议 | 入口固定为 `knowledgeflow-capture`，操作名严格复用四个 Python 名称；只接受操作后的可选绝对 `--config`。请求 schema/version、每操作及嵌套字段白名单、65,536 byte 头上限、LF/CRLF 和严格 JSON/UTF-8 规则以实现矩阵第 3.7 节为准 | 2026-09-22：C7A 私有解析/映射单测已通过；安装入口仍待 C7B/C7V |
+| C-056（C7-0） | 若核心操作已经提交后适配器才检查短正文、尾随 byte 或第二 JSON 行，CLI 会出现“返回帧错误但事实已保存”的危险反转 | 写操作先预检配置大小上限，再把声明正文以不超过 1 MiB 的块完整验证到 Store 外独占磁盘 spool，并确认 EOF 后才调用核心；任何帧错误均为 `invalid_input + not-committed`。核心随后重新验证配置并保持事务语义真源 | 2026-09-22：C7A 已覆盖 CLI-08–CLI-13/20 的单元/缩小阈值部分；真实 Store 零提交与 4/64 MiB 留待 C7B/C7V |
+| C-057（C7-0） | `get_capture` 核心先写 sink，CLI 却必须先发结果头；退出码、部分 stdout 和 stderr 若不冻结，也可能让机器调用方误判或泄露正文/路径 | CLI 用第二个 Store 外输出 spool 接住已验证正文，核心成功后才发头和精确正文。exit 0/2/70 分别只代表完整成功帧、完整公共失败帧、无可靠完整帧；0/2 stderr 为空，70 只发固定行，所有路径禁止 traceback 和敏感值 | 2026-09-22：C7A 已覆盖 CLI-17/19/21–23 的协议层部分；真实核心失败路径留待 C7B/C7V |
+| C-058（C7-0） | 生产 CLI 必须拒绝源码/临时目录，子进程测试却只能使用临时 Store；若用公开 flag 或环境变量切换 policy，就会把测试能力变成生产绕过口 | 安装入口只从可信包/安装上下文构造生产 `PathPolicy`，不得从参数、JSON 或环境变量覆盖。测试只经不导出、不安装的私有 runner 注入 `PathPolicy.test_owned`；另用真实入口无写入 smoke test 证明没有后门 | 2026-09-22：C7A 私有 runner 无 `main()`、不导出且无协议测试开关；生产 entry 与安装 smoke 仍待 C7B/C7V |
 
 面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，统一收录在[MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；本登记保留规范性裁决，避免在多个权威入口复制并逐渐漂移。
 
@@ -338,6 +339,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | 业务事务崩溃恢复 | C6A 已用每事务 Windows 内核租约、保守直接子项扫描和 9 个 capture + 7 个 append 真实 `os._exit()` 边界完成；未知、旧式、活跃、reparse 与身份变化对象均不自动清理 |
 | 派生状态重建 | C6B 已实现显式管理操作：完整验证不可变事实后原子重建 `capture.yaml`，恢复空索引/outbox 骨架并证明可重复、可中断；不发明持久索引/job schema，也不借机修复 staging、尾部或损坏原件 |
 | Store 迁移 | C6C 已实现显式管理操作：先验源、有界复制、完整验目标、同目录原子切换配置并保留源；兼容部分目标可续传，外来或损坏目标保留并失败关闭 |
+| 受限 CLI | C7A 私有协议层已完成本地验证与独立版本化；仍须完成单独授权的 C7B 真实四操作分派/安装、C7V 子进程/真实边界验收与 C8 总验收 |
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
@@ -367,6 +369,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 
 1. D-009–D-012 的治理红线已于 2026-09-21 确认；R1 同日把现有需求基线收口为唯一 L0 顶层需求入口，并建立稳定需求 ID 与追踪矩阵。第 4B 节和渐进式规范中的方法/实现细节继续保持 Draft，不修改 Capture v1 或现有实现。
 2. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C6C 已逐批完成并版本化，截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。C7-0 已完成 CLI 文档契约收口；下一功能门禁为需单独授权的 C7A 协议能力。
+3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C6C 已逐批完成并版本化，截至 `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。C7-0 已以本地提交 `dbe8329` 封存；C7A 已完成本地内容、293 项验证与独立版本化但尚未 push，下一功能门禁为需单独授权的 C7B。
 4. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
-5. 先逐批完成 C7A、C7B、C7V 和 C8；在纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构或渐进式处理实验。
+5. 先独立复核并提交 C7A，再逐批完成 C7B、C7V 和 C8；在纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构或渐进式处理实验。

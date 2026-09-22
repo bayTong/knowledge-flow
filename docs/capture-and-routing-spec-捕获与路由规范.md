@@ -742,7 +742,7 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 
 ## 24. 下一步
 
-1. 实现拆解与编码执行方案已经批准；四个公开文本操作以及 C6A 业务事务崩溃恢复、C6B 派生状态重建和 C6C Store 迁移均已闭合。截至 C6C `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过，当前 274 项全量保持绿线。C7-0 已完成 CLI 文档契约收口，下一功能门禁为需单独授权的 C7A，随后依次是 C7B、C7V 与 C8；生产初始化与外部接入仍未授权。
+1. 实现拆解与编码执行方案已经批准；四个公开文本操作以及 C6A 业务事务崩溃恢复、C6B 派生状态重建和 C6C Store 迁移均已闭合。截至 C6C `ea8f84e` 已同步到 `origin/main`，Windows CI 运行 `35319645501` 首次通过。C7-0 已以本地提交 `dbe8329` 封存；C7A 私有协议层已完成本地内容、293 项全量验证与独立版本化，但尚未 push。下一功能门禁为需单独授权的 C7B，随后依次是 C7V 与 C8；生产初始化与外部接入仍未授权。
 2. C8 通过后，可另行授权生产 Store 和只暴露既有 Capture 能力的最小本地收件箱，用真实 `capture_text/get_capture/list_captures/append_capture_version` dogfood；同时只在隔离临时 Store 做规模/结构基线实验。
 3. 根据实验冻结 Segment、Ledger、Profile 和 Evidence Bundle 的最小契约，再实现本地检索/证据 POC；不把 GBrain 作为前置。
 4. 证据形成后实现人工路由和 SOP-000A 调用边界，并把 SOP-001 的捕获/归属判断移出，使深层处理绑定精确 Capture 版本、范围和证据。
