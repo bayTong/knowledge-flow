@@ -4,10 +4,11 @@
 
 <!-- knowledgeflow-doc-status tests=293 capture_tests=278 script_tests=15 next_gate=C7B -->
 
-> Solving the curation paradox — separating profile-based, evidence-bound processing
-> from human semantic curation, with traceable processing artifacts as the review surface.
+> A general-purpose, adaptive, governance-first personal knowledge-work system: start from
+> material, a question, or a vague intent; let the system do most knowledge labor while evidence,
+> trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-09-22):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. All capture-kernel work through C6C is synchronized with `origin/main`; minimal Windows CI run [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) passed on `ea8f84e`. C7-0 is preserved in local commit `dbe8329` and has not been pushed. C7A now implements the private, uninstalled CLI protocol layer: exact argument and strict JSON framing, request mapping, trusted configuration-size preflight, bounded disk input/output spools, canonical responses, fixed 0/2/70 behavior, and redacted internal failures. Its 19 deterministic tests bring the local suite to 293 tests (278 capture tests, 7 maintenance-script regressions, and 8 document-guard regressions); both the ordinary and strict `ResourceWarning` full suites pass. C7A is independently versioned in the local history and has not been pushed; there is no console entry or production dispatcher yet. The next functional gate is separately authorized C7B. The three Profile defaults, Source Ledger persistence contract, and retrieval implementation remain Draft. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-23):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2 now makes the long-term product direction explicit: work may begin from material, a question, a research topic, an existing KB, or vague intent, and controlled vocabularies, taxonomies, and ontologies are not prerequisites. This requirements clarification does not change Capture v1 or the current C7B gate. All capture-kernel work through C6C is synchronized with `origin/main`; minimal Windows CI run [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) passed on `ea8f84e`. C7-0 is preserved in local commit `dbe8329` and has not been pushed. C7A now implements the private, uninstalled CLI protocol layer: exact argument and strict JSON framing, request mapping, trusted configuration-size preflight, bounded disk input/output spools, canonical responses, fixed 0/2/70 behavior, and redacted internal failures. Its 19 deterministic tests bring the local suite to 293 tests (278 capture tests, 7 maintenance-script regressions, and 8 document-guard regressions); both the ordinary and strict `ResourceWarning` full suites pass. C7A is independently versioned in the local history and has not been pushed; there is no console entry or production dispatcher yet. The next functional gate is separately authorized C7B. The three Profile defaults, Source Ledger persistence contract, and retrieval implementation remain Draft. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -19,8 +20,9 @@
 | Real-world usage data | [In Practice](#in-practice) |
 | Design philosophy | [Philosophy](#philosophy) |
 | Documentation hub and numbered reading order | [`docs/README.md`](docs/README.md) |
-| Sole L0 product requirements and governance baseline | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
+| Master product requirements document (sole L0 PRD) | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
 | Current design authority and conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
 | Current MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 
@@ -40,11 +42,11 @@ Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the 
 
 KnowledgeFlow takes a different position — **redistribute responsibility and make the limits explicit, rather than assume semantic completeness**:
 
-- **LLM generates profile-based candidates** — summaries, entities, relationships, factual claims, or evidence bundles can be produced for a selected Profile; every candidate is anchored to a source location (C2), uncertainty is explicitly marked (C3), and suggestions are structurally isolated from facts (C4)
-- **You handle semantic judgment** — review an overview, evidence bundle, or curation proposal and mark it "ingest," "ignore," or "need more sources." A Source Ledger shows what is processed, deferred, or failed; coverage signals do not prove semantic completeness
+- **The system performs most knowledge labor** — it may assist research, summarize, cluster, discover entities and relationships, organize evidence, compare structures, and prepare exact diffs; formal candidates stay source-bound, uncertainty is explicit, and suggestions remain isolated from facts
+- **You control intent and high-impact judgment** — low-risk mechanical work may run automatically, reversible derived results may be generated automatically, ordinary trusted changes may be reviewed as bounded batches, and high-impact scope or structure changes require exact approval; a ledger keeps processed, deferred, and failed boundaries visible
 - **A restricted writer performs the target-state write** — the replacement SOP-002 will process only precisely approved changes under SCHEMA, transaction, and rollback constraints. It has not been redesigned yet; the legacy write prompt must not be run
 
-The pipeline isn't primarily about efficiency — it's about **auditability, evidence binding, and controlled promotion**. The system does not promise one-pass semantic zero omission; it promises preserved sources, visible processing state, traceable candidates, and exact approval before trusted writes.
+The trusted-promotion pipeline aims to **reduce manual work while preserving auditability, evidence binding, and controlled promotion**. The system does not promise one-pass semantic zero omission; it promises preserved sources, visible processing state, traceable candidates, and approved objects before trusted writes. Q&A, learning, or temporary research may remain clearly labeled derived/candidate output instead of being forced into a wiki.
 
 ---
 
@@ -62,6 +64,8 @@ KnowledgeFlow's design goal is therefore not "a better curation algorithm" or a 
 ---
 
 ## The Pipeline
+
+This diagram describes promotion from source material into trusted knowledge; it is not mandatory for every knowledge task. Unrouted capture, question-first work, and research exploration may produce useful derived/candidate results before any target KB exists.
 
 ```
 Raw Source
@@ -84,10 +88,10 @@ Raw Source
 └──────────────────┬───────────────┘
                    │
                    ▼
-         ═══ HUMAN REVIEW ═══
-         · Mark entries: "ingest" / "ignore" / "need more sources"
-         · Adjust SCHEMA proposals
-         · Resolve uncertainty flags
+         ═══ RISK-TIERED REVIEW ═══
+         · Batch: approve / edit / return / defer
+         · Precisely approve high-impact scope or structure changes
+         · Request more sources or adjust organization proposals
                    │
                    ▼
 ┌──────────────────────────────────┐
@@ -129,11 +133,11 @@ The rough reader operates under 7 hard constraints (C1–C7), five of which are 
 
 The mechanically auditable guarantees are preservation, segmentation, status, and evidence binding. Semantic recall still requires gold-set comparison and controlled experiments; item counts or coverage reports alone cannot prove it.
 
-### 2. Two-Stage Pipeline with a Human Audit Surface
+### 2. Trusted Promotion with a Risk-Tiered Audit Surface
 
-Extraction and curation are **separate SOPs** with a mandatory human review checkpoint between them. The curation map is the audit surface — a structured artifact you can reason about before any permanent changes are made to your knowledge base.
+Derived processing and trusted writing are **separate stages** with a review checkpoint proportionate to risk. A curation map, Evidence Bundle, or exact diff can be the audit surface. The system first performs bulk reading, evidence binding, and change preparation; the user then reviews a bounded batch or the high-impact differences instead of manually curating every item.
 
-This separation solves the "paradox of curation": you don't yet know the domain, so you can't judge extraction quality on the fly. The curation map gives you a pause point — you review it, mark what matters, and then the LLM executes constrained writes.
+This separation mitigates the curation paradox: even without prior domain knowledge, the user can first receive sourced explanations and candidate structures. Only when results are about to change trusted knowledge does the flow pause for review of key evidence and impact; the user may continue researching, return the whole batch, or defer it without designing the complete structure up front.
 
 ### 3. Three-Layer Defense System
 
@@ -185,8 +189,9 @@ knowledge-flow/
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
 ├── docs/
 │   ├── README.md                    Sole documentation hub and numbered reading order
-│   ├── requirements-and-governance-baseline-需求与治理基线.md      Sole L0 requirements and governance baseline
+│   ├── requirements-and-governance-baseline-需求与治理基线.md      Master product requirements document (sole L0 PRD)
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
+│   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  Non-normative cross-topic concept map
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Current coding batches and authorization gates
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Implementation choices and test matrix
 │   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      C3 details retained through C8

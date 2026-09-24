@@ -31,6 +31,7 @@ ROUTE_ALLOWLIST = frozenset(
         "CHANGELOG.md",
         "docs/README.md",
         "docs/design-authority-and-conflict-register-设计权威与冲突登记.md",
+        "docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md",
         "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
         "docs/requirements-and-governance-baseline-需求与治理基线.md",
     }

@@ -12,13 +12,13 @@ KnowledgeFlow 的文件名保持语义化且稳定，**不使用数字前缀表�
 
 README 是状态摘要，不是完整需求或实现授权。需要判断“必须做什么”时继续阅读 01；需要判断“哪份文档优先”时继续阅读 02。
 
-## 01 — 产品需求与治理底线
+## 01 — 主产品需求
 
 | 文档 | 状态 | 负责回答 |
 |---|---|---|
-| [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md) | `Approved Design`，唯一 L0 入口 | 为谁解决什么问题、功能/非功能需求、版本范围、成功信号、信任边界和未决策项 |
+| [KnowledgeFlow 主产品需求文档（Master PRD）](requirements-and-governance-baseline-需求与治理基线.md) | `Approved Design`，唯一 L0 入口 | 产品背景与目标、用户与旅程、范围、功能/非功能需求、产品治理、依赖风险、验收标准和待决问题 |
 
-任何愿景、路线图、研究输入或方法草案都不能覆盖这份 L0 基线。
+任何愿景、路线图、研究输入、概念导读或方法草案都不能覆盖这份主 PRD。当前代码进度、提交和 CI 事实不在主 PRD 中维护。
 
 ## 02 — 权威关系与冲突裁决
 
@@ -27,6 +27,14 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) | `Approved Design` | 每个主题以哪份文件为准、当前功能门禁、已冻结决策和待解决冲突 |
 
 当两份文档说法不同、状态词不清楚或历史文档看起来更“完整”时，以该登记为入口，不按文件长度或修改时间判断权威。
+
+## 02A — 跨主题概念架构导读
+
+| 文档 | 状态 | 负责回答 |
+|---|---|---|
+| [KnowledgeFlow 概念架构导读](knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) | `Explanatory Guide`，非规范性 | 用户可从哪些知识任务开始，来源级纳入、工作级可用与选择性可信晋升怎样连接，以及 Ontology、Schema、SOP、Karpathy LLM Wiki、RAG、GBrain、可信 Wiki 与知识图谱如何组合 |
+
+这份导读不建立第二份需求或技术契约。发生冲突时，必须修改导读以服从 01 的 L0 基线、02 的主题权威和后续各主题规范，不能反向用导读覆盖它们。
 
 ## 03 — 当前 MVP-0 执行顺序
 
