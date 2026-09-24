@@ -1,8 +1,8 @@
-"""Private C7 wire-protocol adapter for the four Capture operations.
+"""Restricted C7 wire-protocol adapter for the four Capture operations.
 
-This module deliberately has no public ``main`` function and is not exported from
-the package.  C7B supplies the production dispatcher and installed console entry;
-C7A keeps the framing/parser layer directly testable without touching a Store.
+The installed ``main`` entry constructs only the production path policy and maps
+the already-validated frame to the existing operations.  Tests that need a
+temporary Store continue to call the unexported runner from test-only support.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import json
 import math
 import os
 from pathlib import Path
+import sys
 import tempfile
 from typing import BinaryIO, Protocol
 
@@ -41,6 +42,12 @@ from .models import (
     GetCaptureRequest,
     ListCapturesRequest,
     UserIntent,
+)
+from .operations import (
+    append_capture_version,
+    capture_text,
+    get_capture,
+    list_captures,
 )
 from .paths import PathPolicy, PathPolicyError
 
@@ -823,7 +830,7 @@ def _run_cli(
     executor: _OperationExecutor,
     dependencies: _CliDependencies | None = None,
 ) -> int:
-    """Run one private v1 CLI frame without installing or selecting a Store."""
+    """Run one v1 CLI frame with explicitly injected trusted dependencies."""
 
     operation: str | None = None
     selected_dependencies = dependencies or _CliDependencies()
@@ -856,6 +863,71 @@ def _run_cli(
             return _emit_internal_failure(stderr)
     except Exception:
         return _emit_internal_failure(stderr)
+
+
+def _production_source_root() -> Path:
+    """Return the trusted package root, or the whole repository in a src checkout."""
+
+    package_root = Path(__file__).resolve(strict=True).parent
+    repository_root = package_root.parent.parent
+    if (
+        package_root.parent.name.casefold() == "src"
+        and (repository_root / "pyproject.toml").is_file()
+    ):
+        return repository_root
+    return package_root
+
+
+def _production_path_policy() -> PathPolicy:
+    """Construct the fixed production policy without caller-controlled inputs."""
+
+    return PathPolicy.production(source_root=_production_source_root())
+
+
+def _execute_operation(
+    operation: str,
+    request: object,
+    *,
+    config_path: Path | None,
+    path_policy: PathPolicy,
+) -> object:
+    """Dispatch exactly one protocol operation to its existing core function."""
+
+    if operation == _CAPTURE_TEXT:
+        selected = capture_text
+    elif operation == _GET_CAPTURE:
+        selected = get_capture
+    elif operation == _LIST_CAPTURES:
+        selected = list_captures
+    elif operation == _APPEND_CAPTURE_VERSION:
+        selected = append_capture_version
+    else:
+        raise TypeError("unknown operation")
+    return selected(
+        request,
+        config_path=config_path,
+        path_policy=path_policy,
+    )
+
+
+def main() -> int:
+    """Run the installed machine entry with binary standard streams."""
+
+    stderr = getattr(sys.stderr, "buffer", sys.stderr)
+    try:
+        stdin = sys.stdin.buffer
+        stdout = sys.stdout.buffer
+        path_policy = _production_path_policy()
+    except Exception:
+        return _emit_internal_failure(stderr)
+    return _run_cli(
+        sys.argv[1:],
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
+        path_policy=path_policy,
+        executor=_execute_operation,
+    )
 
 
 __all__: tuple[str, ...] = ()

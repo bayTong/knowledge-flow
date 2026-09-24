@@ -13,6 +13,9 @@ dependencies = [
     "PyYAML==6.0.3",
 ]
 
+[project.scripts]
+knowledgeflow-capture = "knowledgeflow_capture.cli:main"
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 

@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=293 capture_tests=278 script_tests=15 next_gate=C7B -->
+<!-- knowledgeflow-doc-status tests=300 capture_tests=285 script_tests=15 next_gate=C7V -->
 
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-09-23）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2 已明确长期产品允许从材料、问题、研究主题、已有 KB 或模糊意图开始，且受控词表、Taxonomy、Ontology 等结构不是前置门槛；这次需求收口不改变 Capture v1 或当前 C7B 门禁。捕获内核截至 C6C 的全部工作已同步到 `origin/main`，最小 Windows CI 运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 已在 `ea8f84e` 上通过。C7-0 已由本地提交 `dbe8329` 封存，尚未 push。C7A 现已实现私有且未安装的 CLI 协议层：精确参数和严格 JSON 帧、请求映射、受信配置上限预检、有界磁盘输入/输出 spool、规范响应、固定 0/2/70 退出语义及内部故障脱敏。新增 19 项确定性测试后，本地全量为 293 项（捕获测试 278 项、维护脚本回归 7 项、文档护栏回归 8 项），普通与严格 `ResourceWarning` 全量均已通过。C7A 已独立本地版本化且尚未 push，当前没有 console entry，也没有生产四操作分派；下一功能门禁为需单独授权的 C7B。三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-24）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2 已明确长期产品允许从材料、问题、研究主题、已有 KB 或模糊意图开始，且受控词表、Taxonomy、Ontology 等结构不是前置门槛；这次需求收口不改变 Capture v1 或当前 C7V 门禁。C7-0 与 C7A 已随 `fb61358` 同步到 `origin/main`；最后一轮已登记的干净 Windows CI 仍是运行 [`35319645501`](https://github.com/bayTong/knowledge-flow/actions/runs/35319645501) 在 `ea8f84e` 上通过。C7B 现已把严格 CLI 协议连接到既有四个核心操作，并加入固定 `knowledgeflow-capture` console entry、只从可信安装上下文构造的生产 `PathPolicy`，以及不进入发布接口的测试专用子进程 support。新增 7 项集成测试后，本地全量为 300 项（捕获测试 285 项、维护脚本回归 7 项、文档护栏回归 8 项），普通与严格 `ResourceWarning` 全量均已通过；C7B 已完成本地内容与验证，随本批独立版本化且尚未 push。下一功能门禁为需单独授权的 C7V 独立验收。三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -172,15 +172,15 @@ knowledge-flow/
 │       ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
 │       ├── store.py                  C2B–C6B 初始化恢复、staging 与版本链纯原语
 │       ├── operations.py             C3–C6C 四个受治理文本操作与迁移绑定复核
-│       ├── cli.py                    C7A 私有、未安装的 CLI 帧与 spool 适配层
+│       ├── cli.py                    C7A/C7B 受限 CLI 帧、spool、生产分派与安装入口
 │       ├── recovery.py               C6B 显式派生状态重建操作
 │       └── migration.py              C6C 显式复制—验证—切换 Store 迁移
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
-│   │   ├── unit/                     C0–C7A 单元与平台测试
-│   │   ├── integration/              C2B–C6C 事务、读取、重建、迁移、真实边界与并发测试
-│   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 278 项）
+│   │   ├── unit/                     C0–C7B 单元与平台测试
+│   │   ├── integration/              C2B–C7B 事务、读取、CLI、重建、迁移、真实边界与并发测试
+│   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 285 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
@@ -235,12 +235,12 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V 与 C6 各批也已通过。C7A 的私有协议与 spool 层已在本地实现，但刻意没有安装入口，也尚未分派生产四操作。C7B、C7V、C8 总验收与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C5V、C6 各批以及 C7B 四操作 CLI 适配与安装入口也已通过本地验证。C7V、C8 总验收与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C6C 均已完成并版本化，捕获内核基线截至 `ea8f84e` 已 push，其干净 Windows CI 运行已通过。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. C7A 已独立本地版本化；下一步依次完成单独授权的 C7B 分派/安装、C7V 验收和 C8 总验收。C8 通过后可另行授权生产 Capture Store 和仅使用现有 Capture 能力的最小收件箱 dogfood，同时用隔离临时 Store 做规模/结构基线实验，再冻结 Segment/Ledger/Profile/Evidence Bundle 契约并开展本地检索对照实验。
+4. C7B 已完成本地内容与验证并随本批独立版本化；下一步依次完成单独授权的 C7V CLI 阶段验收和 C8 总验收。C8 通过后可另行授权生产 Capture Store 和仅使用现有 Capture 能力的最小收件箱 dogfood，同时用隔离临时 Store 做规模/结构基线实验，再冻结 Segment/Ledger/Profile/Evidence Bundle 契约并开展本地检索对照实验。
 5. 实验证据形成后再增加人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。

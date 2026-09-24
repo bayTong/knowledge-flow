@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import inspect
 import json
 from pathlib import Path
 import unittest
@@ -1081,14 +1082,22 @@ class CliProtocolTest(unittest.TestCase):
         self.assertEqual(emitted.count(b'"schema"'), 1)
         self.assertTrue(emitted.endswith(body[:2]))
 
-    def test_cli_24_private_runner_has_no_installed_or_test_policy_surface(self) -> None:
+    def test_cli_24_private_runner_and_production_entry_have_no_test_policy_surface(
+        self,
+    ) -> None:
         self.assertEqual(cli_module.__all__, ())
-        self.assertFalse(hasattr(cli_module, "main"))
+        self.assertTrue(callable(cli_module.main))
+        self.assertEqual(tuple(inspect.signature(cli_module.main).parameters), ())
+        self.assertNotIn("test_owned", inspect.getsource(cli_module.main))
+        self.assertNotIn("environ", inspect.getsource(cli_module.main))
         pyproject = (Path(__file__).resolve().parents[3] / "pyproject.toml").read_text(
             encoding="utf-8"
         )
-        self.assertNotIn("[project.scripts]", pyproject)
-        self.assertNotIn("knowledgeflow-capture =", pyproject)
+        self.assertIn("[project.scripts]", pyproject)
+        self.assertIn(
+            'knowledgeflow-capture = "knowledgeflow_capture.cli:main"',
+            pyproject,
+        )
 
         header = self._header("list_captures")
         header["path_policy"] = "test-owned"
