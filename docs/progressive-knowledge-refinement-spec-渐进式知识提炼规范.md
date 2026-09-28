@@ -1,6 +1,6 @@
 # KnowledgeFlow 渐进式知识提炼规范
 
-> 状态：Draft（方法与实现假设；2026-09-21 修正）
+> 状态：Draft（方法与实现假设；2026-09-28 澄清处理授权）
 >
 > 本文是对“完整策展地图是否适用于所有规模内容”这一方向问题的设计收口。产品承诺、无静默缺口、证据和信任边界已经作为治理红线确认；三类 Profile 的默认适用范围、Source Ledger 物理契约、自动路由、检索栈和候选图谱实现仍为待实验的 Draft。本文件不授权实现 RAG、知识图谱、GBrain、UI 或任何可信知识写入。
 >
@@ -94,6 +94,8 @@ Segment 是处理记账的最小单位，不等于实体、关系或主张，也
 | `retrieval-first` | 先建立可检索、可追溯的访问底座 | Segment 索引、查询证据包、局部提案 |
 
 Profile 是可重算的派生决定，不是 Capture v1 `user_intent.processing_mode` 的替代品。
+
+选择或运行 Profile 还需要独立的处理触发授权。该授权可以来自当前任务的明确需要、用户后续人工选择，或用户可见、范围明确且可撤销的规则；`capture-only` 本身不构成授权。用户直接针对已有来源提问，只授权该任务内的检索和回答，不自动授权后台持续处理、无关语义派生物的持久化或可信知识变化。
 
 ### 3.4 Evidence Bundle
 
@@ -267,7 +269,7 @@ RAG 用于从可允许的查询范围中定位相关来源、组织 Evidence Bun
 - C7 受限 CLI 的范围；
 - C8 的 MVP-0 验收目标。
 
-`deep-curation` 只表示用户允许进入较深语义处理；未来路由器根据本规范选择实际 Profile。任何新的持久化 ledger、candidate 或 graph schema 都必须在对应功能门禁单独冻结。
+`deep-curation` 只表示用户允许进入较深语义处理；未来路由器根据本规范提出或选择实际 Profile，并记录授权来源、范围、预计成本和缺口。`capture-only` 只授权可靠捕获和最低来源状态，不触发 Profile、Segment/Ledger 建立或语义索引。任何新的持久化 ledger、candidate 或 graph schema 都必须在对应功能门禁单独冻结。
 
 ## 12. 后续门禁
 
