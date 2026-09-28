@@ -2,7 +2,7 @@
 
 <!-- knowledgeflow-doc-status tests=300 capture_tests=285 script_tests=15 next_gate=C7V -->
 
-> 状态：Approved Design；C7B 四操作适配与安装入口已完成本地实现与验证，当前 300 项全量通过；下一功能门禁为 C7V CLI 阶段独立验收（未授权）<br>
+> 状态：Approved Design；C7B 四操作适配与安装入口已完成、同步并通过远端 Windows CI，当前验证基线为 300 项；下一功能门禁为 C7V CLI 阶段独立验收（未授权）<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -36,11 +36,13 @@
 > D1A/D1B 文档信息架构内容与本地验证日期：2026-09-21（提交 `ba12420`；已随 `fb61358` 同步至 `origin/main`；不改变下一功能门禁）<br>
 > C7-0 CLI 契约收口日期：2026-09-21（独立提交 `dbe8329`；已随 `fb61358` 同步至 `origin/main`）<br>
 > C7A 协议能力与安全原语完成并独立版本化日期：2026-09-22（提交 `fb61358`；已同步至 `origin/main`）<br>
-> R1.2 通用、自适应知识工作、工作知识层与渐进晋升需求收口日期：2026-09-23；2026-09-24 已按主 PRD 与非规范性导读的职责重新组织（本地提交 `3b8777f`；尚未 push；不改变下一功能门禁）<br>
-> C7B 四操作适配与安装入口完成日期：2026-09-24（本批完成本地验证并独立版本化；尚未 push）<br>
-> 当前状态同步日期：2026-09-24<br>
+> R1.2 通用、自适应知识工作、工作知识层与渐进晋升需求收口日期：2026-09-23；2026-09-24 已按主 PRD 与非规范性导读的职责重新组织（提交 `3b8777f`；已随 `ea2b80c` 同步至 `origin/main`；不改变下一功能门禁）<br>
+> C7B 四操作适配与安装入口完成日期：2026-09-24（独立提交 `ea2b80c`；已同步至 `origin/main`）<br>
+> C7B 远端门禁通过日期：2026-09-24（截至 `ea2b80c`；Windows CI 运行 `35997733639` 成功）<br>
+> R1.3 已有来源复用、处理授权与 Draft 方法边界澄清日期：2026-09-28（不改变 Capture v1 或下一功能门禁）<br>
+> 当前状态同步日期：2026-09-28<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5、C6、C7-0 与 C7A 记为已完成并已 push，把 C7B 记为已完成本地内容、验证和独立版本化但尚未 push；最后一轮已登记的干净 Windows CI 仍截至 `ea8f84e`。C7V、C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
+> 边界：本文件把 C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C4V、C5、C6、C7-0、C7A 与 C7B 记为已完成并已 push；最后一轮已登记的干净 Windows CI 为运行 `35997733639` 在 `ea2b80c` 上成功。C7V、C8、生产初始化与后续路由未完成，本文整体仍不是 `Effective`
 
 ## 1. 为什么需要本文件
 
@@ -94,7 +96,7 @@
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 冻结读取语义，C5-0 冻结追加契约，C6A 冻结事务恢复边界；C6B/C6C 管理操作与四个日常文本操作分离 |
 | MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C0–C2 里程碑 85 项、稳定化后 93 项；C3A 后 105 项、C3B 后 122 项、C3C 后 140 项、C3V 后 144 项；R0.1/R0.2 后 148 项；D0G 后 156 项；R0.3D 后 159 项；R0.3F 后 163 项；C4A 后 182 项；C4B 后 197 项；C4C 后 212 项；C4V 后 214 项；C5A 后 231 项；C5B 后 250 项；C5V 后 253 项；C6A 后 258 项；C6B 后 265 项；C6C 后 274 项；C7A 后 293 项；C7B 后当前 300 项通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C7B 已完成本地内容、验证与独立版本化但尚未 push；下一功能门禁为需单独授权的 C7V |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C7B `ea2b80c` 已同步至 `origin/main` 且 Windows CI 运行 `35997733639` 成功；下一功能门禁为需单独授权的 C7V |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由当前编码方案、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
@@ -418,6 +420,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 
 1. D-009–D-012 的治理红线已于 2026-09-21 确认；R1 同日把现有需求基线收口为唯一 L0 顶层需求入口并建立稳定需求 ID 与追踪矩阵，R1.2 又由 D-013–D-016 明确通用知识任务、结构非前置、风险分层和工作知识层。R1.3 进一步澄清已有来源复用、处理授权与 Draft 方法边界。第 4C 节和渐进式规范中的方法/实现细节继续保持 Draft，不修改 Capture v1 或现有实现。
 2. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C7A 已逐批完成并版本化，截至 `fb61358` 已同步到 `origin/main`，最后一轮已登记的干净 Windows CI 为运行 `35319645501` 在 `ea8f84e` 上通过。C7B 已完成本地内容、300 项验证与独立版本化但尚未 push，下一功能门禁为需单独授权的 C7V。
+3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C7B 已逐批完成并版本化，截至 `ea2b80c` 已同步到 `origin/main`，Windows CI 运行 `35997733639` 已在该精确提交上成功。下一功能门禁为需单独授权的 C7V。
 4. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
 5. C7B 已独立复核并随本批提交；下一步逐批完成 C7V 和 C8。在纯本地文本链路验收前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构或渐进式处理实验。
