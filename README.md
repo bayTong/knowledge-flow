@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=300 capture_tests=285 script_tests=15 next_gate=C7V -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=C8 -->
 
 > A general-purpose, adaptive, governance-first personal knowledge-work system: start from
 > material, a question, or a vague intent; let the system do most knowledge labor while evidence,
 > trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-09-28):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2 makes the long-term product direction explicit; R1.3 further clarifies that a task over existing knowledge reuses existing source identities, `capture-only` does not authorize deep semantic processing, and the three current Processing Profiles remain Draft candidates rather than frozen product methods. These requirements clarifications do not change Capture v1 or the current C7V gate. C7-0, C7A, and C7B are synchronized with `origin/main` through `ea2b80c`; Windows CI run [`35997733639`](https://github.com/bayTong/knowledge-flow/actions/runs/35997733639) completed successfully on that exact commit under `windows-latest` / Python 3.13. C7B connects the strict CLI protocol to the existing four core operations and adds the fixed `knowledgeflow-capture` console entry, a production `PathPolicy` constructed only from trusted installation context, and test-only subprocess support that is not part of the published interface. The verified suite remains 300 tests (285 capture tests and 15 script/document tests). The next functional gate is separately authorized C7V acceptance. The three Profile defaults, Source Ledger persistence contract, and retrieval implementation remain Draft. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-28):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2 makes the long-term product direction explicit; R1.3 further clarifies that a task over existing knowledge reuses existing source identities, `capture-only` does not authorize deep semantic processing, and the three current Processing Profiles remain Draft candidates rather than frozen product methods. These requirements clarifications do not change Capture v1. C7V has now completed local CLI acceptance for CLI-01–CLI-26, including real 4 MiB/64 MiB streaming, a two-process same-key race, zero-commit trailing-byte rejection, terminal stdout failures, and a temporary installed-entry smoke test. The local suite baseline is 305 tests (290 capture tests and 15 script/document tests); the C7V work remains uncommitted and unpushed. The latest remote gate is still C7B at `ea2b80c`, where Windows CI run [`35997733639`](https://github.com/bayTong/knowledge-flow/actions/runs/35997733639) passed. The next functional gate is separately authorized C8 final acceptance. The three Profile defaults, Source Ledger persistence contract, and retrieval implementation remain Draft. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -181,9 +181,9 @@ knowledge-flow/
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
-│   │   ├── unit/                     C0–C7B unit and platform tests
-│   │   ├── integration/              C2B–C7B transaction, read, CLI, rebuild, migration, boundary, and concurrency tests
-│   │   └── fault/                    C2B/C6A process-crash recovery tests (285 capture tests total)
+│   │   ├── unit/                     C0–C7V unit and platform tests
+│   │   ├── integration/              C2B–C7V transaction, read, CLI, rebuild, migration, boundary, and concurrency tests
+│   │   └── fault/                    C2B/C6A process-crash recovery tests (290 capture tests total)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
@@ -238,12 +238,12 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, `list_captures`, and `append_capture_version` are implemented; C5V, all C6 batches, and C7B's four-operation CLI adapter and installed entry have passed their applicable local and remote gates. C7V, final C8 acceptance, and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
+The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, `list_captures`, and `append_capture_version` are implemented, and C7V has completed the local acceptance of the four-operation installed CLI. C7V still needs its independent commit and remote gate; final C8 acceptance and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0 through C7B are complete, versioned, and pushed through `ea2b80c`; Windows CI run `35997733639` passed on that exact commit.
+2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0 through C7B are complete, versioned, and pushed through `ea2b80c`; C7V is locally complete at a 305-test baseline but is not yet committed or pushed.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. C7B has passed both local and remote gates; next complete separately authorized C7V CLI acceptance and C8 final acceptance. Once C8 passes, a production Capture Store and a minimal inbox limited to existing Capture capabilities may be authorized separately for dogfooding; in parallel, establish scale/structure baselines in isolated temporary Stores, then freeze the Segment/Ledger/Profile/Evidence Bundle contracts and run a local-retrieval comparison experiment.
+4. Independently review and commit C7V, then run its remote Windows CI gate; after that, request separate authorization for C8 final acceptance. Once C8 passes, a production Capture Store and a minimal inbox limited to existing Capture capabilities may be authorized separately for dogfooding; in parallel, establish scale/structure baselines in isolated temporary Stores, then freeze the Segment/Ledger/Profile/Evidence Bundle contracts and run a local-retrieval comparison experiment.
 5. Add manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, and the unreviewed GBrain mirror only after that evidence exists. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.

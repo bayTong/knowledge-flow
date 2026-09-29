@@ -44,7 +44,7 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 2. [捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)：运行时选择、模块边界和测试矩阵。
 3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；保留到 C8 总验收完成后再归档。
 
-C7-0、C7A 与 C7B 已随 `ea2b80c` 同步到 `origin/main`；Windows CI 运行 [`35997733639`](https://github.com/bayTong/knowledge-flow/actions/runs/35997733639) 已在该精确提交的 `windows-latest` / Python 3.13 环境通过全部步骤。已验证基线仍为 300 项。下一功能门禁是需要单独授权的 C7V。本页不授权 C7V、C8、生产初始化或外部接入。
+C7-0、C7A 与 C7B 已随 `ea2b80c` 同步到 `origin/main`；Windows CI 运行 [`35997733639`](https://github.com/bayTong/knowledge-flow/actions/runs/35997733639) 已在该精确提交的 `windows-latest` / Python 3.13 环境通过全部步骤。C7V 已在本地以 305 项基线闭合 CLI-01–CLI-26，但尚未独立提交或 push；下一功能门禁是需另行授权的 C8。本页不授权 C8、生产初始化或外部接入。
 
 ## 04 — Capture 核心契约
 
