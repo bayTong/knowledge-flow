@@ -31,8 +31,13 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install package
-        run: python -m pip install --editable .
+      - name: Install build backend and package
+        run: |
+          # CLI-25 performs an offline source install with build isolation disabled.
+          # Provision the exact declared backend in the runner environment so the
+          # nested test venv can inherit it without consulting a package index.
+          python -m pip install "setuptools==80.9.0"
+          python -m pip install --editable .
 
       - name: Run full test suite
         run: python -m unittest discover -s tests -p "test_*.py"
