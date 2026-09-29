@@ -1,6 +1,6 @@
 # KnowledgeFlow 捕获与路由规范
 
-> 状态：Approved Design；四个本地文本操作、C6A–C6C 恢复/迁移能力及 C7 受限 CLI 已完成，但路由流程尚未完成<br>
+> 状态：Approved Design；MVP-0 四个文本操作、C6 恢复/迁移、C7 受限 CLI 及 C8 总验收已完成，但路由流程尚未完成<br>
 > C3 编码前收口日期：2026-09-09<br>
 > C3A/C3B 完成日期：2026-09-10<br>
 > C3C 完成日期：2026-09-11<br>
@@ -731,7 +731,7 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 |---|---|---|
 | Global Intake 是否是 KB | 不是；它是未分配 Capture Item 的逻辑视图 | 已确认 |
 | Capture Envelope 的实现 | 本地文件式 Capture Store + 不可变 Envelope；投影/outbox 可重建 | 已确认 |
-| 捕获的第一物理持久化位置 | 本地 Capture Store | 已确认；当前机器未来生产目标为 `E:\KnowledgeFlowData\capture-store`，但生产配置/目录尚未创建，需 C8 后另行授权初始化 |
+| 捕获的第一物理持久化位置 | 本地 Capture Store | 已确认；当前机器候选生产目标为 `E:\KnowledgeFlowData\capture-store`，但生产配置/目录尚未创建，只能在 P0D 精确授权后初始化 |
 | GBrain 角色 | 可选异步未审核镜像、捕获范围搜索和派生处理层 | 已确认；不承担唯一原件 |
 | GBrain 最小接法 | POC 优先本地 DB-only source + 薄同步适配器 | 待 POC 实证，不阻塞本地捕获 |
 | 已明确目标是否重复确认 | 不重复 | 用户明确指令已经是路由授权 |
@@ -745,10 +745,10 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 
 ## 24. 下一步
 
-1. 实现拆解与编码执行方案已经批准；四个公开文本操作以及 C6A 业务事务崩溃恢复、C6B 派生状态重建和 C6C Store 迁移均已闭合。C7-0 `dbe8329`、C7A `fb61358`、C7B `ea2b80c` 与 C7V 内容提交 `0787e60` 已同步到 `origin/main`；CI 可移植性修复 `4999232` 后，Windows CI 运行 `36529838017` 已在 305 项基线上通过。C7 已闭合；下一功能门禁为需另行授权的 C8，生产初始化与外部接入仍未授权。
-2. C8 通过后，可另行授权生产 Store 和只暴露既有 Capture 能力的最小本地收件箱，用真实 `capture_text/get_capture/list_captures/append_capture_version` dogfood；同时只在隔离临时 Store 做规模/结构基线实验。
-3. 根据实验冻结 Segment、Ledger、Profile 和 Evidence Bundle 的最小契约，再实现本地检索/证据 POC；不把 GBrain 作为前置。
-4. 证据形成后实现人工路由和 SOP-000A 调用边界，并把 SOP-001 的捕获/归属判断移出，使深层处理绑定精确 Capture 版本、范围和证据。
-5. 再评估候选图谱与 GBrain 未审核镜像 POC，实证副作用关闭和查询隔离。
-6. 根据实验证据定义 SOP-000B，并把 SOP-002 改为只消费绑定哈希、已经批准的精确变更集，补齐事务、校验和回滚后才允许可信写入。
-7. 最后再扩展更完整 UI、QQ、多设备和其他入口。
+1. C0–C8 已逐批闭合；证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功，MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。这不代表生产实例、路由或整体产品已经 `Effective`。
+2. 当前独立门禁是[P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)。先在临时 Store 闭合最小管理/冷备份能力和只暴露既有四操作的收件箱，再由 P0D 对精确配置、Store、备份和隐私边界另行授权；P0 前不得写入真实内容。
+3. P0V 形成真实使用证据后，再用隔离材料建立代表旅程、规模、处理成本和人工负担基线。
+4. 根据基线冻结 Task/Workspace、Segment、Ledger、Profile 和 Evidence Bundle 的最小契约，再实现本地检索/证据 POC；不把 GBrain 作为前置。
+5. 证据形成后实现人工路由和 SOP-000A 调用边界，并把 SOP-001 的捕获/归属判断移出，使深层处理绑定精确 Capture 版本、范围和证据。
+6. 再评估候选图谱与 GBrain 未审核镜像 POC，实证副作用关闭和查询隔离。
+7. 根据实验证据定义 SOP-000B，并把 SOP-002 改为只消费绑定哈希、已经批准的精确变更集，补齐事务、校验和回滚后才允许可信写入；更完整 UI、QQ、多设备和其他入口继续后置。

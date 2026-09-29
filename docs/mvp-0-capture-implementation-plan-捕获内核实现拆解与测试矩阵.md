@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0 -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0B -->
 
-> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核）；C8 本地与精确提交远端门禁已通过；下一独立门禁为 P0<br>
+> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核）；C8 本地与精确提交远端门禁已通过；P0A/P0A.1 已批准，下一独立门禁为需单独授权的 P0B-min<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>

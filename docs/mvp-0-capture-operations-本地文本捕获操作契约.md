@@ -752,4 +752,4 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures` 与 C4V 已分别实现或验收并版本化；C5A `63a3250`、C5B `ab2a613` 与 C5V `a9913e2` 已闭合追加阶段；C6A `84ee1d7` 以事务租约、保守扫描和 16 个真实进程终止边界闭合业务崩溃恢复，C6B `f686941` 闭合 REC-01–REC-03 与显式派生状态重建，C6C `ea8f84e` 闭合 MIG-01–MIG-05、显式 Store 迁移和旧写请求防分叉。C7-0 `dbe8329`、C7A `fb61358`、C7B `ea2b80c` 与 C7V 内容提交 `0787e60` 已同步到 `origin/main`；CI 可移植性修复 `4999232` 后，Windows CI 运行 `36529838017` 已在 305 项基线上通过。C7 已闭合。生产 Store、GBrain 与路由仍未实现，下一门禁为需另行授权的 C8。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。生产 Store、最小收件箱、GBrain 与路由仍未实现；当前独立门禁为 P0 方案复核以及后续分别授权的 P0B–P0V，不得由本契约直接推导生产初始化。

@@ -265,20 +265,20 @@ RAG 用于从可允许的查询范围中定位相关来源、组织 Evidence Bun
 
 - Capture Envelope v1 的规范字节和字段；
 - `capture-only`、`raw-source`、`deep-curation` 三个既有 `processing_mode` 值；
-- C0–C6 已实现的写入、读取、追加、恢复、重建和迁移语义；
-- C7 受限 CLI 的范围；
-- C8 的 MVP-0 验收目标。
+- C0–C8 已实现并通过验收的写入、读取、追加、恢复、重建、迁移和受限 CLI 语义；
+- MVP-0 单机单用户文本捕获内核的 `Implemented` 证据边界；
+- P0 只能暴露既有 Capture 能力、不得借界面或生产初始化新增语义 schema 的边界。
 
 `deep-curation` 只表示用户允许进入较深语义处理；未来路由器根据本规范提出或选择实际 Profile，并记录授权来源、范围、预计成本和缺口。`capture-only` 只授权可靠捕获和最低来源状态，不触发 Profile、Segment/Ledger 建立或语义索引。任何新的持久化 ledger、candidate 或 graph schema 都必须在对应功能门禁单独冻结。
 
 ## 12. 后续门禁
 
-1. C7 已完成并通过远端门禁；下一步在独立授权后完成 C8，闭合本地 Capture MVP；
-2. C8 通过后，可在用户明确授权下初始化生产 Capture Store，并用只暴露现有 Capture 能力的最小收件箱 dogfood；这不授权新增语义处理 schema；
-3. 用隔离临时 Store 和获准的非敏感真实材料做规模/结构基线实验，只测量分段、处理成本和审核负担，不新增生产 schema；
-4. 根据基线证据，通过独立设计批次冻结 Source Segment、Source Ledger 和三类 Profile 的最小契约；
-5. 实现本地检索和 Evidence Bundle POC，并比较三条路径的引用正确率、审核成本和语义召回；不要求先接 GBrain；
-6. 再决定候选图谱、GBrain、SOP-001/000B/002 和更完整 UI 的实现范围；
+1. C0–C8 已完成本地与精确提交的远端门禁；MVP-0 捕获内核只在限定范围内为 `Implemented`。
+2. 当前先按独立 P0 方案，在临时 Store 验证最小管理/冷备份路径和只暴露既有四操作的收件箱；精确生产初始化仍由 P0D 另行授权，且不授权新增语义处理 schema。
+3. P0V 取得真实交互证据后，用隔离临时 Store 和获准的非敏感材料做代表旅程、规模/结构、处理成本和审核负担基线实验，不新增生产 schema。
+4. 根据基线证据，通过独立设计批次冻结 Task/Workspace、Source Segment、Source Ledger 和三类 Profile 的最小契约。
+5. 实现本地检索和 Evidence Bundle POC，并比较三条路径的引用正确率、审核成本和语义召回；不要求先接 GBrain。
+6. 再决定人工路由、SOP-000A、候选图谱、GBrain、SOP-001/000B/002 和更完整知识工作界面的实现范围。
 7. 任何正式知识写入仍需精确批准、事务和回滚协议。
 
 ## 13. 当前未决问题

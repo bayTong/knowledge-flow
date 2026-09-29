@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0 -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0B -->
 
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-09-29）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2/R1.3 已明确：用户可从材料、问题、研究主题、已有 KB 或模糊意图开始；只针对已有知识的任务复用既有来源身份，`capture-only` 不授权深度语义处理，三类 Processing Profile 仍是 Draft 候选。这些需求澄清不改变 Capture v1。MVP-0 单机单用户文本捕获内核已完成 C0–C8：C8 本地 41 项定向验收、两轮各 305 项全量测试通过；证据提交 `63f3a3d` 已推送，[精确提交的 Windows CI](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 全绿。该限定范围状态为 `Implemented`；项目整体仍非 `Effective` 或生产就绪。下一独立门禁为 P0 生产初始化及最小收件箱 dogfood 规划与明确授权。生产配置和生产 Store 均未创建；三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。详见 [`C8 总验收报告`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-29）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2/R1.3 已明确：用户可从材料、问题、研究主题、已有 KB 或模糊意图开始；只针对已有知识的任务复用既有来源身份，`capture-only` 不授权深度语义处理，三类 Processing Profile 仍是 Draft 候选。这些需求澄清不改变 Capture v1。MVP-0 单机单用户文本捕获内核已完成 C0–C8：C8 本地 41 项定向验收、两轮各 305 项全量测试通过；证据提交 `63f3a3d` 已推送，[精确提交的 Windows CI](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 全绿。该限定范围状态为 `Implemented`；项目整体仍非 `Effective` 或生产就绪。[P0 生产初始化与最小收件箱 dogfood 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经 P0A.1 复核并进入 `Approved Design`，固定了首要旅程、P0B 限界、隐私/删除告知、待处理映射、客户端幂等和 P0D 精确授权分层。下一门禁是 P0B-min 的单独授权；P0B–P0V、生产初始化和界面实施均未因方案获批而自动获授权。生产配置和生产 Store 仍未创建；三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。详见 [`C8 总验收报告`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -25,6 +25,7 @@
 | 跨主题概念架构导读 | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
 | 当前 MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | C8 本地总验收报告 | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
+| P0 生产初始化与最小收件箱试用方案 | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
 | 版本与阶段变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -190,10 +191,11 @@ knowledge-flow/
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      主产品需求文档（唯一 L0 PRD）
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  非规范性跨主题概念地图
-│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       当前编码批次与授权门禁
-│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  实现选择与测试矩阵
+│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       已完成 C0–C8 批次与授权记录
+│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  已实现选择与测试矩阵
 │   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 本地证据、限制与状态建议
-│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      C8 状态收口前保留的 C3 细粒度决策
+│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  已批准的 P0 方案与分批授权边界
+│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      已完成 C3 细粒度决策，待 D2 归档评估
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           四个文本操作契约
@@ -242,8 +244,8 @@ MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端�
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)、[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)和[C8 本地总验收报告](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)共同说明当前实现与证据边界。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. 在 P0 独立门禁中先规划生产 Capture Store 初始化、备份、恢复和仅使用现有 Capture 能力的最小收件箱 dogfood；真实生产初始化和界面实施均需用户另行明确授权。
-5. 实验证据形成后再增加人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
+4. [P0 生产初始化与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经 P0A.1 复核并进入 `Approved Design`。下一步只能单独请求 P0B-min；P0B 尚未获实施授权，真实生产初始化和界面实施仍分别需要后续明确授权。
+5. P0V 后先建立代表旅程与本地检索/Evidence Bundle 实验基线，再决定人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
 

@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0 -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0B -->
 
-> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核）；下一独立门禁为 P0<br>
+> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核）；P0A/P0A.1 已批准，下一独立门禁为需单独授权的 P0B-min<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -845,7 +845,7 @@ C7V 单独复核和提交；只有 C7V 通过后才可声明 C7 完成并请求 
 
 完成记录（2026-09-28；内容与本地验证由独立提交 `0787e60` 版本化并已 push）：新增 5 项 Windows-first 验收，以测试专用 executor 屏障驱动两个真实 CLI 进程在同 key 下竞争，并以运行时生成文件闭合真实 4 MiB capture、64 MiB append 及两个版本 get 的字节/哈希证据；同时验证尾随单 byte 在核心调用前零提交、stdout 头/正文/flush 中途失败固定为 exit 70，以及临时 venv 中的非 editable 安装和 console script 发现。临时安装首次复现旧 setuptools 对 SPDX 字符串形式许可证元数据的不兼容，因此只把等价 MIT 声明改为兼容的 PEP 621 `text` 表形式，不改变许可证、运行时或公共接口。CLI-01–CLI-26、普通与严格 `ResourceWarning` 全量、`compileall`、`pip check`、文档护栏和生产路径前后快照均通过；当前为 305 项（捕获测试 290 项、脚本与文档测试 15 项）。未修改 `src/`、Python 公共 API、CLI 协议、Store schema 或错误优先级，也未创建生产配置/Store。
 
-远端门禁记录（2026-09-29）：`0787e60` 的首次 Windows CI 运行 `36526009368` 在普通测试阶段暴露 CLI-25 离线源码安装对 runner 全局 `setuptools.build_meta` 的隐含依赖。独立修复提交 `4999232` 只在 CI 安装步骤显式准备与 `pyproject.toml` 一致的 `setuptools==80.9.0`，保留禁网和 `--no-build-isolation` 验收，不修改业务代码、公共契约或测试数量。Windows CI 运行 `36529838017` 随后在精确提交 `4999232` 上通过安装、305 项普通与严格 `ResourceWarning` 测试、`compileall`、`pip check` 和确定性文档检查。C7 至此闭合；下一功能门禁为需另行授权的 C8，本记录不授权生产初始化或外部接入。
+远端门禁记录（2026-09-29）：`0787e60` 的首次 Windows CI 运行 `36526009368` 在普通测试阶段暴露 CLI-25 离线源码安装对 runner 全局 `setuptools.build_meta` 的隐含依赖。独立修复提交 `4999232` 只在 CI 安装步骤显式准备与 `pyproject.toml` 一致的 `setuptools==80.9.0`，保留禁网和 `--no-build-isolation` 验收，不修改业务代码、公共契约或测试数量。Windows CI 运行 `36529838017` 随后在精确提交 `4999232` 上通过安装、305 项普通与严格 `ResourceWarning` 测试、`compileall`、`pip check` 和确定性文档检查。C7 至此闭合；当时的下一功能门禁是另行授权的 C8，本记录不授权生产初始化或外部接入。C8 后续已闭合，当前状态见本方案 C8 完成记录与 P0 活动方案。
 
 ### C8：全量验收与文档状态
 

@@ -122,7 +122,7 @@ knowledge-flow/
                 "tests": 305,
                 "capture_tests": 290,
                 "script_tests": 15,
-                "next_gate": "P0",
+                "next_gate": "P0B",
             },
         )
 
