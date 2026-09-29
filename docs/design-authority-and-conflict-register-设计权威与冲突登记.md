@@ -1,8 +1,8 @@
 # KnowledgeFlow 设计权威与冲突登记
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=C8 -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0 -->
 
-> 状态：Approved Design；C8 本地总验收已通过，当前等待独立版本化、精确远端 Windows CI 与用户状态确认；下一门禁仍为 C8 收口<br>
+> 状态：本文为 Approved Design；MVP-0 单机单用户文本捕获内核为 `Implemented`；下一独立门禁为 P0 生产初始化规划与明确授权<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -42,10 +42,11 @@
 > R1.3 已有来源复用、处理授权与 Draft 方法边界澄清日期：2026-09-28（不改变 Capture v1 或下一功能门禁）<br>
 > C7V CLI 阶段本地验收日期：2026-09-28（内容提交 `0787e60`；已同步至 `origin/main`）<br>
 > C7V 远端门禁通过日期：2026-09-29（CI 可移植性修复 `4999232`；Windows CI 运行 `36529838017` 成功）<br>
-> C8 本地总验收日期：2026-09-29（41 项定向验收与两轮各 305 项全量测试通过；待独立提交与远端门禁）<br>
+> C8 本地总验收日期：2026-09-29（41 项定向验收与两轮各 305 项全量测试通过）<br>
+> C8 远端门禁与状态确认日期：2026-09-29（证据提交 `63f3a3d` 已 push；Windows CI 运行 `36544619016` 成功；用户指示通过后同步状态锚点）<br>
 > 当前状态同步日期：2026-09-29<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
-> 边界：C8 本地技术矩阵已通过并形成验收报告，但尚未独立提交、push、通过精确 C8 提交的远端门禁或获得用户状态确认。生产初始化与后续路由未完成，本文仍为 `Approved Design`，不是 `Effective`
+> 边界：C8 本地与精确提交的远端门禁均已通过；`Implemented` 只适用于 MVP-0 单机单用户文本捕获内核。生产初始化、长期运行、真实断电和后续路由均未完成；本文治理规则仍为 `Approved Design`，项目整体不是 `Effective`
 
 ## 1. 为什么需要本文件
 
@@ -62,11 +63,12 @@
 |---|---|
 | `Draft` | 正在讨论，不能作为实现必须遵守的最终规则 |
 | `Approved Design` | 设计已经人工确认，可以作为后续设计和实现依据，但不代表已有实现 |
+| `Implemented` | 指定范围的代码已版本化，按已批准契约通过本地验收及精确提交的远端门禁；只证明该范围内的实现和已测行为，不表示生产实例、长期运行或整个产品已验收 |
 | `Effective` | 已有实现和验收与该规范对齐，当前运行系统必须遵守 |
 | `Superseded` | 对应主题已经被新规范取代，仅供迁移和历史追溯 |
 | `Historical` | 完整历史版本，不再参与当前设计决策 |
 
-当前项目已完成并独立版本化 C3 写入内核、C4 读取阶段、C5 追加阶段、C6 崩溃恢复/派生状态重建/Store 迁移，以及 C7A/C7B/C7V 受限 CLI 协议、生产分派、安装入口和阶段验收；C7V 远端门禁也已通过。C8 本地总验收已通过，证据支持把 MVP-0 捕获内核视为 `Implemented` 候选，但该词尚未进入本节正式状态表，且 C8 提交、远端门禁和用户确认未完成，所以当前仍保持 `Approved Design`，不标记为 `Effective`。
+当前项目已完成 C0–C8 的分批实现与验收。C8 证据提交 `63f3a3d` 已推送；[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交上成功，用户随后明确要求同步 C8 状态锚点。因此，MVP-0 单机单用户文本捕获内核（Store 初始化与配置解析、四个文本操作、显式恢复/迁移、受限 CLI）采用 `Implemented`。这是主题级状态，不升级顶层产品需求、人工路由、语义处理、GBrain 或整个项目；生产 Store 尚未创建，不能标记为 `Effective`。
 
 ## 2A. 编号空间与辨识规则
 
@@ -97,10 +99,10 @@
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Approved Design | GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Approved Design | 2026-09-09 已完成编码前收口；C3A/C3B 支撑实现于 2026-09-10 验收，C3C 完整事务与 C3V 独立验收于 2026-09-11 完成 |
-| MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Approved Design | 已确认每机配置、绝对解析、迁移、4/64 MiB 边界；C4-0 冻结读取语义，C5-0 冻结追加契约，C6A 冻结事务恢复边界；C6B/C6C 管理操作与四个日常文本操作分离 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Approved Design | C7V 后当前 305 项；2026-09-29 C8 又以 41 项定向验收、两轮各 305 项全量、安装/文档/生产路径检查完成本地总复核，测试数不变 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Approved Design | C8 本地总验收已通过；下一门禁为 C8 独立版本化、精确远端 CI 和用户状态确认，生产初始化仍需另行授权 |
-| MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地结论为 `Implemented` 候选而非 `Effective`；报告本身不执行状态升级或生产初始化 |
+| MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Implemented（限定 MVP-0 文本范围） | 每机配置、四操作、显式恢复/迁移和受限 CLI 已按 C8 验收；不含生产实例或后续路由 |
+| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Implemented（限定 MVP-0 文本范围） | 41 项定向验收、两轮各 305 项本地全量及精确提交 `63f3a3d` 的远端 Windows CI 已通过 |
+| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Implemented（C0–C8） | C8 已闭合；P0 生产初始化仍需独立规划与用户明确授权 |
+| MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由当前编码方案、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
@@ -394,7 +396,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | 业务事务崩溃恢复 | C6A 已用每事务 Windows 内核租约、保守直接子项扫描和 9 个 capture + 7 个 append 真实 `os._exit()` 边界完成；未知、旧式、活跃、reparse 与身份变化对象均不自动清理 |
 | 派生状态重建 | C6B 已实现显式管理操作：完整验证不可变事实后原子重建 `capture.yaml`，恢复空索引/outbox 骨架并证明可重复、可中断；不发明持久索引/job schema，也不借机修复 staging、尾部或损坏原件 |
 | Store 迁移 | C6C 已实现显式管理操作：先验源、有界复制、完整验目标、同目录原子切换配置并保留源；兼容部分目标可续传，外来或损坏目标保留并失败关闭 |
-| 受限 CLI | C7A/C7B 协议层、真实四操作分派与安装入口已完成并版本化；C7V 已完成远端门禁，C8 本地又在 305 项基线上总复核通过，当前等待 C8 版本化、远端门禁和状态确认 |
+| 受限 CLI | C7A/C7B 协议层、真实四操作分派与安装入口已完成并版本化；C7V 与 C8 远端门禁已通过，纳入限定范围的 `Implemented` |
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
@@ -424,6 +426,6 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 
 1. D-009–D-012 的治理红线已于 2026-09-21 确认；R1 同日把现有需求基线收口为唯一 L0 顶层需求入口并建立稳定需求 ID 与追踪矩阵，R1.2 又由 D-013–D-016 明确通用知识任务、结构非前置、风险分层和工作知识层。R1.3 进一步澄清已有来源复用、处理授权与 Draft 方法边界。第 4C 节和渐进式规范中的方法/实现细节继续保持 Draft，不修改 Capture v1 或现有实现。
 2. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
-3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)已经批准；C0–C7V 已逐批完成并版本化，C8 本地总验收也已通过。下一门禁是把 C8 证据独立版本化、在精确提交上通过远端 Windows CI，并由用户确认正式状态。
+3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)中的 C0–C8 已逐批完成；C8 证据提交 `63f3a3d` 和其远端 Windows CI 运行 `36544619016` 已通过，限定范围的捕获内核状态为 `Implemented`。
 4. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
-5. C8 本地总验收已完成；在 C8 提交、远端门禁和用户状态确认前，不接 GBrain、不实现人工路由，也不启动 SOP-001/002 重构或渐进式处理实验。
+5. 下一独立门禁 P0 应先明确生产 Store 初始化、备份与最小收件箱 dogfood 的方案和验收边界，再由用户明确授权执行；GBrain、人工路由、SOP-001/002 重构与渐进式处理实验仍各自保留独立门禁。

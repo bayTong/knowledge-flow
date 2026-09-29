@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=C8 -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0 -->
 
 > A general-purpose, adaptive, governance-first personal knowledge-work system: start from
 > material, a question, or a vague intent; let the system do most knowledge labor while evidence,
 > trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-09-29):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2 makes the long-term product direction explicit; R1.3 further clarifies that a task over existing knowledge reuses existing source identities, `capture-only` does not authorize deep semantic processing, and the three current Processing Profiles remain Draft candidates rather than frozen product methods. These clarifications do not change Capture v1. C7 is complete and passed its remote gate. C8 local final acceptance has now passed at baseline `896c64c`: 41 directed acceptance tests, two complete 305-test runs, and engineering/production-path checks all succeeded. The result makes the MVP-0 capture kernel an `Implemented` candidate, but C8 still needs an independent commit, exact-commit remote Windows CI, and explicit user confirmation of the formal status. Until then the next gate remains C8 closure; the project is neither `Effective` nor production-ready. No production configuration or Store was created. See the [`C8 local final acceptance report`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-29):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2/R1.3 clarify that users may start from material, a question, a research topic, an existing KB, or a vague intent; tasks over existing knowledge reuse source identities, `capture-only` does not authorize deep semantic processing, and the three Processing Profiles remain Draft candidates. These changes do not alter Capture v1. The single-machine, single-user MVP-0 text capture kernel has completed C0–C8: 41 directed local acceptance tests and two complete 305-test runs passed; evidence commit `63f3a3d` was pushed and its [exact-commit Windows CI](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) passed. That limited scope is `Implemented`; the overall project is not `Effective` or production-ready. The next independent gate is P0 planning and explicit authorization for production initialization and minimal inbox dogfood. No production configuration or Store was created; Processing Profile defaults, the Source Ledger physical contract, and retrieval remain Draft. See the [`C8 acceptance report`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -240,12 +240,12 @@ knowledge-flow/
 
 ## Quick Start
 
-The MVP-0 capture kernel has passed local C8 technical acceptance, but C8 is not closed until it is versioned, checked by exact-commit remote CI, and formally confirmed. Production initialization is still unauthorized, so there is no production-ready complete flow yet. The next order is:
+The single-machine, single-user MVP-0 text capture kernel passed local C8 acceptance and exact-commit remote CI, and its limited scope is `Implemented`. Production initialization still requires separate authorization, so there is no production-ready complete flow yet. The next order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
 2. Read the [implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md), [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md), and [C8 local acceptance report](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) together for the current implementation and evidence boundary.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. Commit and push the C8 documents independently, pass Windows CI at the exact C8 commit, then obtain explicit user confirmation before adopting an `Implemented` status. A production Capture Store and minimal inbox dogfood remain separate authorizations.
+4. At the independent P0 gate, plan production Capture Store initialization, backup, recovery, and minimal inbox dogfood using existing Capture capabilities. Actual production initialization and interface implementation each require separate user authorization.
 5. Add manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, and the unreviewed GBrain mirror only after that evidence exists. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.

@@ -36,16 +36,16 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 
 这份导读不建立第二份需求或技术契约。发生冲突时，必须修改导读以服从 01 的 L0 基线、02 的主题权威和后续各主题规范，不能反向用导读覆盖它们。
 
-## 03 — 当前 MVP-0 执行顺序
+## 03 — MVP-0 实现证据与下一门禁
 
-按下面顺序阅读，不要把“已批准设计”误认为“已经实现”：
+按下面顺序阅读实现范围、验收证据与未获授权的下一步：
 
 1. [捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)：当前批次、授权停点和验收顺序。
 2. [捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)：运行时选择、模块边界和测试矩阵。
-3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；保留到 C8 总验收完成后再归档。
-4. [C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：C8 本地证据、未证明项、平台限制和状态建议。
+3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；归档另作独立文档维护批次。
+4. [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：C8 本地证据、后续远端门禁、未证明项和状态范围。
 
-C7-0、C7A、C7B 与 C7V 均已完成并同步到 `origin/main`；C7V 内容提交为 `0787e60`，CI 可移植性修复为 `4999232`。Windows CI 运行 [`36529838017`](https://github.com/bayTong/knowledge-flow/actions/runs/36529838017) 已在后一个精确提交的 `windows-latest` / Python 3.13 环境通过安装、305 项普通与严格测试、编译、依赖和文档检查。C8 本地总验收已于 2026-09-29 通过，当前等待独立版本化、精确远端 CI 和用户状态确认；在这些步骤完成前，下一门禁仍记为 C8 收口。本页不授权生产初始化或外部接入。
+C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。下一独立门禁 P0 需规划生产初始化、备份与最小收件箱 dogfood，并在执行前获得用户明确授权；本页不授权生产初始化或外部接入。
 
 ## 04 — Capture 核心契约
 

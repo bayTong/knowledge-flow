@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=C8 -->
+<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0 -->
 
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-09-29）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2 已明确长期产品允许从材料、问题、研究主题、已有 KB 或模糊意图开始；R1.3 进一步澄清：只针对已有知识的任务复用既有来源身份，`capture-only` 不授权深度语义处理，三类 Processing Profile 仍是 Draft 候选而非冻结的产品方法。这些需求澄清不改变 Capture v1。C7 已完成并通过远端门禁；C8 本地总验收又在 `896c64c` 基线上通过 41 项定向验收、两轮各 305 项全量测试及工程/生产路径检查，结论为 MVP-0 捕获内核达到 `Implemented` 候选条件。C8 尚待独立版本化、在精确提交上通过远端 Windows CI，并由用户确认正式状态；在此之前下一门禁仍记为 C8 收口，不能标记为 `Effective` 或生产就绪。三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。生产配置和生产 Store 均未创建。详见 [`C8 本地总验收报告`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-29）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2/R1.3 已明确：用户可从材料、问题、研究主题、已有 KB 或模糊意图开始；只针对已有知识的任务复用既有来源身份，`capture-only` 不授权深度语义处理，三类 Processing Profile 仍是 Draft 候选。这些需求澄清不改变 Capture v1。MVP-0 单机单用户文本捕获内核已完成 C0–C8：C8 本地 41 项定向验收、两轮各 305 项全量测试通过；证据提交 `63f3a3d` 已推送，[精确提交的 Windows CI](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 全绿。该限定范围状态为 `Implemented`；项目整体仍非 `Effective` 或生产就绪。下一独立门禁为 P0 生产初始化及最小收件箱 dogfood 规划与明确授权。生产配置和生产 Store 均未创建；三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。详见 [`C8 总验收报告`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -237,12 +237,12 @@ knowledge-flow/
 
 ## 快速开始
 
-MVP-0 捕获内核已经通过 C8 本地技术验收，但 C8 尚未完成版本化、精确远端 CI 和正式状态确认；生产初始化也仍未授权，因此还不能宣称存在生产可用的完整链路。正确的后续顺序是：
+MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端验收，限定范围状态为 `Implemented`。生产初始化尚未授权，因此还不存在生产可用的完整链路。后续顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)、[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)和[C8 本地总验收报告](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)共同说明当前实现与证据边界。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. 先独立提交并 push C8 文档，在精确 C8 提交上通过 Windows CI，再由用户确认是否采用 `Implemented` 状态；生产 Capture Store 和仅使用现有 Capture 能力的最小收件箱 dogfood 仍需另行授权。
+4. 在 P0 独立门禁中先规划生产 Capture Store 初始化、备份、恢复和仅使用现有 Capture 能力的最小收件箱 dogfood；真实生产初始化和界面实施均需用户另行明确授权。
 5. 实验证据形成后再增加人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。

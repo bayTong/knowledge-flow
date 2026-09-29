@@ -50,6 +50,7 @@
 - **完成 R1.3 需求边界澄清的内容修订**：明确只针对已有知识的任务复用既有来源身份，不要求重复创建 Capture；区分最低来源状态、当前任务内检索/回答与持久化语义派生处理的授权；明确 `capture-only` 不触发深度语义处理，并把 `full-map`、`hierarchical-map`、`retrieval-first` 保持为可由实验替换的 Draft 候选方法。本次只修订需求、主题规范和非规范性导读，不改变 Capture v1、C7V 门禁、代码或生产 Store。
 - **同步 C7V、修复 CI 可移植性并通过远端门禁**：C7V 内容提交 `0787e60` 的首次 Windows CI 运行 `36526009368` 暴露 CLI-25 离线源码安装对 runner 全局构建后端的隐含依赖；提交 `4999232` 在 CI 安装阶段显式准备与 `pyproject.toml` 一致的 `setuptools==80.9.0`，不放宽禁网或 `--no-build-isolation` 验收。Windows CI 运行 [`36529838017`](https://github.com/bayTong/knowledge-flow/actions/runs/36529838017) 随后在精确提交 `4999232` 上通过安装、305 项普通与严格 `ResourceWarning` 测试、`compileall`、`pip check` 和文档护栏。C7 至此闭合；下一功能门禁为仍需另行授权的 C8，总验收、生产配置、生产 Store 与外部接入均未因此获得授权。
 - **完成 C8 本地总验收与说明收口**：以 `896c64c` 为被验收基线，41 项故障/边界/并发/迁移/CLI 定向验收、普通与严格 `ResourceWarning` 两轮各 305 项全量测试、`compileall`、`pip check`、文档护栏、安装入口、仓库卫生和生产路径前后快照均通过；验收前后默认机器配置与生产 Store 均不存在。本机目录元数据 flush 实测为 `unsupported`，所以结论仅支持 `Implemented` 候选，不支持 `Effective` 或抗突然断电声明。双语 README 补充机器协议入口说明，错误/警告表补齐管理操作专用及保留值，文档护栏路由白名单同步纳入 C8 报告且 15 项脚本回归通过；C8 尚待独立提交、精确远端 CI 与用户状态确认，不授权生产初始化或外部接入。
+- **闭合 C8 远端门禁并同步限定状态**：C8 证据由独立提交 `63f3a3d` 封存且已推送；[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交上通过安装、普通与严格 `ResourceWarning` 全量测试、编译、依赖和文档检查。用户随后指示同步状态锚点，故新增 `Implemented` 状态并只用于 MVP-0 单机单用户文本捕获内核；整体产品仍非 `Effective`，生产配置/Store 未创建。下一独立门禁为 P0 生产初始化及最小收件箱 dogfood 规划，实施另需明确授权。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
 
