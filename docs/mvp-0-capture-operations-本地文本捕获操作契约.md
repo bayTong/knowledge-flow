@@ -1,6 +1,6 @@
 # MVP-0 本地文本捕获操作契约
 
-> 状态：Approved Design；四个公开文本操作、C5V、C6A–C6C 恢复/迁移能力及 C7 受限 CLI 已完成<br>
+> 状态：Approved Design；四个公开文本操作、C5V、C6A–C6C 恢复/迁移能力及 C7 受限 CLI 已完成，C8 本地总验收已通过<br>
 > 确认日期：2026-09-02<br>
 > C3-0 补充确认日期：2026-09-08<br>
 > C3 编码前收口日期：2026-09-09<br>
@@ -20,8 +20,9 @@
 > C6 远端门禁通过日期：2026-09-18（截至 `ea8f84e`；Windows CI 运行 `35319645501` 首次通过）<br>
 > C7-0 CLI 适配映射确认日期：2026-09-21；C7A 私有协议层完成并独立版本化日期：2026-09-22（`fb61358`，已 push）；C7B 四操作适配与安装入口完成日期：2026-09-24（`ea2b80c`，已 push；Windows CI 运行 `35997733639` 成功）<br>
 > C7V CLI 阶段验收日期：2026-09-28（内容提交 `0787e60`；305 项通过）；远端门禁通过日期：2026-09-29（CI 修复 `4999232`；运行 `36529838017` 成功）<br>
+> C8 本地总验收日期：2026-09-29（待独立提交、远端门禁和用户状态确认）<br>
 > 适用范围：单机、单用户、纯文本捕获<br>
-> 边界：本文定义调用方可见的四个日常文本操作及 C7 CLI 的一对一适配边界；C6A 不增加公开参数，C6B/C6C 的显式管理操作与四操作分离；C7A/C7B/C7V 已完成协议、四操作分派、安装入口与阶段验收，并通过远端门禁；C8、生产目录和外部接入仍未完成
+> 边界：本文定义调用方可见的四个日常文本操作及 C7 CLI 的一对一适配边界；C6A 不增加公开参数，C6B/C6C 的显式管理操作与四操作分离；C8 本地矩阵已通过但尚待版本化、远端复验和正式状态确认；生产目录和外部接入仍未完成
 
 ## 0. 结论先行
 
@@ -655,6 +656,7 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 | `config_invalid` | 全部 | 配置语法、schema、字段或路径值不合法 | 修正配置后 |
 | `unrecognized_existing_directory` | 全部 | 配置指向的既有目录不是可识别的 Capture Store | 检查路径，不得自动接管 |
 | `unsupported_store_version` | 全部 | Manifest schema/layout 版本不受支持 | 先执行未来的显式迁移 |
+| `config_store_conflict` | `init_capture_store`、`migrate_capture_store` 管理操作；不由四个日常文本操作产生 | 已有配置与请求的 Store 或阈值冲突，或迁移切换现场不再匹配 | 保留现状，核对配置、Store ID 和迁移目标后再显式操作 |
 | `capture_store_not_initialized` | 全部 | 配置根目录不存在，或合法 Manifest 的固定骨架不完整 | 显式初始化或修复后 |
 | `capture_store_unavailable` | 全部 | 配置、根目录、锁或磁盘当前无法安全访问/写入 | 修复环境后 |
 | `invalid_input` | 全部 | 字段缺失、空字符串或格式错误 | 修正请求后 |
@@ -674,6 +676,7 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 | 警告码 | 适用操作 | 含义 |
 |---|---|---|
 | `projection_needs_rebuild` | 全部 | 当前状态投影缺失、损坏或提交后更新失败；不可变原件仍有效 |
+| `outbox_needs_rebuild` | 公共模型为未来 outbox 投影保留；当前四个日常文本操作不产生 | outbox 派生投影提交后更新失败；本地不可变原件仍有效 |
 | `incomplete_version_ignored` | 两个读取操作；append 已提交幂等命中 | 唯一无版本建立 Event 的 N+1 尾部目录不可见；固定消息 `incomplete capture version was ignored` |
 
 读取 warning 及 append 幂等命中返回的当前事实 warning，其 `details` 至少包含受影响的 `capture_id`；`incomplete_version_ignored` 还必须包含整数 `version`。警告不授权读取或追加操作修复、接管不匹配尾部或清理磁盘状态。

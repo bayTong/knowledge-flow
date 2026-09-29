@@ -43,8 +43,9 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 1. [捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)：当前批次、授权停点和验收顺序。
 2. [捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)：运行时选择、模块边界和测试矩阵。
 3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；保留到 C8 总验收完成后再归档。
+4. [C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：C8 本地证据、未证明项、平台限制和状态建议。
 
-C7-0、C7A、C7B 与 C7V 均已完成并同步到 `origin/main`；C7V 内容提交为 `0787e60`，CI 可移植性修复为 `4999232`。Windows CI 运行 [`36529838017`](https://github.com/bayTong/knowledge-flow/actions/runs/36529838017) 已在后一个精确提交的 `windows-latest` / Python 3.13 环境通过安装、305 项普通与严格测试、编译、依赖和文档检查。C7 已闭合；下一功能门禁是需另行授权的 C8。本页不授权 C8、生产初始化或外部接入。
+C7-0、C7A、C7B 与 C7V 均已完成并同步到 `origin/main`；C7V 内容提交为 `0787e60`，CI 可移植性修复为 `4999232`。Windows CI 运行 [`36529838017`](https://github.com/bayTong/knowledge-flow/actions/runs/36529838017) 已在后一个精确提交的 `windows-latest` / Python 3.13 环境通过安装、305 项普通与严格测试、编译、依赖和文档检查。C8 本地总验收已于 2026-09-29 通过，当前等待独立版本化、精确远端 CI 和用户状态确认；在这些步骤完成前，下一门禁仍记为 C8 收口。本页不授权生产初始化或外部接入。
 
 ## 04 — Capture 核心契约
 

@@ -8,7 +8,7 @@
 > material, a question, or a vague intent; let the system do most knowledge labor while evidence,
 > trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-09-29):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2 makes the long-term product direction explicit; R1.3 further clarifies that a task over existing knowledge reuses existing source identities, `capture-only` does not authorize deep semantic processing, and the three current Processing Profiles remain Draft candidates rather than frozen product methods. These requirements clarifications do not change Capture v1. C7V has completed CLI-01–CLI-26, including real 4 MiB/64 MiB streaming, a two-process same-key race, zero-commit trailing-byte rejection, terminal stdout failures, and a temporary installed-entry smoke test. Its content commit `0787e60` and CI portability fix `4999232` are on `origin/main`; Windows CI run [`36529838017`](https://github.com/bayTong/knowledge-flow/actions/runs/36529838017) passed all gates at the exact latter commit. The verified baseline remains 305 tests (290 capture tests and 15 script/document tests). C7 is therefore complete; the next functional gate is C8 final acceptance, which still requires separate authorization. The three Profile defaults, Source Ledger persistence contract, and retrieval implementation remain Draft. No production configuration or Store was created. See the [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-29):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2 makes the long-term product direction explicit; R1.3 further clarifies that a task over existing knowledge reuses existing source identities, `capture-only` does not authorize deep semantic processing, and the three current Processing Profiles remain Draft candidates rather than frozen product methods. These clarifications do not change Capture v1. C7 is complete and passed its remote gate. C8 local final acceptance has now passed at baseline `896c64c`: 41 directed acceptance tests, two complete 305-test runs, and engineering/production-path checks all succeeded. The result makes the MVP-0 capture kernel an `Implemented` candidate, but C8 still needs an independent commit, exact-commit remote Windows CI, and explicit user confirmation of the formal status. Until then the next gate remains C8 closure; the project is neither `Effective` nor production-ready. No production configuration or Store was created. See the [`C8 local final acceptance report`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -24,6 +24,7 @@
 | Current design authority and conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
 | Current MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| C8 local final acceptance report | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
 | Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -194,7 +195,8 @@ knowledge-flow/
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  Non-normative cross-topic concept map
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Current coding batches and authorization gates
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Implementation choices and test matrix
-│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      C3 details retained through C8
+│   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 local evidence, limits, and status recommendation
+│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      C3 details retained until C8 status closure
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Four text-operation contract
@@ -238,15 +240,28 @@ knowledge-flow/
 
 ## Quick Start
 
-The complete capture MVP is not implemented yet. Public `capture_text`, `get_capture`, `list_captures`, and `append_capture_version` are implemented, and C7V has completed and passed the remote gate for the four-operation installed CLI. Final C8 acceptance and production initialization remain pending, so there is no production-ready complete flow yet. The implementation order is:
+The MVP-0 capture kernel has passed local C8 technical acceptance, but C8 is not closed until it is versioned, checked by exact-commit remote CI, and formally confirmed. Production initialization is still unauthorized, so there is no production-ready complete flow yet. The next order is:
 
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
-2. The [MVP-0 implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) and [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) are approved. C0 through C7V are complete, versioned, and pushed through the C7V content commit `0787e60` and CI portability fix `4999232`; Windows CI run `36529838017` passed at the exact latter commit with the 305-test baseline.
+2. Read the [implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md), [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md), and [C8 local acceptance report](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) together for the current implementation and evidence boundary.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. Request separate authorization for C8 final acceptance. Once C8 passes, a production Capture Store and a minimal inbox limited to existing Capture capabilities may be authorized separately for dogfooding; in parallel, establish scale/structure baselines in isolated temporary Stores, then freeze the Segment/Ledger/Profile/Evidence Bundle contracts and run a local-retrieval comparison experiment.
+4. Commit and push the C8 documents independently, pass Windows CI at the exact C8 commit, then obtain explicit user confirmation before adopting an `Implemented` status. A production Capture Store and minimal inbox dogfood remain separate authorizations.
 5. Add manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, and the unreviewed GBrain mirror only after that evidence exists. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
+
+### Installed capture CLI
+
+`knowledgeflow-capture` is a **machine-protocol entry point** for local adapters, not an interactive shell command. The installed package exposes exactly four commands:
+
+```text
+knowledgeflow-capture capture_text [--config <absolute local Windows path>]
+knowledgeflow-capture append_capture_version [--config <absolute local Windows path>]
+knowledgeflow-capture get_capture [--config <absolute local Windows path>]
+knowledgeflow-capture list_captures [--config <absolute local Windows path>]
+```
+
+stdin must contain one single-line UTF-8 JSON header, LF or CRLF, exactly `body_length_bytes` raw body bytes, and EOF. Read/list requests require a zero-length body. With exit 0 or 2, stdout uses the same single-line header + LF + exact body + EOF framing; exit 70 means stdout may be incomplete and must be discarded in full. The entry point deliberately has no `--help`, `--version`, Store initialization, recovery, migration, routing, or test-policy switch, and invoking it never auto-creates a production configuration or Store. See [implementation matrix §3.7](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约) and [four-operation contract §7A](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射) for the exact fields, frames, exit codes, and safety boundaries.
 
 ---
 
