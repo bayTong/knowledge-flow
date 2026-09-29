@@ -7,7 +7,7 @@
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-09-28）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2 已明确长期产品允许从材料、问题、研究主题、已有 KB 或模糊意图开始；R1.3 进一步澄清：只针对已有知识的任务复用既有来源身份，`capture-only` 不授权深度语义处理，三类 Processing Profile 仍是 Draft 候选而非冻结的产品方法。这些需求澄清不改变 Capture v1。C7V 已在本地闭合 CLI-01–CLI-26，包括真实 4 MiB/64 MiB 双向流、两个真实进程同 key 竞争、尾随 byte 零提交、stdout 终止失败和临时安装入口验收。本地测试基线现为 305 项（捕获测试 290 项、脚本与文档测试 15 项）；C7V 工作树尚未提交或 push。最近一次远端门禁仍是 C7B `ea2b80c`，Windows CI 运行 [`35997733639`](https://github.com/bayTong/knowledge-flow/actions/runs/35997733639) 已通过。下一功能门禁为需另行授权的 C8 总验收。三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
+> **当前状态（2026-09-29）**：项目正在从旧版“直接初始化/策展写入流程”迁移到“本地可靠捕获 → 人工路由 → 提案 → 精确批准 → 可回滚写入”的新治理架构。R1.2 已明确长期产品允许从材料、问题、研究主题、已有 KB 或模糊意图开始；R1.3 进一步澄清：只针对已有知识的任务复用既有来源身份，`capture-only` 不授权深度语义处理，三类 Processing Profile 仍是 Draft 候选而非冻结的产品方法。这些需求澄清不改变 Capture v1。C7V 已闭合 CLI-01–CLI-26，包括真实 4 MiB/64 MiB 双向流、两个真实进程同 key 竞争、尾随 byte 零提交、stdout 终止失败和临时安装入口验收。内容提交 `0787e60` 与 CI 可移植性修复 `4999232` 均已同步到 `origin/main`；Windows CI 运行 [`36529838017`](https://github.com/bayTong/knowledge-flow/actions/runs/36529838017) 已在后一个精确提交上通过全部门禁。验证基线仍为 305 项（捕获测试 290 项、脚本与文档测试 15 项）。C7 因此已完成；下一功能门禁为仍需另行授权的 C8 总验收。三类 Profile 的默认路由、Source Ledger 物理契约和检索实现仍为 Draft。生产配置和生产 Store 均未创建。当前权威范围和冲突裁决见 [`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。旧 SOP-002 及其写入提示词暂停执行。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -235,12 +235,12 @@ knowledge-flow/
 
 ## 快速开始
 
-完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C7V 也已在本地完成四操作安装式 CLI 的独立验收。C7V 仍待独立提交和远端门禁，C8 总验收与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
+完整的捕获 MVP 尚未实现。公开 `capture_text`、`get_capture`、`list_captures` 与 `append_capture_version` 已实现，C7V 也已完成四操作安装式 CLI 的独立验收并通过远端门禁。C8 总验收与生产初始化仍未完成，因此还不能宣称存在生产可用的完整链路。正确的后续建设顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
-2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C7B 均已完成并版本化，截至 `ea2b80c` 已 push；C7V 已在 305 项本地基线下完成，但尚未提交或 push。
+2. [MVP-0 捕获内核实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)和[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)均已批准；C0–C7V 均已完成并版本化，C7V 内容提交 `0787e60` 与 CI 可移植性修复 `4999232` 已 push，Windows CI 运行 `36529838017` 已在 305 项基线上通过。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. 先独立复核并提交 C7V，再运行远端 Windows CI 门禁；此后另行请求 C8 总验收授权。C8 通过后可另行授权生产 Capture Store 和仅使用现有 Capture 能力的最小收件箱 dogfood，同时用隔离临时 Store 做规模/结构基线实验，再冻结 Segment/Ledger/Profile/Evidence Bundle 契约并开展本地检索对照实验。
+4. 另行请求 C8 总验收授权。C8 通过后可另行授权生产 Capture Store 和仅使用现有 Capture 能力的最小收件箱 dogfood，同时用隔离临时 Store 做规模/结构基线实验，再冻结 Segment/Ledger/Profile/Evidence Bundle 契约并开展本地检索对照实验。
 5. 实验证据形成后再增加人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。

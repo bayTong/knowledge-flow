@@ -273,7 +273,7 @@ RAG 用于从可允许的查询范围中定位相关来源、组织 Evidence Bun
 
 ## 12. 后续门禁
 
-1. 先完成 C7–C8，闭合本地 Capture MVP；
+1. C7 已完成并通过远端门禁；下一步在独立授权后完成 C8，闭合本地 Capture MVP；
 2. C8 通过后，可在用户明确授权下初始化生产 Capture Store，并用只暴露现有 Capture 能力的最小收件箱 dogfood；这不授权新增语义处理 schema；
 3. 用隔离临时 Store 和获准的非敏感真实材料做规模/结构基线实验，只测量分段、处理成本和审核负担，不新增生产 schema；
 4. 根据基线证据，通过独立设计批次冻结 Source Segment、Source Ledger 和三类 Profile 的最小契约；

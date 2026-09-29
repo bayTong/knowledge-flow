@@ -1,6 +1,6 @@
 # KnowledgeFlow 捕获与路由规范
 
-> 状态：Approved Design；四个本地文本操作及 C6A–C6C 恢复/迁移能力已完成，但路由流程尚未完成<br>
+> 状态：Approved Design；四个本地文本操作、C6A–C6C 恢复/迁移能力及 C7 受限 CLI 已完成，但路由流程尚未完成<br>
 > C3 编码前收口日期：2026-09-09<br>
 > C3A/C3B 完成日期：2026-09-10<br>
 > C3C 完成日期：2026-09-11<br>
@@ -745,7 +745,7 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 
 ## 24. 下一步
 
-1. 实现拆解与编码执行方案已经批准；四个公开文本操作以及 C6A 业务事务崩溃恢复、C6B 派生状态重建和 C6C Store 迁移均已闭合。C7-0 `dbe8329`、C7A `fb61358` 与 C7B `ea2b80c` 已同步到 `origin/main`；Windows CI 运行 `35997733639` 已在 `ea2b80c` 上通过。C7V 已完成本地 CLI 阶段验收并待独立提交/远端门禁；下一功能门禁为需另行授权的 C8，生产初始化与外部接入仍未授权。
+1. 实现拆解与编码执行方案已经批准；四个公开文本操作以及 C6A 业务事务崩溃恢复、C6B 派生状态重建和 C6C Store 迁移均已闭合。C7-0 `dbe8329`、C7A `fb61358`、C7B `ea2b80c` 与 C7V 内容提交 `0787e60` 已同步到 `origin/main`；CI 可移植性修复 `4999232` 后，Windows CI 运行 `36529838017` 已在 305 项基线上通过。C7 已闭合；下一功能门禁为需另行授权的 C8，生产初始化与外部接入仍未授权。
 2. C8 通过后，可另行授权生产 Store 和只暴露既有 Capture 能力的最小本地收件箱，用真实 `capture_text/get_capture/list_captures/append_capture_version` dogfood；同时只在隔离临时 Store 做规模/结构基线实验。
 3. 根据实验冻结 Segment、Ledger、Profile 和 Evidence Bundle 的最小契约，再实现本地检索/证据 POC；不把 GBrain 作为前置。
 4. 证据形成后实现人工路由和 SOP-000A 调用边界，并把 SOP-001 的捕获/归属判断移出，使深层处理绑定精确 Capture 版本、范围和证据。
