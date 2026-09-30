@@ -50,6 +50,7 @@ from .operations import (
     list_captures,
 )
 from .paths import PathPolicy, PathPolicyError
+from .runtime import production_path_policy, production_source_root
 
 
 _REQUEST_SCHEMA = "knowledgeflow.capture-cli-request"
@@ -868,20 +869,13 @@ def _run_cli(
 def _production_source_root() -> Path:
     """Return the trusted package root, or the whole repository in a src checkout."""
 
-    package_root = Path(__file__).resolve(strict=True).parent
-    repository_root = package_root.parent.parent
-    if (
-        package_root.parent.name.casefold() == "src"
-        and (repository_root / "pyproject.toml").is_file()
-    ):
-        return repository_root
-    return package_root
+    return production_source_root()
 
 
 def _production_path_policy() -> PathPolicy:
     """Construct the fixed production policy without caller-controlled inputs."""
 
-    return PathPolicy.production(source_root=_production_source_root())
+    return production_path_policy()
 
 
 def _execute_operation(

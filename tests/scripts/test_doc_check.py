@@ -119,10 +119,10 @@ knowledge-flow/
         self.assertEqual(
             report["stats"]["status"],
             {
-                "tests": 321,
-                "capture_tests": 306,
+                "tests": 338,
+                "capture_tests": 323,
                 "script_tests": 15,
-                "next_gate": "P0B",
+                "next_gate": "P0C",
             },
         )
 

@@ -47,7 +47,9 @@ class P0BInstalledManagementAcceptanceTest(unittest.TestCase):
         )
         python = environment_root / "Scripts" / "python.exe"
         entry = environment_root / "Scripts" / "knowledgeflow-capture-admin.exe"
+        inbox_entry = environment_root / "Scripts" / "knowledgeflow-inbox.exe"
         self.assertFalse(entry.exists())
+        self.assertFalse(inbox_entry.exists())
 
         build_temp = self.owned_root / "build-temp"
         pip_cache = self.owned_root / "pip-cache"
@@ -88,6 +90,21 @@ class P0BInstalledManagementAcceptanceTest(unittest.TestCase):
             installed.stderr.decode("utf-8", "replace"),
         )
         self.assertTrue(entry.is_file())
+        self.assertTrue(inbox_entry.is_file())
+
+        inbox_help = subprocess.run(
+            [str(inbox_entry), "--help"],
+            cwd=self.owned_root,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=60,
+        )
+        self.assertEqual(inbox_help.returncode, 0)
+        self.assertEqual(inbox_help.stderr, b"")
+        self.assertIn(b"knowledgeflow-inbox", inbox_help.stdout)
+        self.assertNotIn(str(self.owned_root).encode("utf-8"), inbox_help.stdout)
 
         imported = subprocess.run(
             [

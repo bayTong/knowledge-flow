@@ -16,6 +16,7 @@ dependencies = [
 [project.scripts]
 knowledgeflow-capture = "knowledgeflow_capture.cli:main"
 knowledgeflow-capture-admin = "knowledgeflow_capture.management_cli:main"
+knowledgeflow-inbox = "knowledgeflow_capture.inbox_app:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
