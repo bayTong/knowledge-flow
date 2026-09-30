@@ -1,10 +1,10 @@
 # P0 生产初始化与最小收件箱 dogfood 实施方案
 
-> 状态：`Approved Design`；P0A/P0A.1 已完成，下一门禁为需单独授权的 P0B-min<br>
+> 状态：`Approved Design`；P0A/P0A.1 已完成；P0B-min 已获授权并形成待独立复核、版本化与远端门禁的本地实现候选<br>
 > 形成日期：2026-09-29<br>
 > 批准日期：2026-09-29<br>
 > 前置基线：MVP-0 单机单用户文本捕获内核 C0–C8 已达到 `Implemented`<br>
-> 当前授权：P0A 文档与只读环境核查已完成；尚未授权 P0B–P0V 实施<br>
+> 当前授权：只允许闭合 P0B-min 的临时 Store 管理能力、测试与文档事实；P0C–P0V 尚未授权<br>
 > 当前禁止：创建生产配置、创建生产 Store、写入真实 Capture、实现界面、接入模型/GBrain/知识库<br>
 > 后续原则：P0B、P0C、P0D、P0V 分别复核、授权、验收和提交，任何一批都不自动授权下一批
 
@@ -55,7 +55,7 @@ P0B 只建设首次 dogfood 所需的最小冷备份闭环，不建设通用备�
 - C8 证据提交为 `63f3a3d`；Windows CI 运行 `36544619016` 成功。
 - C8 状态闭合提交为 `89da13f`；Windows CI 运行 `36550184921` 成功。
 - 两次运行均完成安装、普通全量测试、严格 `ResourceWarning` 全量测试、编译、依赖和文档检查。
-- 当前捕获内核测试基线为 305 项，其中捕获测试 290 项、脚本与文档测试 15 项。
+- P0A 时的捕获内核测试基线为 305 项，其中捕获测试 290 项、脚本与文档测试 15 项；P0B-min 本地候选新增 16 项捕获测试后，当前候选基线为 321 项（捕获 306 项、脚本与文档 15 项）。
 
 ### 3.2 当前机器只读预检
 
@@ -165,6 +165,50 @@ P0B 必须先冻结并验证以下语义：
 
 P0B 的完成条件止于“显式初始化、只读完整校验、一致性冷备份、恢复到新目标”四类能力及其临时 Store 证据。自动计划、历史保留、增量同步、压缩、加密封装、远端上传和日常管理界面均不属于 P0B。
 
+### 7.1A P0B-min 管理入口契约
+
+P0B-min 使用独立安装入口 `knowledgeflow-capture-admin`，不向日常 `knowledgeflow-capture` 增加第五个操作，也不改变四操作的帧协议。入口只接受以下四种精确形式：
+
+```text
+knowledgeflow-capture-admin init --config <绝对本地路径> --store <绝对本地路径> [--inline-threshold <正整数>] [--max-version <正整数>]
+knowledgeflow-capture-admin verify --config <绝对本地路径>
+knowledgeflow-capture-admin backup --config <绝对本地路径> --target <绝对本地路径>
+knowledgeflow-capture-admin restore --backup <绝对本地路径> --target <绝对本地路径>
+```
+
+固定边界如下：
+
+1. 选项顺序可变，但不得重复、不得出现未知选项，也没有隐式默认配置路径；`init` 的两个阈值默认仍为 4 MiB / 64 MiB。
+2. 安装入口只在可信代码中构造 `PathPolicy.production`；命令行、环境变量和 JSON 都不能打开测试目录能力。测试只能通过不安装的私有 runner 注入 `PathPolicy.test_owned`。
+3. stdout 在公共成功或公共失败时只输出一行规范 JSON，schema 固定为 `knowledgeflow.capture-management-response` v1；回执不含正文、preview、幂等键、配置字节或完整路径。
+4. exit `0` 表示完整成功 JSON，exit `2` 表示完整公共失败 JSON；内部异常、回执路径泄露或输出失败固定 exit `1` 且 stderr 只允许固定 `knowledgeflow-capture-admin: internal failure`。exit `1` 时 stdout 不可信，调用方必须整体丢弃。
+5. `init` 只显式初始化或幂等重开所选 Store；`verify` 在 Store 写锁内完整验证不可变事实、当前派生状态和稳定树摘要，不修复、不重建、不切换配置。
+6. `backup` 和 `restore` 都是显式一次性管理动作，没有调度器、自动发现、自动清理、断点续传、保留策略或配置切换。
+
+### 7.1B Backup Bundle v1 与失败语义
+
+一个成功备份目录只允许两个直接子项：
+
+```text
+<backup-root>/
+├── backup.json
+└── capture-store/
+```
+
+`backup.json` 使用严格、规范、重复键拒绝的 `knowledgeflow.capture-backup` v1 JSON。它绑定 `backup_id`、创建时间、源 `store_id`、Store schema/layout 版本、4/64 MiB 等实际阈值、规范相对目录集合、每个文件的字节数与 SHA-256、总目录/文件/字节数以及整个快照元数据摘要。Manifest 最后写入；缺少 Manifest 的目录永远不是成功备份。
+
+内容选择固定为：
+
+- 不可变 Capture/Version/Envelope/Event/Payload 和当前派生状态进入备份；
+- `.staging/` 目录骨架保留，但其全部内容排除；
+- `journal/capture-write.lock` 排除；
+- 逻辑不可见、但仍属于 Store 现场的唯一未提交版本尾部进入备份，恢复后继续由四操作按既有规则隐藏或处理；
+- 任何 reparse point、未知类型、完整性损坏、需重建的派生状态或不受支持 schema 都使操作失败关闭。
+
+P0B-min 采用比“兼容续传”更窄的规则：备份与恢复目标的父目录必须已经存在且是普通目录，目标叶目录在开始时必须不存在，哪怕已经存在但为空也拒绝；中断、空间不足或竞争留下的部分目标保留为证据，不自动删除、不自动续传，重试必须选择新的不存在目标。备份在源 Store 写锁内先验证、再以不超过 1 MiB 的块复制、再验证目标并最后写 Manifest。恢复先验证整个 Bundle，再在锁边界内复制到新目标并完整回读，且永不切换任何配置。
+
+`protection_scope` 固定为 `operational-copy`：它证明的是可验证恢复副本，不声称同盘副本能抵御整盘损坏。真实备份介质、ACL、卷加密和内容敏感度仍必须到 P0D 精确确认。
+
 ### 7.2 恢复演练
 
 恢复不得覆盖当前生产源。固定方向是：
@@ -271,7 +315,7 @@ P0A 只冻结交互和安全边界，不提前锁定 Tk、WebView、localhost We
 
 完成条件：计划可复核、所有入口一致、候选路径前后均不存在、文档护栏通过。P0A 完成不自动批准本文中的 P0B–P0V。
 
-### P0B：最小生产管理能力与临时演练
+### P0B：最小生产管理能力与临时演练（本地候选待版本化）
 
 目标：在测试持有的临时目录内形成可审计、安装态可执行的初始化、只读完整校验、一致性冷备份和恢复到新目标的最小路径。
 
@@ -288,7 +332,7 @@ P0A 只冻结交互和安全边界，不提前锁定 Tk、WebView、localhost We
 - 恢复目标上的 capture/list/get/append 组合验收；
 - 源 Store、真实配置和生产候选路径前后不变。
 
-P0B 单独复核、测试和提交后才能请求 P0C。
+P0B-min 已按第 7.1A/7.1B 节形成本地实现候选。只有专项与全量验证、独立复核、提交以及精确提交远端 Windows CI 都闭合后，才可把本批标记为 `Implemented` 并请求 P0C；当前仍停在 P0B 门禁。
 
 ### P0C：最小收件箱实现
 
@@ -403,4 +447,13 @@ P0A 获批不等于上述生产决定已经作出，也不授权创建任何生�
 - P0A/P0A.1 由本次独立文档治理提交版本化。提交对象不能可靠地自指其最终哈希，精确哈希以 Git 历史和交付记录为准。
 - `git diff --check`、提交后 Git 索引模拟下的 `scripts/doc-check.py`、以及 15 项文档/维护脚本测试均通过；本纯文档批次未重复运行 290 项捕获测试。
 - 收口前与提交前的只读快照均确认：候选配置父目录、配置文件、候选 Store 父目录和候选 Store 全部不存在；本批未创建生产路径、未写入真实内容。
-- 当前下一门禁是 P0B-min 的独立授权与契约收口。P0B 尚未获实施授权，P0C/P0D/P0V 更未获授权。
+- 当时的下一门禁是 P0B-min 的独立授权与契约收口；该授权后来已由用户给出，但 P0C/P0D/P0V 仍未授权。
+
+## 13. P0B-min 本地实现候选记录
+
+- 2026-09-30：用户在确认前置提交已 push 后，授权观察精确提交 Windows CI 并实施 P0B-min。前置提交 `8a2f129627db0788130b5e7b7bcb0df7ee72be51` 的 Windows CI 运行 `36677726535` 已成功。
+- 新增独立 `knowledgeflow-capture-admin` 安装入口、四类路径无关成功回执、严格 Backup Bundle v1 Manifest、显式初始化、非修复完整校验、冷备份与恢复到新目标；日常四操作 CLI、Capture v1 schema 和生产路径均未改变。
+- 16 项新增测试覆盖 Manifest 规范性、CLI 语法/退出码/脱敏、真实非 editable 安装入口、幂等初始化、非修复校验、完整备份恢复、四操作组合、陌生与空目标零覆盖、Manifest/正文篡改、备份中断、空间不足、`.staging` 排除及未提交尾部保留。
+- 当前只证明测试持有的临时 Store；未创建或检查写入 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml`、`E:\KnowledgeFlowData\capture-store` 或任何真实备份目标，未处理真实内容。
+- 16 项 P0B 专项测试通过；普通全量 321/321 在 156.624 秒内通过，最终严格 `ResourceWarning` 全量 321/321 在 136.226 秒内通过。临时 Git 索引模拟下文档护栏为 0 错误、15 项脚本/文档测试通过，`compileall`、`pip check` 和 `git diff --check` 也通过。
+- 本节记录的仍是尚未提交的本地候选，不是 `Implemented` 声明。P0B 还须独立复核、提交和该精确提交的远端 Windows CI；P0C 不因本地候选形成而获授权。

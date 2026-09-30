@@ -2,13 +2,13 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0B -->
+<!-- knowledgeflow-doc-status tests=321 capture_tests=306 script_tests=15 next_gate=P0B -->
 
 > A general-purpose, adaptive, governance-first personal knowledge-work system: start from
 > material, a question, or a vague intent; let the system do most knowledge labor while evidence,
 > trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-09-29):** the project is migrating from the legacy direct-initialization/curated-write workflow to a governed flow: local durable capture → human routing → proposal → exact approval → reversible write. R1.2/R1.3 clarify that users may start from material, a question, a research topic, an existing KB, or a vague intent; tasks over existing knowledge reuse source identities, `capture-only` does not authorize deep semantic processing, and the three Processing Profiles remain Draft candidates. These changes do not alter Capture v1. The single-machine, single-user MVP-0 text capture kernel has completed C0–C8: 41 directed local acceptance tests and two complete 305-test runs passed; evidence commit `63f3a3d` was pushed and its [exact-commit Windows CI](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) passed. That limited scope is `Implemented`; the overall project is not `Effective` or production-ready. The [P0 production initialization and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) has completed P0A.1 review and is now `Approved Design`, with the primary journey, minimal P0B scope, privacy/deletion disclosure, pending-state mapping, client idempotency, and separate exact P0D authorization fixed. The next gate is separate authorization for P0B-min; approving the plan did not authorize P0B–P0V, production initialization, or interface implementation. No production configuration or Store was created; Processing Profile defaults, the Source Ledger physical contract, and retrieval remain Draft. See the [`C8 acceptance report`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
+> **Current status (2026-09-30):** the single-machine, single-user MVP-0 text capture kernel remains `Implemented`; the overall project is not `Effective` or production-ready. The pushed pre-P0B baseline `8a2f129627db0788130b5e7b7bcb0df7ee72be51` passed [Windows CI run `36677726535`](https://github.com/bayTong/knowledge-flow/actions/runs/36677726535). P0B-min was then separately authorized and now has a local, uncommitted candidate for explicit initialization, non-repairing verification, cold backup, and restore-to-new-target through a separate administration entry. Sixteen new tests bring the candidate suite to 321 (306 capture + 15 script/document tests), but P0B still awaits independent review, versioning, and exact-commit remote CI; P0C is not authorized. No production configuration, production Store, real backup target, interface, or real Capture was created. Processing Profile defaults, the Source Ledger physical contract, and retrieval remain Draft. See the [P0 plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md). Legacy SOP-002 and its write prompt are suspended.
 
 | Looking for | Jump to |
 |------------|---------|
@@ -178,6 +178,8 @@ knowledge-flow/
 │       ├── store.py                  C2B–C6B recovery, staging, and version-chain primitives
 │       ├── operations.py             C3–C6C four governed text operations and migration binding checks
 │       ├── cli.py                    C7A/C7B restricted CLI framing, spools, production dispatch, and entry
+│       ├── management.py             P0B-min explicit init, verify, backup bundle, and new-target restore
+│       ├── management_cli.py         P0B-min path-safe installed administration entry
 │       ├── recovery.py               C6B explicit derived-state rebuild operation
 │       └── migration.py              C6C explicit copy-verify-switch Store migration
 ├── tests/
@@ -185,7 +187,7 @@ knowledge-flow/
 │   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
 │   │   ├── unit/                     C0–C7V unit and platform tests
 │   │   ├── integration/              C2B–C7V transaction, read, CLI, rebuild, migration, boundary, and concurrency tests
-│   │   └── fault/                    C2B/C6A process-crash recovery tests (290 capture tests total)
+│   │   └── fault/                    C2B/C6A process-crash recovery tests (306 capture tests total)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
@@ -247,7 +249,7 @@ The single-machine, single-user MVP-0 text capture kernel passed local C8 accept
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
 2. Read the [implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md), [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md), and [C8 local acceptance report](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) together for the current implementation and evidence boundary.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. The [P0 production initialization and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) has completed P0A.1 review and is `Approved Design`. The next permissible action is a separate request for P0B-min; P0B is not yet authorized, and production initialization and interface implementation still require later explicit authorization.
+4. The [P0 production initialization and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) is `Approved Design`. P0B-min now has a local candidate, but it remains at the P0B gate until review, commit, and exact-commit Windows CI; P0C, production initialization, and interface implementation still require later explicit authorization.
 5. After P0V, establish representative-journey and local retrieval/Evidence Bundle experiment baselines before deciding on manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, or the unreviewed GBrain mirror. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
@@ -264,6 +266,10 @@ knowledgeflow-capture list_captures [--config <absolute local Windows path>]
 ```
 
 stdin must contain one single-line UTF-8 JSON header, LF or CRLF, exactly `body_length_bytes` raw body bytes, and EOF. Read/list requests require a zero-length body. With exit 0 or 2, stdout uses the same single-line header + LF + exact body + EOF framing; exit 70 means stdout may be incomplete and must be discarded in full. The entry point deliberately has no `--help`, `--version`, Store initialization, recovery, migration, routing, or test-policy switch, and invoking it never auto-creates a production configuration or Store. See [implementation matrix §3.7](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约) and [four-operation contract §7A](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射) for the exact fields, frames, exit codes, and safety boundaries.
+
+### P0B administration entry (local candidate)
+
+`knowledgeflow-capture-admin` is separate from the daily four-operation protocol and exposes only `init`, `verify`, `backup`, and `restore`. It emits one path-free JSON line on public success/failure and never switches configuration during restore. Backup/restore targets must not exist; partial failed targets are preserved and never auto-resumed. The complete command, Backup Bundle v1, inclusion, exit-code, and safety contract is in [P0 plan §7.1A–7.1B](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约). This entry is still an unversioned P0B candidate and must not be used to initialize production yet.
 
 ---
 

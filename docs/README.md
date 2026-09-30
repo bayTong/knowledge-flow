@@ -40,13 +40,13 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 
 按下面顺序先读当前活动计划，再按需追溯已经完成的实现和验收证据：
 
-1. [P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)：已批准的 P0A.1 基线、只读预检、最小管理/界面/初始化/dogfood 分批边界。
+1. [P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)：已批准的 P0A.1 基线、P0B-min 管理/Backup Bundle 契约，以及界面、生产初始化和 dogfood 的后续分批边界。
 2. [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：C8 本地与远端证据、未证明项和状态范围。
 3. [捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)：已完成的运行时选择、模块边界和测试矩阵。
 4. [捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)：已完成的 C0–C8 批次、授权停点和验收顺序。
 5. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；待单独 D2 批次重新评估归档。
 
-C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。P0A.1 已把首要旅程、P0B 最小限界、隐私/删除告知、待处理映射、客户端幂等和 P0D 精确授权分层写入已批准基线。当前下一门禁是 P0B-min 的单独授权；P0B–P0V、真实生产初始化、界面实现和外部接入均未因方案获批而自动获授权。
+C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。P0B-min 随后获单独授权，现已在测试临时 Store 上形成显式初始化、只读校验、冷备份和新目标恢复的本地实现候选；它仍待独立复核、提交和候选精确提交的远端 Windows CI，因此当前门禁仍为 P0B。真实生产初始化、P0C 界面和外部接入均未获授权。
 
 ## 04 — Capture 核心契约
 

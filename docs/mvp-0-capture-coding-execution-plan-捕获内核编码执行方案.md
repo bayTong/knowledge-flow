@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=305 capture_tests=290 script_tests=15 next_gate=P0B -->
+<!-- knowledgeflow-doc-status tests=321 capture_tests=306 script_tests=15 next_gate=P0B -->
 
-> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核）；P0A/P0A.1 已批准，下一独立门禁为需单独授权的 P0B-min<br>
+> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核）；P0B-min 已形成待复核、版本化和远端门禁的本地候选，当前仍停在 P0B<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -45,11 +45,12 @@
 > C7V 远端门禁通过日期：2026-09-29（CI 可移植性修复 `4999232`；Windows CI 运行 `36529838017` 成功）<br>
 > C8 本地总验收日期：2026-09-29（41 项定向验收与两轮各 305 项全量测试通过）<br>
 > C8 远端门禁与状态同步日期：2026-09-29（证据提交 `63f3a3d` 已 push；Windows CI 运行 `36544619016` 成功）<br>
-> 当前状态同步日期：2026-09-29<br>
+> P0B-min 本地候选日期：2026-09-30（新增 16 项后当前 321 项；尚未提交或经过候选精确提交远端 CI）<br>
+> 当前状态同步日期：2026-09-30<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C2 已闭合；C3A 已以 `346164d` 完成并在 105 项全量测试下验收，C3B 已以 `8050d88` 完成并在 122 项全量测试下验收，C3C 在 140 项全量测试下闭合事务，C3V 在 144 项全量测试下完成阶段验收；R0.1/R0.2 分别以 `92a37b3`、`79515ed` 完成，R0 后为 148 项；D0G 后 156 项，R0.3D 后 159 项，R0.3F 后 163 项；C4A 后为 182 项并以 `06cff02` 推送；C4B 后为 197 项并以 `666ba18` 推送；C4C 后为 212 项并以 `231ad09` 推送；C4V 后为 214 项并以 `1e38f2f` 推送；C5-0 `ea530ad` 与最小 Windows CI `c4d2c7b` 也已推送；C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后为 274 项；截至 C6C `ea8f84e` 的 Windows CI 运行 `35319645501` 已通过；C7-0 `dbe8329`、C7A `fb61358`、C7B `ea2b80c` 与 C7V 内容提交 `0787e60` 已同步到 `origin/main`；C7V 新增 5 项真实验收后全量为 305 项，CI 可移植性修复 `4999232` 后 Windows CI 运行 `36529838017` 已通过，C7 已闭合；C8 本地总验收在 `896c64c` 基线上通过，证据提交 `63f3a3d` 已 push，精确远端 Windows CI 运行 `36544619016` 成功，限定范围状态为 `Implemented`<br>
-> 当前授权：C8 状态锚点同步已由用户指示；真实 Capture Store、最小收件箱实施和外部系统接入仍需各自独立授权
+> 执行进度：C0–C8 已闭合并达到限定 `Implemented`；P0B 前置提交 `8a2f129627db0788130b5e7b7bcb0df7ee72be51` 的 Windows CI 运行 `36677726535` 成功。P0B-min 随后新增独立管理入口、初始化/校验/冷备份/新目标恢复和 16 项测试，当前本地候选全量为 321 项；尚未独立版本化或取得候选精确提交远端 CI，因此 next gate 仍为 P0B<br>
+> 当前授权：仅允许闭合 P0B-min 的临时 Store 候选；真实 Capture Store、P0C 最小收件箱和外部系统接入仍需各自独立授权
 
 ## 0. 结论先行
 
@@ -59,7 +60,7 @@
 
 C2B-2 已实现测试边界内的 Capture Store 安全初始化、严格重开、无覆盖配置连接、保守残片归属和正常多进程并发。C2B-3 已实现六个内部初始化故障点和跨进程崩溃恢复验证：故障钩子是纯内部能力（生产默认 no-op，公开 `init_capture_store()` 不再暴露任何依赖注入通道），崩溃用子进程 `os._exit()` 模拟，恢复全部由无故障钩子的新进程仅凭磁盘事实完成。
 
-C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项；C4B 后为 197 项；C4C 后为 212 项；C4V 后为 214 项；C5A 后为 231 项；C5B 后为 250 项；C5V 后为 253 项；C6A 后为 258 项；C6B 后为 265 项；C6C 后为 274 项；C7A 后为 293 项；C7B 后为 300 项；C7V 新增 5 项真实验收后当前为 305 项。
+C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/key 摘要、精确成功回执与 golden fixture；C3B 已实现固定 Store 级 Windows 写锁、单遍有界 UTF-8 写入与磁盘复算，以及 T0 所有权标记和固定树 staging 清理。两批分别以提交 `346164d`、`8050d88` 完成。C3C 已将这些原语集成为公开 `capture_text` 的完整 T0–T9 事务，并在缩小阈值下覆盖 CT-01–CT-24 核心分支。C3V 又以运行时生成的真实 4/64 MiB 数据、锁边界进程屏障、默认 10 秒超时和加强版磁盘证据完成阶段验收，当时普通与严格 `ResourceWarning` 全量测试均为 144 项。R0.1/R0.2 随后闭合初始化清理所有权和配置临时文件请求身份，R0 后两种模式均为 148 项；D0G 后为 156 项；R0.3D 后为 159 项；R0.3F 后为 163 项；C4A 后为 182 项；C4B 后为 197 项；C4C 后为 212 项；C4V 后为 214 项；C5A 后为 231 项；C5B 后为 250 项；C5V 后为 253 项；C6A 后为 258 项；C6B 后为 265 项；C6C 后为 274 项；C7A 后为 293 项；C7B 后为 300 项；C7V 新增 5 项真实验收后当时为 305 项；P0B-min 本地候选新增 16 项后当前为 321 项。
 
 公开 `capture_text` 已在测试持有的临时 Store 中通过 C3 阶段验收；C4B `get_capture` 与 C4C `list_captures` 均已独立版本化并 push。C4V 又以公开 API 闭合真实 4/64 MiB 写入—列表—读取、静态分页和页间受控新增的阶段验收，并以独立提交 `1e38f2f` push。C5B `ab2a613` 已公开完整 `append_capture_version` 并在缩小阈值、单进程和确定性故障范围闭合 APP-04–APP-23；C5V 进一步以两个真实 Windows 进程和真实 4/64 MiB append → list/get 闭合 APP-06、APP-07、APP-24 及整阶段矩阵。C6A 以每事务租约、保守扫描和 16 个真实进程终止边界闭合业务事务恢复；C6B 又以完整不可变验证、原子投影替换、空派生目录恢复和真实进程中断续建闭合 REC-01–REC-03；C6C 通过显式 A/B/Store ID、有界复制、目标完整验证、原子配置切换和旧写请求绑定复核闭合 MIG-01–MIG-05。C7A 已加入私有且不导出的协议 runner，以严格参数/JSON/UTF-8/EOF 门禁、受信配置预检及 Store 外有界磁盘 spool 完成调用前帧验证和调用后响应封装；C7B 已加入只从可信上下文构造 policy 的零参数生产 `main()`、四操作一对一分派、固定 console entry 与不进入发布接口的测试专用子进程 support。没有创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml` 或 `E:\KnowledgeFlowData\capture-store`。
 
@@ -843,7 +844,7 @@ C7B 必须单独复核和提交；完成后停下请求 C7V 授权。
 
 C7V 单独复核和提交；只有 C7V 通过后才可声明 C7 完成并请求 C8。C7V 不自动授权 push、生产初始化、Harness、UI 或外部接入。
 
-完成记录（2026-09-28；内容与本地验证由独立提交 `0787e60` 版本化并已 push）：新增 5 项 Windows-first 验收，以测试专用 executor 屏障驱动两个真实 CLI 进程在同 key 下竞争，并以运行时生成文件闭合真实 4 MiB capture、64 MiB append 及两个版本 get 的字节/哈希证据；同时验证尾随单 byte 在核心调用前零提交、stdout 头/正文/flush 中途失败固定为 exit 70，以及临时 venv 中的非 editable 安装和 console script 发现。临时安装首次复现旧 setuptools 对 SPDX 字符串形式许可证元数据的不兼容，因此只把等价 MIT 声明改为兼容的 PEP 621 `text` 表形式，不改变许可证、运行时或公共接口。CLI-01–CLI-26、普通与严格 `ResourceWarning` 全量、`compileall`、`pip check`、文档护栏和生产路径前后快照均通过；当前为 305 项（捕获测试 290 项、脚本与文档测试 15 项）。未修改 `src/`、Python 公共 API、CLI 协议、Store schema 或错误优先级，也未创建生产配置/Store。
+完成记录（2026-09-28；内容与本地验证由独立提交 `0787e60` 版本化并已 push）：新增 5 项 Windows-first 验收，以测试专用 executor 屏障驱动两个真实 CLI 进程在同 key 下竞争，并以运行时生成文件闭合真实 4 MiB capture、64 MiB append 及两个版本 get 的字节/哈希证据；同时验证尾随单 byte 在核心调用前零提交、stdout 头/正文/flush 中途失败固定为 exit 70，以及临时 venv 中的非 editable 安装和 console script 发现。临时安装首次复现旧 setuptools 对 SPDX 字符串形式许可证元数据的不兼容，因此只把等价 MIT 声明改为兼容的 PEP 621 `text` 表形式，不改变许可证、运行时或公共接口。CLI-01–CLI-26、普通与严格 `ResourceWarning` 全量、`compileall`、`pip check`、文档护栏和生产路径前后快照均通过；本批完成时为 305 项（捕获测试 290 项、脚本与文档测试 15 项）。未修改 `src/`、Python 公共 API、CLI 协议、Store schema 或错误优先级，也未创建生产配置/Store。
 
 远端门禁记录（2026-09-29）：`0787e60` 的首次 Windows CI 运行 `36526009368` 在普通测试阶段暴露 CLI-25 离线源码安装对 runner 全局 `setuptools.build_meta` 的隐含依赖。独立修复提交 `4999232` 只在 CI 安装步骤显式准备与 `pyproject.toml` 一致的 `setuptools==80.9.0`，保留禁网和 `--no-build-isolation` 验收，不修改业务代码、公共契约或测试数量。Windows CI 运行 `36529838017` 随后在精确提交 `4999232` 上通过安装、305 项普通与严格 `ResourceWarning` 测试、`compileall`、`pip check` 和确定性文档检查。C7 至此闭合；当时的下一功能门禁是另行授权的 C8，本记录不授权生产初始化或外部接入。C8 后续已闭合，当前状态见本方案 C8 完成记录与 P0 活动方案。
 
