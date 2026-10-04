@@ -46,7 +46,7 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 4. [捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)：已完成的 C0–C8 批次、授权停点和验收顺序。
 5. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；待单独 D2 批次重新评估归档。
 
-C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。P0B-min 已由本地提交 `aa0a7ea` 封存，但因网络问题尚未 push 或取得精确远端 CI；用户明确授权先实施 P0C，当前已有只使用临时 Store 的 Tk 收件箱本地候选，338 项普通与严格全量通过。P0C 仍待复核和独立提交，两批均未达到 `Implemented`；真实生产初始化与外部接入仍未获授权。
+C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。P0B-min `aa0a7ea` 与 P0C `2a29a1a` 已同步到 `origin/main`，但首次合并 [Windows CI 运行 `36774701119`](https://github.com/bayTong/knowledge-flow/actions/runs/36774701119) 因英文 Windows 控制台无法编码收件箱中文帮助而失败。本地最小 UTF-8 修复候选已在原 `cp1252:strict` 条件下复现并修复，338 项普通与严格全量均通过；仍待独立提交、push 和精确远端重跑成功。P0B/P0C 均未达到 `Implemented`；真实生产初始化与外部接入仍未获授权。
 
 ## 04 — Capture 核心契约
 

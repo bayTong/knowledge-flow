@@ -41,6 +41,12 @@ def _write_text(stream: TextIO, value: str) -> None:
     stream.flush()
 
 
+def _reconfigure_utf8_text_stream(stream: TextIO) -> None:
+    reconfigure = getattr(stream, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8", errors="strict")
+
+
 def _parse_arguments(argv: Sequence[str]) -> tuple[bool, Path | None]:
     values = tuple(argv)
     if not values:
@@ -616,6 +622,15 @@ def _run_inbox(
 def main() -> int:
     """Launch the installed production inbox without exposing test policy."""
 
+    try:
+        _reconfigure_utf8_text_stream(sys.stdout)
+        _reconfigure_utf8_text_stream(sys.stderr)
+    except (OSError, TypeError, ValueError):
+        try:
+            _write_text(sys.stderr, _INTERNAL_FAILURE)
+        except Exception:
+            pass
+        return 1
     return _run_inbox(
         sys.argv[1:],
         stdout=sys.stdout,

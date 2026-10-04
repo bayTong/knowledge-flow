@@ -92,10 +92,12 @@ class P0BInstalledManagementAcceptanceTest(unittest.TestCase):
         self.assertTrue(entry.is_file())
         self.assertTrue(inbox_entry.is_file())
 
+        inbox_environment = environment.copy()
+        inbox_environment["PYTHONIOENCODING"] = "cp1252:strict"
         inbox_help = subprocess.run(
             [str(inbox_entry), "--help"],
             cwd=self.owned_root,
-            env=environment,
+            env=inbox_environment,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
@@ -104,6 +106,7 @@ class P0BInstalledManagementAcceptanceTest(unittest.TestCase):
         self.assertEqual(inbox_help.returncode, 0)
         self.assertEqual(inbox_help.stderr, b"")
         self.assertIn(b"knowledgeflow-inbox", inbox_help.stdout)
+        self.assertIn("不会初始化".encode("utf-8"), inbox_help.stdout)
         self.assertNotIn(str(self.owned_root).encode("utf-8"), inbox_help.stdout)
 
         imported = subprocess.run(

@@ -7,7 +7,7 @@
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-10-01）**：MVP-0 单机单用户文本捕获内核的限定状态仍为 `Implemented`；项目整体仍非 `Effective` 或生产就绪。P0B-min 已由本地提交 `aa0a7ea` 封存；因网络问题尚未 push，也没有该精确提交的 Windows CI，所以 P0B 仍不能标为 `Implemented`。用户明确授权在远端门禁延期期间先进行本地 P0C；目前已形成基于 Tk/标准库、只经过四个公共操作、仅在进程内保留幂等重试状态的未提交收件箱候选，不引入服务端、网络、模型或新依赖。P0C 新增 17 项后本地全量为 338 项（捕获 323 项、脚本/文档 15 项），普通与严格 `ResourceWarning` 全量均通过；仍待复核、独立提交和合并后的精确远端 CI。生产配置、生产 Store、真实备份目标和真实 Capture 均未创建。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **当前状态（2026-10-04）**：MVP-0 单机单用户文本捕获内核的限定状态仍为 `Implemented`；项目整体仍非 `Effective` 或生产就绪。P0B-min 提交 `aa0a7ea` 与 P0C 提交 `2a29a1a` 已同步到 `origin/main`。两批合并后的首次 [Windows CI 运行 `36774701119`](https://github.com/bayTong/knowledge-flow/actions/runs/36774701119) 已完成安装，但普通全量有且只有一项失败：英文 Windows 控制台编码无法编码 `knowledgeflow-inbox --help` 的中文帮助。这是安装态控制台可移植性缺陷，不是 Store 事务或数据完整性失败。本地最小修复候选已让交互入口主动把 stdout/stderr 配置为 UTF-8，并在安装态验收中强制复现原来的 `cp1252:strict` 环境；聚焦测试及两轮各 338 项普通/严格全量均通过。该修复仍待独立提交、push 和精确远端门禁成功，因此 P0B/P0C 仍不标记为 `Implemented`。生产配置、生产 Store、真实备份目标和真实 Capture 均未创建。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -249,7 +249,7 @@ MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端�
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)、[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)和[C8 本地总验收报告](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)共同说明当前实现与证据边界。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. [P0 生产初始化与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经进入 `Approved Design`。P0B-min 已由本地提交 `aa0a7ea` 封存，当前网络问题使 push 和精确提交 Windows CI 延期；用户已明确授权同时形成 P0C 本地候选。Tk 收件箱已经通过本地测试但尚未提交；两批均未达到 `Implemented`，P0D 生产初始化仍被单独阻塞。
+4. [P0 生产初始化与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经进入 `Approved Design`。P0B-min `aa0a7ea` 与 P0C `2a29a1a` 已 push，但首次合并 Windows CI 暴露安装态收件箱帮助输出依赖系统区域编码。本地最小 UTF-8 可移植性修复已通过两轮各 338 项全量，仍待独立提交和精确远端重跑成功。两批均未达到 `Implemented`，P0D 生产初始化仍被单独阻塞。
 5. P0V 后先建立代表旅程与本地检索/Evidence Bundle 实验基线，再决定人工路由、SOP-000A、SOP-001 重构、候选图谱和 GBrain 未审核镜像；只有在 SOP-000B 与新版 SOP-002 定义精确批准、事务和回滚后，才允许可信 wiki 写入。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
@@ -267,11 +267,11 @@ knowledgeflow-capture list_captures [--config <Windows 本地绝对路径>]
 
 stdin 必须是“一行 UTF-8 JSON 头 + LF/CRLF + 精确 `body_length_bytes` 个正文原始字节 + EOF”；读取和列表请求的正文长度必须为 `0`。stdout 在退出码 0 或 2 时同样返回“一行 JSON 头 + LF + 精确长度正文 + EOF”；退出码 70 表示 stdout 可能不完整，调用方必须全部丢弃。入口不提供 `--help`、`--version`、Store 初始化、恢复、迁移、路由或测试策略切换，也不会因运行命令而自动创建生产配置/Store。完整字段、帧、退出码和安全边界见[实现矩阵第 3.7 节](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约)与[四操作契约第 7A 节](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)。
 
-### P0B 管理入口（本地提交待远端门禁）
+### P0B 管理入口（已 push，合并远端门禁修复待闭合）
 
-`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全契约见 [P0 方案第 7.1A–7.1B 节](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约)。实现已位于本地提交 `aa0a7ea`，但在延期的远端门禁和 P0D 授权完成前不得用于生产初始化。
+`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全契约见 [P0 方案第 7.1A–7.1B 节](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约)。提交 `aa0a7ea` 已在 `origin/main`，但 P0B/P0C 合并远端门禁尚未成功且 P0D 未获授权，因此仍不得用于生产初始化。
 
-### P0C 最小本地收件箱（本地候选）
+### P0C 最小本地收件箱（已 push，远端可移植性修复待闭合）
 
 `knowledgeflow-inbox` 使用 Python 标准库 Tk 打开 Windows-first 桌面收件箱。它只通过公共边界调用 `capture_text`、`list_captures`、`get_capture` 和 `append_capture_version`，不解析 Store 文件、不打开网络端口，也不把正文放入进程参数、stdout/stderr、日志或磁盘 spool。默认读取本机标准配置，也允许在受控场景显式选择配置：
 
@@ -281,7 +281,7 @@ knowledgeflow-inbox --config <Windows 本地绝对路径>
 knowledgeflow-inbox --help
 ```
 
-配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。P0C 完成复核、独立提交和精确远端 CI 前，该候选仍只能使用测试持有的临时 Store，不授权 P0D 或真实内容。
+配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。提交 `2a29a1a` 已在 `origin/main`；首次合并远端门禁只暴露安装态帮助输出依赖系统区域编码。UTF-8 可移植性修复完成独立提交并通过精确远端 CI 前，该入口仍只能使用测试持有的临时 Store，不授权 P0D 或真实内容。
 
 ---
 
