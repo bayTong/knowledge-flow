@@ -267,19 +267,19 @@ RAG 用于从可允许的查询范围中定位相关来源、组织 Evidence Bun
 - `capture-only`、`raw-source`、`deep-curation` 三个既有 `processing_mode` 值；
 - C0–C8 已实现并通过验收的写入、读取、追加、恢复、重建、迁移和受限 CLI 语义；
 - MVP-0 单机单用户文本捕获内核的 `Implemented` 证据边界；
-- P0 只能暴露既有 Capture 能力、不得借界面或生产初始化新增语义 schema 的边界。
+- P0 只能暴露既有 Capture 能力、不得借界面或 Pilot Store 初始化新增语义 schema 的边界。
 
 `deep-curation` 只表示用户允许进入较深语义处理；未来路由器根据本规范提出或选择实际 Profile，并记录授权来源、范围、预计成本和缺口。`capture-only` 只授权可靠捕获和最低来源状态，不触发 Profile、Segment/Ledger 建立或语义索引。任何新的持久化 ledger、candidate 或 graph schema 都必须在对应功能门禁单独冻结。
 
 ## 12. 后续门禁
 
 1. C0–C8 已完成本地与精确提交的远端门禁；MVP-0 捕获内核只在限定范围内为 `Implemented`。
-2. 当前先按独立 P0 方案，在临时 Store 验证最小管理/冷备份路径和只暴露既有四操作的收件箱；精确生产初始化仍由 P0D 另行授权，且不授权新增语义处理 schema。
-3. P0V 取得真实交互证据后，用隔离临时 Store 和获准的非敏感材料做代表旅程、规模/结构、处理成本和审核负担基线实验，不新增生产 schema。
-4. 根据基线证据，通过独立设计批次冻结 Task/Workspace、Source Segment、Source Ledger 和三类 Profile 的最小契约。
-5. 实现本地检索和 Evidence Bundle POC，并比较三条路径的引用正确率、审核成本和语义召回；不要求先接 GBrain。
-6. 再决定人工路由、SOP-000A、候选图谱、GBrain、SOP-001/000B/002 和更完整知识工作界面的实现范围。
-7. 任何正式知识写入仍需精确批准、事务和回滚协议。
+2. 当前唯一门禁是 P0D-P2：按独立 P0 方案完成低敏感度 Pilot Store 的精确授权、初始化、首份 Capture 与操作副本；P0V 只验证现有四操作和最小收件箱，不新增语义处理 schema。
+3. P0V 取得真实交互证据后，先批准一个小型代表材料实验协议：至少含一个中小体量有界材料和一个大体量/多来源材料，并记录首次有用结果时间、引用正确性、人工操作/审核时间、模型成本、缺口和失败样例。
+4. 第一个实现切片只闭合“Capture 版本 → 可重建区段 → 本地精确/关键词检索基线 → 实验性 Evidence Bundle → 打开原文/可选引用回答”。它使用隔离、获准的非敏感材料，不要求云模型、GBrain、图谱、正式 Evidence schema 或新的可信写入。
+5. 在同一证据底座上比较两条最小路径：中小体量的可选轻量策展地图，以及大体量的检索优先问答和问题驱动候选。三类 Profile 名称仍是可被实验替换的工作假设，不预先冻结自动路由。
+6. 只有实验结果证明稳定身份或状态确有必要后，才通过独立设计批次冻结 Task/Workspace、Source Segment、Source Ledger、Processing Profile、Evidence Bundle 和 Knowledge Candidate 的最小持久化/重算契约。
+7. 再根据真实组织和晋升需求决定人工路由、SOP-000A、候选图谱、GBrain、SOP-001/000B/002 与更完整知识工作界面的范围；任何正式知识写入仍需精确批准、事务、验证和回滚协议。
 
 ## 13. 当前未决问题
 
@@ -290,4 +290,4 @@ RAG 用于从可允许的查询范围中定位相关来源、组织 Evidence Bun
 - 各风险类别的审核预算和 gold set 构造方法；
 - 何时将方法论从 Draft 提升为 Approved Design。
 
-以上未决问题不能通过修改 Capture v1 或直接创建生产 Store 解决，应在对应实验或功能门禁中单独裁定。
+以上未决问题不能通过修改 Capture v1、继续加固 Pilot Store 或直接引入外部平台解决，应在对应实验或功能门禁中单独裁定。
