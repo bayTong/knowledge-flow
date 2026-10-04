@@ -73,7 +73,14 @@ _REAL_CONFIG_PATH = (
     if _LOCAL_APP_DATA
     else None
 )
-_REAL_CAPTURE_STORE = Path("E:/") / "KnowledgeFlowData" / "capture-store"
+_DEFAULT_CAPTURE_STORE = (
+    Path(_LOCAL_APP_DATA) / "KnowledgeFlow" / "data" / "capture-store"
+    if _LOCAL_APP_DATA
+    else None
+)
+_LEGACY_CAPTURE_STORE_CANDIDATE = (
+    Path("E:/") / "KnowledgeFlowData" / "capture-store"
+)
 
 
 def _load_support_module() -> ModuleType:
@@ -376,10 +383,11 @@ class InitFaultRecoveryTest(unittest.TestCase):
     def _canonical_config_bytes(self) -> bytes:
         return dump_local_config(self._local_config())
 
-    def _production_snapshot(self) -> tuple[object, object]:
+    def _production_snapshot(self) -> tuple[object, object, object]:
         return (
             _metadata_snapshot(_REAL_CONFIG_PATH),
-            _metadata_snapshot(_REAL_CAPTURE_STORE),
+            _metadata_snapshot(_DEFAULT_CAPTURE_STORE),
+            _metadata_snapshot(_LEGACY_CAPTURE_STORE_CANDIDATE),
         )
 
     # ---------------------------------------------------- internal capability

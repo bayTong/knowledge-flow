@@ -2,7 +2,7 @@
 
 <!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0D -->
 
-> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；C-069 修复与最终合并远端门禁已通过，下一门禁为尚未授权的 P0D<br>
+> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；C-069 修复与最终合并远端门禁已通过，P0D-P1 已完成方向纠偏，下一门禁为尚未授权的低敏感度 pilot P0D-P2<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -44,7 +44,7 @@
 > P0C 候选/提交日期：2026-10-01（提交 `2a29a1a`；新增 17 项后当前 338 项；现已 push）<br>
 > P0B/P0C 最终合并远端门禁日期：2026-10-04（C-069 修复提交 `d149036`；Windows CI 运行 `37185470445` 成功）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：`Implemented` 只证明本文及 P0B/P0C 各自限定范围的版本化实现与已测行为；P0C 仍只覆盖临时 Store，生产 `E:\KnowledgeFlowData`、长期运行、真实断电、GBrain、LLM、KB 路由及更完整 UI 尚未实施或验证，不标记为 `Effective`
+> 边界：`Implemented` 只证明本文及 P0B/P0C 各自限定范围的版本化实现与已测行为；P0C 仍只覆盖临时 Store，默认应用目录下的 Pilot Store、持续使用、真实断电、GBrain、LLM、KB 路由及更完整 UI 尚未实施或验证，不标记为 `Effective`
 
 ## 0. 结论先行
 
@@ -89,10 +89,10 @@
 
 ### 1.2 尚不存在
 
-- 没有 `package.json`、Node/Bun 应用或完整桌面产品；现有 Tk 收件箱只是尚未版本化/远端验收的 P0C 薄界面候选。
-- 没有生产配置或生产 Store；C0–C8 虽已完成本地与精确提交远端验收，仍没有真实生产数据长期运行证据。
+- 没有 `package.json`、Node/Bun 应用或完整桌面产品；现有 Tk 收件箱只是已经完成临时 Store 验收的 P0C 最小薄界面。
+- 没有 Pilot 配置或 Pilot Store；C0–C8 与 P0B/P0C 虽已完成限定范围验收，仍没有真实数据持续使用证据。
 - 突然断电、控制器缓存与第三方长期占用仍不由 C6A–C6C 的进程终止测试证明。
-- 已安装的 `knowledgeflow-capture` 目前只是受限机器协议入口；C8 闭合不代表生产 Store 初始化、长期 dogfood 或 `Effective` 已完成。
+- 已安装的 `knowledgeflow-capture` 目前只是受限机器协议入口；C8 闭合不代表 Pilot Store 初始化、持续 dogfood 或 `Effective` 已完成。
 - 没有接入 DeepSeek Harness，也没有可调用的 GBrain 适配器。
 
 ### 1.3 当前机器只读盘点
@@ -331,10 +331,12 @@ schema: "knowledgeflow.local-config"
 schema_version: 1
 
 capture:
-  root: 'E:\KnowledgeFlowData\capture-store'
+  root: '<部署时解析后的 capture-root 绝对路径>'
   inline_text_threshold_bytes: 4194304
   max_text_version_bytes: 67108864
 ```
+
+默认部署规则把该绝对路径解析为当前用户 `%LOCALAPPDATA%\KnowledgeFlow\data\capture-store`；配置解析器本身不展开环境变量或文档占位符，用户也可在部署时选择其他绝对路径。
 
 约束：
 
@@ -425,7 +427,7 @@ created_at: "2026-09-02T00:00:00.000Z"
 
 ```yaml
 config_path: "<解析后的绝对配置路径>"
-capture_root: "E:\KnowledgeFlowData\capture-store"
+capture_root: "<解析后的 capture-root 绝对路径>"
 inline_text_threshold_bytes: 4194304
 max_text_version_bytes: 67108864
 ```
@@ -553,7 +555,7 @@ store_initialized: true
 config_connected: true
 created: true
 store_id: "store_0199..."
-capture_root: "E:\KnowledgeFlowData\capture-store"
+capture_root: "<解析后的 capture-root 绝对路径>"
 schema_version: 1
 layout_version: 1
 warnings: []
@@ -984,7 +986,7 @@ C7A/C7B 先在缩小阈值和测试持有的临时 Store 上闭合单元与子�
 - 故障点通过内部依赖注入或测试专用 hook 提供，不能成为生产用户可随意触发的公开参数。
 - 每个故障测试在独立临时 Store 中运行。
 - 注入后必须重新启动新进程检查磁盘，而不是只检查原进程内存。
-- 测试不得触碰 `E:\KnowledgeFlowData\capture-store`。
+- 测试不得触碰机器本地配置指向的真实生产 Store；未初始化机器上的默认保护目标是当前用户 `%LOCALAPPDATA%\KnowledgeFlow\data\capture-store`。
 
 ### 11.2 初始化故障点
 
@@ -1093,7 +1095,7 @@ before_append_receipt_returned
 | G3 本地操作 | CT/GET/LIST/APP 全绿 | 接 UI/Harness |
 | G4 恢复能力 | REC、故障注入、迁移全绿 | 将规范标记 Effective |
 | G5 人工耐久 | Windows 强制终止/断电边界有实证记录 | 宣称抗断电 |
-| G6 生产初始化 | 用户再次明确授权创建真实目录 | 写入 `E:\KnowledgeFlowData` |
+| G6 生产初始化 | 用户再次明确授权创建真实目录 | 写入解析后的默认应用目录或用户明确选择的其他生产路径 |
 
 ## 13. 已确认的技术选择
 
@@ -1109,4 +1111,4 @@ before_append_receipt_returned
 | I-008 | 不引入数据库和后台服务 | 引入后会增加双真源、迁移和运维成本 |
 | I-009 | 采用完整可靠性范围；2026-09-03 C2B 复核后预算按约 10–15 天评估 | 2–4 天 happy path 不满足恢复、并发和审计承诺 |
 
-以上选择已确认，本文限定的 MVP-0 单机单用户文本捕获内核为 `Implemented`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3V 时为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后为 274 项，C7A 后为 293 项，C7B 后为 300 项，C7V 后当时为 305 项。C8 没有增加测试，而是在同一 305 项基线上完成定向、普通、严格资源警告、安装、文档、仓库卫生和生产路径总复核；证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功。P0B-min 另增 16 项并由提交 `aa0a7ea` 封存，P0C 再增 17 项并由提交 `2a29a1a` 封存；C-069 修复由 `d149036` 封存。精确修复提交的 Windows CI 运行 `37185470445` 通过安装、338 项普通与严格全量、编译、依赖和文档检查，故 P0B/P0C 达到各自限定范围的 `Implemented`。真实 `E:\KnowledgeFlowData\capture-store` 仍只可在独立 P0D 门禁下、用户另行精确授权后创建；本状态不等于 `Effective`。
+以上选择已确认，本文限定的 MVP-0 单机单用户文本捕获内核为 `Implemented`。C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3V 时为 144 项，R0.1/R0.2 后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后为 274 项，C7A 后为 293 项，C7B 后为 300 项，C7V 后当时为 305 项。C8 没有增加测试，而是在同一 305 项基线上完成定向、普通、严格资源警告、安装、文档、仓库卫生和生产路径总复核；证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功。P0B-min 另增 16 项并由提交 `aa0a7ea` 封存，P0C 再增 17 项并由提交 `2a29a1a` 封存；C-069 修复由 `d149036` 封存。精确修复提交的 Windows CI 运行 `37185470445` 通过安装、338 项普通与严格全量、编译、依赖和文档检查，故 P0B/P0C 达到各自限定范围的 `Implemented`。真实生产 Store 仍只可在独立 P0D 门禁下、用户对解析后的默认应用目录或自定义绝对路径另行精确授权后创建；本状态不等于 `Effective`。

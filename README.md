@@ -8,7 +8,7 @@
 > material, a question, or a vague intent; let the system do most knowledge labor while evidence,
 > trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-10-04):** the single-machine, single-user MVP-0 text capture kernel remains `Implemented`; P0B-min and P0C now also have limited `Implemented` status, while the overall project is not `Effective` or production-ready. P0B-min `aa0a7ea`, P0C `2a29a1a`, and the UTF-8 portability fix `d149036` are on `origin/main`. After the first combined run exposed the English-Windows console encoding defect, exact-commit [Windows CI run `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) passed installation, both 338-test ordinary/strict suites, compilation, dependency checking, and documentation consistency. No production configuration, production Store, real backup target, or real Capture was created. P0D is the next gate and remains separately unauthorized. See the [P0 plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
+> **Current status (2026-10-04):** the single-machine, single-user MVP-0 text capture kernel remains `Implemented`; P0B-min and P0C also have limited `Implemented` status, while the overall project is not `Effective` or production-ready. P0B-min `aa0a7ea`, P0C `2a29a1a`, and the UTF-8 portability fix `d149036` are on `origin/main`; exact-commit [Windows CI run `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) passed installation, both 338-test ordinary/strict suites, compilation, dependency checking, and documentation consistency. No Pilot configuration, Pilot Store, real backup, or real Capture has been created. P0D-P1 completed the default app-home layout and MVP sequencing correction: the first trial accepts only low-sensitivity, replaceable text and may refresh and use the current `.venv`; wheels, formal packaging, BitLocker proof, ACL customization, and cross-disk disaster protection are deferred. P0D-P2 is the next gate and remains separately unauthorized. See the [P0 plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
 
 | Looking for | Jump to |
 |------------|---------|
@@ -25,7 +25,7 @@
 | Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
 | Current MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | C8 local final acceptance report | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
-| P0 production initialization and minimal inbox dogfood plan | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
+| P0 low-sensitivity pilot and minimal inbox dogfood plan | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
 | Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -202,7 +202,7 @@ knowledge-flow/
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Completed C0–C8 batches and authorization record
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Implemented choices and test matrix
 │   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 local evidence, limits, and status recommendation
-│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  Approved P0 plan and staged authorization boundaries
+│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  Approved low-sensitivity pilot plan and staged authorization boundaries
 │   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      Completed C3 decisions pending D2 archive review
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
@@ -252,8 +252,8 @@ The single-machine, single-user MVP-0 text capture kernel passed local C8 accept
 1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
 2. Read the [implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md), [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md), and [C8 local acceptance report](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) together for the current implementation and evidence boundary.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. The [P0 production initialization and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) is `Approved Design`. P0B-min `aa0a7ea`, P0C `2a29a1a`, and portability fix `d149036` are pushed; exact-commit Windows CI run `37185470445` succeeded, so P0B/P0C have limited `Implemented` status. P0D production initialization is the next gate and still requires separate, precise authorization.
-5. After P0V, establish representative-journey and local retrieval/Evidence Bundle experiment baselines before deciding on manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, or the unreviewed GBrain mirror. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
+4. The [P0 low-sensitivity pilot and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) is `Approved Design`. P0B-min `aa0a7ea`, P0C `2a29a1a`, and portability fix `d149036` are pushed; exact-commit Windows CI run `37185470445` succeeded, so P0B/P0C have limited `Implemented` status. P0D-P1 completed the sequencing correction; P0D-P2 now confirms only exact paths, directory creation, `.venv` refresh, and the low-sensitivity limits, and still requires separate authorization.
+5. After P0V, stop hardening the Capture kernel without evidence and establish representative-journey plus local retrieval/Evidence Bundle experiment baselines: validate low-friction capture and light curation for small/medium content, and retrieval-first Q&A plus task-scoped knowledge candidates for large content. Use those results to decide on manual routing, SOP-000A, the SOP-001 redesign, candidate graphs, or the unreviewed GBrain mirror. Enable trusted wiki writes only after SOP-000B and the replacement SOP-002 define exact approval, transactions, and rollback.
 
 The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
 
@@ -270,9 +270,9 @@ knowledgeflow-capture list_captures [--config <absolute local Windows path>]
 
 stdin must contain one single-line UTF-8 JSON header, LF or CRLF, exactly `body_length_bytes` raw body bytes, and EOF. Read/list requests require a zero-length body. With exit 0 or 2, stdout uses the same single-line header + LF + exact body + EOF framing; exit 70 means stdout may be incomplete and must be discarded in full. The entry point deliberately has no `--help`, `--version`, Store initialization, recovery, migration, routing, or test-policy switch, and invoking it never auto-creates a production configuration or Store. See [implementation matrix §3.7](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约) and [four-operation contract §7A](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射) for the exact fields, frames, exit codes, and safety boundaries.
 
-### P0B administration entry (limited `Implemented`; production use blocked)
+### P0B administration entry (limited `Implemented`; Pilot writes still require authorization)
 
-`knowledgeflow-capture-admin` is separate from the daily four-operation protocol and exposes only `init`, `verify`, `backup`, and `restore`. It emits one path-free JSON line on public success/failure and never switches configuration during restore. Backup/restore targets must not exist; partial failed targets are preserved and never auto-resumed. The complete command, Backup Bundle v1, inclusion, exit-code, and safety contract is in [P0 plan §7.1A–7.1B](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约). Its combined exact-commit remote gate passed in run `37185470445`; nevertheless, P0D remains unauthorized, so this entry must not yet initialize production.
+`knowledgeflow-capture-admin` is separate from the daily four-operation protocol and exposes only `init`, `verify`, `backup`, and `restore`. It emits one path-free JSON line on public success/failure and never switches configuration during restore. Backup/restore targets must not exist; partial failed targets are preserved and never auto-resumed. The complete command, Backup Bundle v1, inclusion, exit-code, and safety contract is in [P0 plan §7.1A–7.1B](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约). Its combined exact-commit remote gate passed in run `37185470445`; nevertheless, P0D-P2 remains unauthorized, so this entry must not yet create a Pilot Store.
 
 ### P0C minimal local inbox (limited `Implemented` over temporary Stores)
 
@@ -284,7 +284,7 @@ knowledgeflow-inbox --config <absolute local Windows path>
 knowledgeflow-inbox --help
 ```
 
-Missing configuration produces guidance and no initialization. “Unassigned / pending review” maps only to existing `unassigned` / `unreviewed-capture` state. Write identity and body are retained only in the live process for exact retry; after a process crash the app never auto-resends and the user must refresh and check first. Commit `d149036` fixed the installed help's locale-dependent output and passed exact remote CI run `37185470445`. This status still covers only the tested temporary-Store scope and does not authorize P0D or real content.
+Missing configuration produces guidance and no initialization. “Unassigned / pending review” maps only to existing `unassigned` / `unreviewed-capture` state. Write identity and body are retained only in the live process for exact retry; after a process crash the app never auto-resends and the user must refresh and check first. Commit `d149036` fixed the installed help's locale-dependent output and passed exact remote CI run `37185470445`. This status still covers only the tested temporary-Store scope and does not authorize P0D-P2 or real content.
 
 ---
 

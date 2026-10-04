@@ -1064,7 +1064,7 @@ v1 推荐暂不引入新的业务数据库：
 - 状态投影不得与不可变 Envelope 混为一体。
 - MVP-0 先只实现单机、单用户文本捕获。
 - GBrain POC 优先使用本地 DB-only source + 薄同步适配器，不预建独立镜像导出目录或 HTTP/OAuth。
-- 当前机器 `capture-root` 确认为 `E:\KnowledgeFlowData\capture-store`，由机器本地配置提供；运行时规范化结果必须是绝对路径，Envelope 内仍只记录相对 Payload 路径。
+- 默认 `capture-root` 由当前用户的 `%LOCALAPPDATA%\KnowledgeFlow\data\capture-store` 解析而来，也允许用户通过机器本地配置改为其他位置；运行时规范化结果必须是绝对路径，Envelope 内仍只记录相对 Payload 路径。
 - 4 MiB 是文本内联传输阈值；4–64 MiB 使用流式 staging；64 MiB 是可配置的默认安全上限，超限不得截断、摘要或自动拆成多个 Item。
 - 写操作采用 `not-committed / committed / unknown` 三态提交结果；提交后的投影故障只返回成功警告。
 - 核心哈希明确分为 Payload、Payload Set、Request Fingerprint 和 Envelope 四类，并固定各自规范输入字节。
@@ -1089,6 +1089,6 @@ v1 推荐暂不引入新的业务数据库：
 1. C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A/C3B 完成后为 122 项，C3C 完成后为 140 项，C3V 完成后为 144 项，R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后为 274 项，C7A 后为 293 项，C7B 后为 300 项，C7V 后当时全量 305 项测试通过。除原有 C3–C6 证据外，C7V 已补齐真实 CLI 4/64 MiB、双进程、零提交、stdout 故障和临时安装证据；后续 P0B 管理测试不改变本 Envelope 契约。
 2. 当前实现已包含公开 `capture_text`、C4B `get_capture`、C4C `list_captures` 和 C5B `append_capture_version`；四者及 C6A 业务崩溃恢复、C6B 派生状态重建、C6C Store 迁移和 C7 受限 CLI 均已完成。C8 本地与精确提交远端门禁也已通过，限定范围状态为 `Implemented`；真实生产运行、突然断电和整体产品仍未达到 `Effective`。
 3. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)已于 2026-09-08 获批，C3A/C3B 已于 2026-09-10 分别完成，C3C/C3V 与 R0.1/R0.2 已于 2026-09-11 在测试持有的 Store 中先后完成，D0-F、D0G 与 C4-0 也已闭合；后续 C4A/C4B/C4C 均另行获得逐批授权。任何这些授权都不包含生产 Store。
-4. C5A–C7V 与 CI 可移植性修复均已同步；C8 证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功。当前独立门禁是 P0：先在临时 Store 验证最小管理/冷备份能力和收件箱，再由 P0D 对精确生产路径、隐私和备份另行授权。上述阶段均不接 GBrain。
+4. C5A–C7V 与 CI 可移植性修复均已同步；C8 证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功。P0B/P0C 已在临时 Store 验证最小管理、操作副本和收件箱；P0D-P1 已把下一门禁收缩为低敏感度 pilot。P0D-P2 仍需对精确路径、目录创建、`.venv` 刷新和内容限制另行授权。上述阶段均不接 GBrain。
 5. P0V 和代表旅程/检索实验证据形成后，再决定是否把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. URL 和文件 Payload 入口仍需各自的大小、来源、隐私和失败门禁，不能由文本 P0 顺带授权。

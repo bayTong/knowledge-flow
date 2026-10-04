@@ -62,26 +62,27 @@ Capture Item   = 根路径下的一条捕获原料
 Global Intake  = list_captures(routing_status="unassigned") 的逻辑视图
 ```
 
-### 2.2 当前机器的推荐值
+### 2.2 默认布局与本机解析
 
 ```text
-E:\KnowledgeFlowData\capture-store
+APP-HOME = %LOCALAPPDATA%\KnowledgeFlow
+capture-root = APP-HOME\data\capture-store
 ```
 
 推荐理由：
 
-- 与 `C:\Users\94233\knowledge-flow` 源代码仓库分离，避免原料被误提交为项目代码。
-- 与 `E:\KnowledgeBase` 等领域知识库分离，捕获时无需先决定 KB。
-- E 盘当前可用，并适合作为用户控制的本地数据位置。
-- 将来可以对整个 `E:\KnowledgeFlowData` 单独制定备份、加密和迁移策略。
+- 默认只依赖 Windows 当前用户的本地应用数据目录，不假设机器具有特定盘符、磁盘数量或分区结构。
+- 与源码仓库、版本化运行环境和未来领域知识库分离，避免原料被误提交为代码、随运行环境升级被删除，或在捕获时被迫先决定 KB。
+- 配置、Capture Store 与备份在同一应用根下分目录组织，便于首次安装和理解；默认备份只声明为同盘 `operational-copy`。
+- 用户仍可通过机器本地配置把 `capture-root` 改到其他绝对路径；选择其他磁盘不改变 Capture 数据格式或公共操作契约。
 
-该路径已确认为当前机器的部署配置，但当前仍不存在，本轮不创建。程序实现必须读取机器本地配置，不得把该绝对路径硬编码进通用代码。
+该默认布局已经确认，但当前仍不存在，本轮不创建。`APP-HOME` 是计划别名，不是配置文件可直接展开的变量；部署流程必须先将其解析成本机绝对路径，再写入机器本地配置。程序实现不得把某台机器的盘符、用户名或绝对路径硬编码进通用代码。
 
-配置示意如下，配置文件位置仍留到实现拆解时确定：
+配置逻辑示意如下：
 
 ```yaml
 capture:
-  root: 'E:\KnowledgeFlowData\capture-store'
+  root: '<部署时解析后的 capture-root 绝对路径>'
   inline_text_threshold_bytes: 4194304
   max_text_version_bytes: 67108864
 ```
@@ -110,8 +111,8 @@ capture:
 
 项目可移植性来自“通用代码 + 每机配置 + 与根目录无关的数据格式”，而不是要求所有机器共用同一条路径。
 
-- `E:\KnowledgeFlowData\capture-store` 只存在于当前机器的本地部署配置中。
-- Envelope 内只记录 `payloads/primary.txt` 等版本目录内相对路径，不记录 `E:\...` 前缀。
+- 默认 `capture-root` 由每台机器各自解析 `APP-HOME\data\capture-store`；用户也可以在本地配置中选择其他绝对路径。
+- Envelope 内只记录 `payloads/primary.txt` 等版本目录内相对路径，不记录盘符、用户名或 `APP-HOME` 前缀。
 - Payload 和 Envelope 哈希不包含当前机器的 `capture-root`，因此合法搬迁不会改变原件身份。
 - 机器本地路径配置不应提交为仓库中的跨机器共享默认值。
 
@@ -730,7 +731,7 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 
 | 项目 | 已确认结论 |
 |---|---|
-| 当前机器 `capture-root` | `E:\KnowledgeFlowData\capture-store` |
+| 默认 `capture-root` | 当前用户 `%LOCALAPPDATA%\KnowledgeFlow\data\capture-store` 的解析后绝对路径；允许本地配置覆盖 |
 | 路径配置方式 | 机器本地配置读取，不硬编码；最终解析结果必须为绝对路径；未配置不回退 |
 | 内联传输阈值 | 4 MiB UTF-8 字节 |
 | 单版本默认安全上限 | 64 MiB UTF-8 字节，可由机器本地配置调整 |
@@ -752,4 +753,4 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。生产 Store、最小收件箱、GBrain 与路由仍未实现；当前独立门禁为 P0 方案复核以及后续分别授权的 P0B–P0V，不得由本契约直接推导生产初始化。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。P0B 管理能力和 P0C 最小收件箱也已在各自临时 Store 范围闭合，但 Pilot Store、真实使用、GBrain 与路由仍未实现；当前门禁为需单独授权的低敏感度 pilot P0D-P2，不得由本契约直接推导真实数据初始化。
