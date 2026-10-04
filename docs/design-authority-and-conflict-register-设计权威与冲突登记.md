@@ -2,7 +2,7 @@
 
 <!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0D -->
 
-> 状态：本文与 P0 实施方案均为 Approved Design；MVP-0 单机单用户文本捕获内核及 P0B/P0C 各自限定范围均为 `Implemented`；下一门禁为尚未授权的 P0D<br>
+> 状态：本文与 P0 实施方案均为 Approved Design；MVP-0 单机单用户文本捕获内核及 P0B/P0C 各自限定范围均为 `Implemented`；P0D-0 操作级规划已在本地完成，P0D 仍未授权<br>
 > 确认日期：2026-09-01<br>
 > 补充确认日期：2026-09-03<br>
 > C2 完成记录日期：2026-09-04<br>
@@ -49,6 +49,7 @@
 > P0B-min 授权与提交日期：2026-09-30 / 2026-10-01（提交 `aa0a7ea`；已 push 并由最终合并门禁覆盖）<br>
 > P0C 授权与提交日期：2026-10-01（提交 `2a29a1a`；已与 P0B 一起 push）<br>
 > P0B/P0C 最终合并远端门禁日期：2026-10-04（C-069 修复提交 `d149036`；Windows CI 运行 `37185470445` 成功）<br>
+> P0D-0 操作级规划日期：2026-10-04（仅文档与只读事实收集；未授权生产写入）<br>
 > 当前状态同步日期：2026-10-04<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突<br>
 > 边界：C8 与 P0B/P0C 的本地及精确提交远端门禁均已通过；`Implemented` 只适用于各自已测限定范围。P0C 仍只证明临时 Store 上的最小收件箱，P0B 不授权真实管理操作。生产初始化、真实内容、长期运行、真实断电和后续路由均未完成，项目整体不是 `Effective`
@@ -109,7 +110,7 @@
 | MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Implemented（限定 MVP-0 文本范围） | 41 项定向验收、两轮各 305 项本地全量及精确提交 `63f3a3d` 的远端 Windows CI 已通过 |
 | MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Implemented（C0–C8） | C8 已闭合；P0 后续由独立实施方案承接，本文不授权生产初始化 |
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
-| P0 生产初始化、备份/恢复、最小收件箱和真实 dogfood | [P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) | Approved Design；P0B/P0C 限定 `Implemented`；P0D 未授权 | P0B-min `aa0a7ea`、P0C `2a29a1a` 与 C-069 修复 `d149036` 已 push；精确提交 Windows CI 运行 `37185470445` 成功。P0D 仍须再次确认精确生产、备份、隐私与内容边界，不能由该状态自动启动 |
+| P0 生产初始化、备份/恢复、最小收件箱和真实 dogfood | [P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) | Approved Design；P0B/P0C 限定 `Implemented`；P0D-0 已规划；P0D 未授权 | P0B-min `aa0a7ea`、P0C `2a29a1a` 与 C-069 修复 `d149036` 已 push；精确提交 Windows CI 运行 `37185470445` 成功。P0D-0 已冻结运行环境、预检、授权、执行与失败停点；P0D 仍须确认全部精确值，不能由规划状态自动启动 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由当前编码方案、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
@@ -413,7 +414,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | 受限 CLI | C7A/C7B 协议层、真实四操作分派与安装入口已完成并版本化；C7V 与 C8 远端门禁已通过，纳入限定范围的 `Implemented` |
 | P0B 最小生产管理能力 | 提交 `aa0a7ea` 已封存、push，本地与最终合并精确远端门禁均通过；限定范围为 `Implemented`，不授权真实生产操作 |
 | P0C 最小收件箱 | 提交 `2a29a1a` 与 C-069 修复 `d149036` 已封存、push；Tk + 进程内公共 API、状态映射、幂等和崩溃边界通过本地及精确远端门禁，临时 Store 范围为 `Implemented` |
-| P0D 真实数据初始化 | P0B/P0C 均独立通过；用户再次精确批准配置、Store、备份路径、目录创建、静态保护、内容敏感度和当前删除/草稿限制 |
+| P0D 真实数据初始化 | P0B/P0C 均独立通过；P0D-0 已形成 P1–P7 操作级检查点；用户仍须再次精确批准非 editable 运行环境、配置、Store、备份路径、目录创建、静态保护、内容敏感度和当前删除/草稿限制 |
 | URL 捕获 | URL 原始输入、抓取快照、失败降级和哈希规则 |
 | 文件/音频捕获 | 单文件大小上限、二进制保存、转写/OCR 派生和敏感数据策略 |
 | GBrain 镜像 | 本地文本捕获通过；完成副作用关闭与查询隔离实证 |
@@ -445,4 +446,4 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 2. 已批准 [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)第 13 节的 9 项技术选择。
 3. [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)中的 C0–C8 已逐批完成；C8 证据提交 `63f3a3d` 和其远端 Windows CI 运行 `36544619016` 已通过，限定范围的捕获内核状态为 `Implemented`。
 4. 所有开发和故障测试先使用隔离临时 Store；创建真实 `E:\KnowledgeFlowData\capture-store` 需要用户另行明确授权。
-5. [P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已完成 P0A/P0A.1、P0B-min 和 P0C；C-069 修复提交 `d149036` 的 Windows CI 运行 `37185470445` 成功，P0B/P0C 达到各自限定范围的 `Implemented`。下一步只能是先规划并请求 P0D 的精确生产授权；在用户确认配置、Store、备份路径、目录创建、静态保护、内容敏感度和删除/草稿限制前，不得创建生产目录或写入真实内容。GBrain、人工路由、SOP-001/002 重构与渐进式处理实验继续保留各自门禁。
+5. [P0 生产初始化与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已完成 P0A/P0A.1、P0B-min、P0C 和纯规划的 P0D-0；C-069 修复提交 `d149036` 的 Windows CI 运行 `37185470445` 成功，P0B/P0C 达到各自限定范围的 `Implemented`。下一步只能根据用户给出的精确候选值实施 P0D-P1 只读预检，再请求 P0D-P2 精确生产授权；在用户确认非 editable 运行环境、配置、Store、备份路径、目录创建、静态保护、内容敏感度和删除/草稿限制前，不得创建生产目录或写入真实内容。GBrain、人工路由、SOP-001/002 重构与渐进式处理实验继续保留各自门禁。

@@ -58,6 +58,7 @@
 - **版本化并同步 P0B/P0C，记录首次合并远端门禁失败**：P0B-min `aa0a7ea` 与 P0C `2a29a1a` 已同步到 `origin/main`。首次 [Windows CI 运行 `36774701119`](https://github.com/bayTong/knowledge-flow/actions/runs/36774701119) 完成安装后，在普通全量中只有安装态 `knowledgeflow-inbox --help` 断言失败：英文 Windows 默认文本编码无法编码中文帮助，入口返回 1。该结果不证明 Store 事务、备份或数据完整性失败，也不允许把 P0B/P0C 标记为 `Implemented`。
 - **形成 P0C Windows 控制台 UTF-8 可移植性修复候选**：只在 `knowledgeflow-inbox` 启动时将可重配置的 stdout/stderr 固定为 UTF-8，保留中文帮助和既有退出语义，不修改机器 CLI、四操作、Store 或 schema；既有安装态验收强制 `PYTHONIOENCODING=cp1252:strict` 以复现远端条件。强制复现返回 0，5 项聚焦测试、338/338 普通全量（156.371 秒）与 338/338 严格 `ResourceWarning` 全量（144.776 秒）均通过；测试总数不变。该候选待独立提交、push 和精确远端重跑，不授权 P0D 或生产路径。
 - **闭合 P0B/P0C 最终远端门禁并同步限定状态**：UTF-8 可移植性修复由提交 `d149036` 独立封存并同步到 `origin/main`；[Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 在该精确提交上通过安装、338 项普通与严格 `ResourceWarning` 全量、编译、依赖和文档一致性检查。P0B-min 与 P0C 因此达到各自已测范围的 `Implemented`；下一门禁为仍需另行精确授权的 P0D。本条不创建生产配置、Store、备份目录或真实 Capture，也不把项目整体标记为 `Effective`。
+- **完成 P0D-0 生产初始化操作级规划**：不新增平行方案，在现有 P0 文档内冻结运行环境、候选路径与保护事实、P1–P7 串行检查点、失败关闭条件和必须完整填写的精确授权模板。可移植性按“核心契约—平台 Profile—本机部署绑定—脱敏证据”分层，精确路径只用于本机执行；同盘或物理关系未知可选择 `operational-copy`，只有要求防整盘故障却不能证明独立介质时才阻塞。只读复核确认候选配置/Store 及父目录仍不存在，当前仓库 `.venv` 为 editable 开发安装，卷健康、物理磁盘映射与 BitLocker 状态尚未取得，因此不得推定为安全。本批不安装生产运行环境，不创建目录、配置、Store、备份或真实 Capture；下一步只能先做基于精确候选值的 P0D-P1 只读预检，再请求 P0D-P2 授权。
 
 `pyproject.toml` 中的 `0.1.0.dev0` 是内部捕获包版本，独立于 KnowledgeFlow 文档项目当前的 v2.x 历史版本；正式发布策略待 MVP-0 闭环后再确定。
 
