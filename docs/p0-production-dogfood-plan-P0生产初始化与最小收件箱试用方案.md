@@ -1,10 +1,10 @@
 # P0 生产初始化与最小收件箱 dogfood 实施方案
 
-> 状态：`Approved Design`；P0A/P0A.1 已完成；P0B-min `aa0a7ea` 与 P0C `2a29a1a` 已 push；首次合并远端门禁暴露收件箱控制台编码可移植性缺陷，本地最小修复已完成验证并待独立提交与重跑<br>
+> 状态：`Approved Design`；P0A/P0A.1 已完成；P0B-min、P0C 及 C-069 可移植性修复已通过精确提交远端门禁，P0B/P0C 达到各自限定范围的 `Implemented`；下一门禁为尚未授权的 P0D<br>
 > 形成日期：2026-09-29<br>
 > 批准日期：2026-09-29<br>
 > 前置基线：MVP-0 单机单用户文本捕获内核 C0–C8 已达到 `Implemented`<br>
-> 当前授权：允许在测试持有的临时 Store 上闭合 P0C 的最小 Windows 控制台可移植性修复及远端门禁；不因此进入 P0D<br>
+> 当前授权：仅同步 P0B/P0C 远端成功事实；P0D 的路径、目录创建、隐私、备份与真实内容仍未授权<br>
 > 当前禁止：创建生产配置、创建生产 Store、写入真实 Capture、实施 P0D、接入模型/GBrain/知识库<br>
 > 后续原则：P0B、P0C、P0D、P0V 分别复核、授权、验收和提交，任何一批都不自动授权下一批
 
@@ -347,7 +347,7 @@ P0A 只冻结交互和安全边界，不提前锁定 Tk、WebView、localhost We
 - 恢复目标上的 capture/list/get/append 组合验收；
 - 源 Store、真实配置和生产候选路径前后不变。
 
-P0B-min 已按第 7.1A/7.1B 节形成实现并由提交 `aa0a7ea` 封存。2026-10-01 用户明确授权在远端门禁因网络延期、继续只使用临时 Store 的条件下先形成 P0C；这是一次记录在案的门禁排程例外。两批随后已 push，但首次合并 Windows CI 未成功，因此 P0B 仍不标记为 `Implemented`，也不放宽 P0D。
+P0B-min 已按第 7.1A/7.1B 节形成实现并由提交 `aa0a7ea` 封存。2026-10-01 用户明确授权在远端门禁因网络延期、继续只使用临时 Store 的条件下先形成 P0C；这是一次记录在案的门禁排程例外。P0B/P0C 随后完成版本化和 push，C-069 修复提交 `d149036` 的 Windows CI 运行 `37185470445` 成功，因此 P0B 达到限定 `Implemented`；这不放宽 P0D。
 
 ### P0C：最小收件箱实现
 
@@ -365,7 +365,7 @@ P0B-min 已按第 7.1A/7.1B 节形成实现并由提交 `aa0a7ea` 封存。2026-
 - “未分配/待处理”只映射既有状态，不新增持久 schema。
 - 同一进程内安全复用幂等身份；进程崩溃后不自动重发，并展示已知限制。
 
-P0C 不初始化生产 Store。它虽已单独复核、测试、提交并 push，但必须先修复并通过精确远端门禁，才能请求 P0D。
+P0C 不初始化生产 Store。它已完成单独复核、测试、提交、push 和精确远端门禁，达到临时 Store 范围的限定 `Implemented`；现在可以请求但不能自行开始 P0D，P0D 仍需用户另行精确授权。
 
 ### P0D：生产初始化
 
@@ -486,4 +486,4 @@ P0A 获批不等于上述生产决定已经作出，也不授权创建任何生�
 - 隐藏窗口的真实 Tk 控件已使用测试临时 Store 完成“启动 → 新建 → 保存 → 列表回读”smoke；`compileall`、`pip check`、`git diff --check`、拟提交清单下 0 错误的最终文档护栏和 15/15 脚本/文档测试也已通过。P0C 随后由独立提交 `2a29a1a` 封存并与 P0B 一起 push 到 `origin/main`。
 - 本批未创建 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml`、`E:\KnowledgeFlowData\capture-store`、真实备份或真实 Capture；P0D 的路径、隐私、删除/草稿限制和首份真实内容授权仍全部保留。
 - 2026-10-04：首次合并 [Windows CI 运行 `36774701119`](https://github.com/bayTong/knowledge-flow/actions/runs/36774701119) 完成安装后，在 338 项普通全量中只有安装态 `knowledgeflow-inbox --help` 断言失败：英文 Windows 默认文本编码无法编码中文帮助，入口返回 1。该证据定位为交互入口输出编码可移植性缺陷，不是 Capture/Store 事务、备份或数据完整性失败。
-- 最小修复候选只在 `knowledgeflow-inbox` 启动时把 stdout/stderr 重配置为 UTF-8，并把 `PYTHONIOENCODING=cp1252:strict` 固化进既有安装态验收。强制编码复现已返回 0，5 项聚焦测试、338/338 普通全量（156.371 秒）和 338/338 严格 `ResourceWarning` 全量（144.776 秒）均通过；测试总数不变。该修复仍待独立提交、push 及精确远端 CI 成功，P0B/P0C 暂不标记为 `Implemented`，P0D 继续阻塞。
+- 最小修复只在 `knowledgeflow-inbox` 启动时把 stdout/stderr 重配置为 UTF-8，并把 `PYTHONIOENCODING=cp1252:strict` 固化进既有安装态验收。强制编码复现返回 0，5 项聚焦测试、338/338 普通全量（156.371 秒）和 338/338 严格 `ResourceWarning` 全量（144.776 秒）均通过；测试总数不变。修复由提交 `d149036` 独立封存并 push；[Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 在该精确提交上通过安装、普通与严格全量、编译、依赖和文档检查。P0B/P0C 至此达到各自限定范围的 `Implemented`；P0D 仍需另行精确授权。

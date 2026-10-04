@@ -1,8 +1,8 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0C -->
+<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0D -->
 
-> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核）；P0B-min `aa0a7ea` 与 P0C `2a29a1a` 已 push，首次合并远端门禁暴露 P0C 控制台编码可移植性缺陷，本地最小修复已验证并待独立提交与重跑<br>
+> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；C-069 修复与最终合并远端门禁已通过，下一门禁为尚未授权的 P0D<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
@@ -45,14 +45,14 @@
 > C7V 远端门禁通过日期：2026-09-29（CI 可移植性修复 `4999232`；Windows CI 运行 `36529838017` 成功）<br>
 > C8 本地总验收日期：2026-09-29（41 项定向验收与两轮各 305 项全量测试通过）<br>
 > C8 远端门禁与状态同步日期：2026-09-29（证据提交 `63f3a3d` 已 push；Windows CI 运行 `36544619016` 成功）<br>
-> P0B-min 本地候选/提交日期：2026-09-30 / 2026-10-01（提交 `aa0a7ea`；现已 push，合并远端门禁待闭合）<br>
+> P0B-min 本地候选/提交日期：2026-09-30 / 2026-10-01（提交 `aa0a7ea`；已 push 并由最终合并门禁覆盖）<br>
 > P0C 候选/提交日期：2026-10-01（提交 `2a29a1a`；新增 17 项后当前 338 项；现已 push）<br>
-> P0B/P0C 首次合并远端门禁日期：2026-10-04（Windows CI 运行 `36774701119` 暴露安装态收件箱帮助输出编码缺陷；本地修复已通过两轮各 338 项全量，待提交与重跑）<br>
+> P0B/P0C 最终合并远端门禁日期：2026-10-04（C-069 修复提交 `d149036`；Windows CI 运行 `37185470445` 成功）<br>
 > 当前状态同步日期：2026-10-04<br>
 > 适用范围：MVP-0 本地 Capture Store 与四个文本操作的分批实现<br>
 > 前置依据：[MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)<br>
-> 执行进度：C0–C8 已闭合并达到限定 `Implemented`；P0B 前置提交 `8a2f129627db0788130b5e7b7bcb0df7ee72be51` 的 Windows CI 运行 `36677726535` 成功。P0B-min `aa0a7ea` 与 P0C `2a29a1a` 已 push；首次合并运行 `36774701119` 在安装态 `knowledgeflow-inbox --help` 的英文 Windows 编码边界失败。本地最小 UTF-8 修复已强制复现原条件并通过 5 项聚焦及两轮各 338 项全量，待独立提交、push 和精确远端重跑<br>
-> 当前授权：允许闭合 P0C 临时 Store 候选；真实 Capture Store、P0D 生产初始化和外部系统接入仍需各自独立授权
+> 执行进度：C0–C8 已闭合并达到限定 `Implemented`；P0B 前置提交 `8a2f129627db0788130b5e7b7bcb0df7ee72be51` 的 Windows CI 运行 `36677726535` 成功。P0B-min `aa0a7ea`、P0C `2a29a1a` 与 C-069 修复 `d149036` 已 push；首次合并运行 `36774701119` 暴露编码缺陷后，精确修复提交的运行 `37185470445` 通过安装、两轮各 338 项全量、编译、依赖和文档检查。P0B/P0C 达到各自限定范围的 `Implemented`<br>
+> 当前授权：仅同步 P0B/P0C 成功事实；真实 Capture Store、P0D 生产初始化和外部系统接入仍需各自独立授权
 
 ## 0. 结论先行
 
