@@ -1,11 +1,11 @@
 # P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案
 
-> 状态：`Approved Design`；P0A/P0A.1 已完成；P0B-min、P0C 及 C-069 可移植性修复已通过精确提交远端门禁，P0B/P0C 达到各自限定范围的 `Implemented`；P0D-P1 已完成只读预检、默认布局和最小可行性方向纠偏，下一门禁为低敏感度 pilot 的 P0D-P2 简化授权，P0D 仍未授权<br>
+> 状态：`Approved Design`；P0A/P0A.1 已完成；P0B-min、P0C 及 C-069 可移植性修复已通过精确提交远端门禁，P0B/P0C 达到各自限定范围的 `Implemented`；P0D-P2–P7 已完成并按计划停点，下一门禁为尚未授权的 P0V 短周期 dogfood<br>
 > 形成日期：2026-09-29<br>
 > 批准日期：2026-09-29<br>
 > 前置基线：MVP-0 单机单用户文本捕获内核 C0–C8 已达到 `Implemented`<br>
-> 当前授权：仅完成不产生真实数据写入的 P0D-0 规划、P0D-P1 只读事实收集和方向纠偏；P0D 的开发环境刷新、pilot 路径创建、备份与低敏感度真实内容仍未授权<br>
-> 当前禁止：创建 pilot 配置或 Store、写入真实 Capture、实施 P0D、接入模型/GBrain/知识库<br>
+> 当前授权：用户已按第 447–462 行模板完成 P0D 精确授权；P2–P7 已按串行检查点闭合，授权在 P0D 停点终止<br>
+> 当前禁止：执行 restore 或配置切换、自动进入 P0V、扩大内容敏感度、接入模型/GBrain/知识库，或把同盘 `operational-copy` 表述为异盘灾备
 > 后续原则：P0B、P0C、P0D、P0V 分别复核、授权、验收和提交，任何一批都不自动授权下一批
 
 ## 1. 结论
@@ -478,7 +478,7 @@ P0D 只能按以下检查点串行执行；每个检查点输出脱敏结论并�
 
 执行顺序遵守 P1–P7：开发入口 smoke → 显式初始化 → 从配置重新打开 → 启动最小收件箱 → 用户选择第一份低敏感度内容 → 回读确认 → 建立操作副本 → 停止并报告，不自动进入长期 P0V。
 
-禁止自动写入演示或测试 Capture。P0D-P2 仍须确认配置、Store、备份父目录和创建范围；但不再要求在首份 Capture 前冻结备份叶名称、wheelhouse、BitLocker 或物理磁盘拓扑。
+禁止自动写入演示或测试 Capture。P0D-P2–P7 已依次完成精确授权、环境准备、初始化、用户首份 Capture、回读确认、首份同盘操作副本与证据停点。P0D 不授权继续写入、恢复演练或长期观察；这些动作必须由 P0V 或后续独立门禁重新界定。
 
 ### P0V：真实 dogfood 与状态复核
 
@@ -621,3 +621,36 @@ P0D-P1 经方向复核后闭合为：默认使用同一 `APP-HOME`，Store 与�
 - 可移植性按“平台无关数据与操作契约 + 平台 Profile”维持。Windows 是当前首个实现与验收环境；Linux 将来可使用 XDG、POSIX 权限和其本机加密能力，不要求复刻盘符、NTFS、BitLocker 或 Windows ACL。
 - P0D/P0V 完成后暂停继续加固 Capture 内核，优先建立一个能验证 KnowledgeFlow 核心价值的代表性垂直切片：中小体量内容验证低摩擦捕获与轻量策展，大体量内容先验证检索优先问答、Evidence Bundle 和按任务形成候选知识。只有实验暴露的真实风险与摩擦，才进入下一轮需求和硬化排程。
 - P0 结束后的唯一详细优先级由[设计权威与冲突登记第 12 节](design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)维护；本文不复制第二份长期路线图。若其他方案、研究输入或历史顺序与其冲突，以该执行罗盘为准。
+
+## 18. P0D-P2/P3 授权与准备记录
+
+- 2026-10-05：用户在看到解析后的真实本机值后，完整确认第 447–462 行的 P0D 精确授权。共享文档只记录 `DEV-RUNTIME`、`CONFIG`、`STORE`、`BACKUP-PARENT` 等角色，不记录本机用户名或绝对私人路径。
+- 授权绑定本地代码基线 `4b21203f46c70750a85a2cabd94ae13be19925db`；`src/`、`pyproject.toml` 与 `.github/` 相对已通过 Windows CI 的 `d149036` 无差异。用户允许刷新当前仓库 `.venv` 的 editable 安装，并接受该环境不等于正式发布环境。
+- P0D-P3 已成功刷新 `knowledgeflow-capture 0.1.0.dev0` editable 安装；模块仍解析到当前仓库 `src/`。`knowledgeflow-capture`、`knowledgeflow-capture-admin` 和 `knowledgeflow-inbox` 三个 console entry 均存在；前两者以无参数受控失败、后者以 `--help` 完成无 Store 写入 smoke，退出码分别为 2、2、0，stderr 均为空。
+- 只创建了 `APP-HOME`、`APP-HOME\\data` 和 `BACKUP-PARENT` 三个获准父目录；`CONFIG` 与 `STORE` 仍不存在，两个子目录均为空，路径不含 reparse point，也没有运行中的同名入口进程。未创建服务、端口、自启动项、计划任务或正式安装系统。
+- 创建后的继承权限由当前账户拥有，当前账户、SYSTEM 与 Administrators 为完全控制；本机 `CodexSandboxUsers` 具有读取/执行权限。没有为 pilot 定制 ACL，BitLocker/静态加密状态仍未知，因此该环境继续严格限于低敏感度、可替代文本，不得据此宣称适合私人或高敏内容。
+- P0D-P2/P3 至此闭合。下一检查点只允许执行一次 P0D-P4 精确初始化、`verify` 与独立重新打开验证；不得提前启动收件箱、生成演示 Capture、创建备份叶或进入 P0V。
+
+## 19. P0D-P4 空 Store 初始化与验证记录
+
+- 2026-10-05：在执行前再次确认 `CONFIG` 与 `STORE` 不存在，`APP-HOME` 只有空的 `data` 与 `backups` 父目录，路径不含 reparse point，没有运行中的同名入口进程；11 项管理入口/管理操作聚焦测试通过，运行时代码仍与远端验收基线 `d149036` 一致。
+- 只执行一次 `knowledgeflow-capture-admin init`，明确使用 4 MiB（4194304 bytes）内联阈值和 64 MiB（67108864 bytes）单版本上限。操作退出码为 0，回执为 `created=true`、`config_connected=true`、`store_initialized=true`、无 warning；新 Store 身份为 `store_01a10a44-925c-7b65-8a74-eed136561eb7`。
+- 随后的独立管理进程 `verify` 退出码为 0，返回同一 Store 身份、相同阈值、`items_verified=0`、`versions_verified=0`，空 Store 快照哈希为 `sha256:708d17c63395019e3eb2900f93ec15448692f4b21fad7f3a37f2f1c87277b4fc`。另一个独立 Python 进程重新打开 `CONFIG`，确认其 `capture.root` 与授权的 `STORE` 角色相符且阈值一致。
+- `CONFIG` 当前是普通文件，`STORE` 是普通目录，二者均不是链接；`BACKUP-PARENT` 仍为空。P0D-P4 未启动收件箱、未写入 Capture、未创建备份叶、未执行 restore 或配置切换。
+- P0D-P4 至此闭合。下一检查点 P0D-P5 必须由用户本人在最小收件箱中选择和输入一份符合边界的低敏感度、可替代文本；保存后才能按 list/get 回读并请求用户确认，禁止代理写入演示、测试或诊断内容。
+
+## 20. P0D-P5 用户首份 Capture 与回读记录
+
+- 2026-10-05：用户在获准的本地账户下打开可见 Tk 收件箱，亲自选择、输入并保存一份低敏感度、可替代文本，随后确认界面回读正文正确。系统未代写演示、测试或诊断内容；正文、preview 与幂等键均未输出到共享记录。
+- 关闭界面后，独立公共 `list_captures` / `get_capture` 验证成功。首条身份为 `cap_01a10ab1-1c6e-73e6-a40b-9ca6f1a75440`，当前版本为 1，正文长度与元数据均为 48 bytes，正文哈希、列表/读取身份和 Envelope 相互一致；路由与信任状态分别保持 `unassigned`、`unreviewed-capture`，两次操作均无 warning。
+- 独立管理 `verify` 返回同一 Store 身份、1 个 Item、1 个 Version、17 个目录、5 个文件和 2917 bytes；源快照为 `sha256:4d785304fc3ef0a038a80802b468be9dad27a0e0bdf66353c6004853ecdf29d3`。
+- 两次受限 Codex sandbox 诊断读取因该上下文只有 Store 读取权限、无法在受控父目录创建读取所需的 delete-on-close 临时 spool 而超时；获准的本地用户上下文随后读取成功，且未留下持久 spool 或孤儿进程。该现象说明执行上下文权限边界，不表示 Store 损坏，也不改变最终用户路径的成功结果。
+- P0D-P5 至此闭合。用户关闭收件箱后才能进入 P0D-P6；备份目标必须由用户确认是 `BACKUP-PARENT` 下全新且尚不存在的叶，且本阶段只能声明为 `operational-copy`。
+
+## 21. P0D-P6/P7 首份操作副本、证据与停点
+
+- 2026-10-05：用户关闭收件箱并确认 `BACKUP-1`。执行前确认没有同名 KnowledgeFlow 入口进程、目标尚不存在且 `BACKUP-PARENT` 为空；随后只执行一次 `knowledgeflow-capture-admin backup`，未恢复、未切换配置。
+- 备份作业 `job_01a10b04-99bb-7c58-960b-9f25f0376a8d` 于 `2026-10-05T07:43:33.313Z` 成功，保护级别明确为同盘 `operational-copy`。备份清单记录同一 Store 身份、4 MiB/64 MiB 阈值、17 个目录、5 个文件、2917 bytes 及源快照 `sha256:4d785304fc3ef0a038a80802b468be9dad27a0e0bdf66353c6004853ecdf29d3`；清单哈希为 `sha256:ea4c768368b2c5f2b7200aa2a467ea28f03ee55cb72b8a9c39b8c8f1d3062992`。
+- 独立清单加载得到相同身份、阈值、计数与哈希。备份后再次对源 Store 执行 `verify`，快照、1 个 Item/Version 和文件计数均未改变；`BACKUP-PARENT` 恰有一个普通非链接叶，`backup.json` 存在，持久 spool 数为 0，也没有残留入口进程。
+- 该副本提高了误操作或局部文件损坏时的可恢复可能性，但位于同一物理故障域，不能抵御整盘丢失、账户级恶意破坏或勒索软件；未执行的 restore 也不能由备份成功反推为已验收。
+- P0D-P2–P7 至此完成并停止。共享证据只使用角色别名、非敏感 ID、计数、哈希、时间和限制，不包含正文、preview、幂等键或本机私人绝对路径。下一门禁是需另行规划、授权、验收和提交的 P0V；本记录不授权自动进入 P0V。

@@ -2,12 +2,12 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0D -->
+<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0V -->
 
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-10-04）**：MVP-0 单机单用户文本捕获内核的限定状态仍为 `Implemented`；P0B-min 与 P0C 也达到各自限定范围的 `Implemented`，项目整体仍非 `Effective` 或生产就绪。P0B-min `aa0a7ea`、P0C `2a29a1a` 和 UTF-8 可移植性修复 `d149036` 均已同步到 `origin/main`，精确提交 [Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 已通过安装、两轮各 338 项普通/严格全量、编译、依赖和文档一致性检查。尚未创建 Pilot 配置、Pilot Store、真实备份或真实 Capture。P0D-P1 已完成默认应用目录布局与最小可行性方向纠偏，并由本地提交 `da99650` 封存（未 push）：首次试用只接收低敏感度、可替代文本，可刷新并使用当前 `.venv`；wheel、正式安装包、BitLocker 证明、ACL 定制和异盘灾备后置。下一门禁是仍需单独精确授权的 P0D-P2。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **当前状态（2026-10-05）**：MVP-0 单机单用户文本捕获内核的限定状态仍为 `Implemented`；P0B-min 与 P0C 也达到各自限定范围的 `Implemented`，项目整体仍非 `Effective` 或生产就绪。P0B-min `aa0a7ea`、P0C `2a29a1a` 和 UTF-8 可移植性修复 `d149036` 均已同步到 `origin/main`，精确提交 [Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 已通过安装、两轮各 338 项普通/严格全量、编译、依赖和文档一致性检查。P0D-P2–P7 已完成：当前 `.venv` 三入口通过 smoke，Pilot Store 按 4 MiB/64 MiB 阈值初始化；用户亲自写入并回读确认了首条低敏感度 Capture，随后在停止写入后建立并独立核验了首份同盘 `operational-copy`。这只证明低敏感度 pilot 的首次捕获与操作副本闭环，不证明恢复、长期使用、异盘灾备或产品整体有效。下一门禁是尚未授权的 P0V 短周期 dogfood。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -244,12 +244,12 @@ knowledge-flow/
 
 ## 快速开始
 
-MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端验收，限定范围状态为 `Implemented`。低敏感度 Pilot Store 初始化尚未授权，因此还没有真实使用证据，更不代表生产就绪。后续顺序是：
+MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端验收，限定范围状态为 `Implemented`。低敏感度 Pilot Store 已完成首条用户输入 Capture 的保存/回读和首份同盘操作副本，但仍不代表恢复已验证、长期 dogfood 已完成或生产就绪。后续顺序是：
 
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)、[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)和[C8 本地总验收报告](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)共同说明当前实现与证据边界。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经进入 `Approved Design`。P0B-min `aa0a7ea`、P0C `2a29a1a` 与可移植性修复 `d149036` 均已 push，精确提交 Windows CI 运行 `37185470445` 成功，因此 P0B/P0C 达到限定 `Implemented`。P0D-P1 已完成方向纠偏，下一门禁 P0D-P2 只确认精确路径、目录创建、`.venv` 刷新和低敏感度限制，仍需单独授权。
+4. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经进入 `Approved Design`。P0B-min `aa0a7ea`、P0C `2a29a1a` 与可移植性修复 `d149036` 均已 push，精确提交 Windows CI 运行 `37185470445` 成功，因此 P0B/P0C 达到限定 `Implemented`。P0D-P2–P7 已完成并停点；下一门禁是需另行规划、授权和验收的 P0V。
 5. P0V 后停止继续无证据加固 Capture 内核，先批准代表材料和测量协议，再实现“Capture 版本 → 可重建区段 → 本地检索 → Evidence Bundle → 打开原文/可选引用回答”的第一个价值切片。随后在同一证据底座上比较中小体量的轻量策展与大体量的检索优先问答，再依据实证决定持久 Task/Ledger/Profile、人工路由、SOP、候选图谱或 GBrain。唯一详细顺序见[设计权威与冲突登记第 12 节](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
@@ -267,9 +267,9 @@ knowledgeflow-capture list_captures [--config <Windows 本地绝对路径>]
 
 stdin 必须是“一行 UTF-8 JSON 头 + LF/CRLF + 精确 `body_length_bytes` 个正文原始字节 + EOF”；读取和列表请求的正文长度必须为 `0`。stdout 在退出码 0 或 2 时同样返回“一行 JSON 头 + LF + 精确长度正文 + EOF”；退出码 70 表示 stdout 可能不完整，调用方必须全部丢弃。入口不提供 `--help`、`--version`、Store 初始化、恢复、迁移、路由或测试策略切换，也不会因运行命令而自动创建生产配置/Store。完整字段、帧、退出码和安全边界见[实现矩阵第 3.7 节](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约)与[四操作契约第 7A 节](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)。
 
-### P0B 管理入口（限定 `Implemented`，Pilot 写入仍需授权）
+### P0B 管理入口（限定 `Implemented`，Pilot 首次操作副本已验证）
 
-`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全契约见 [P0 方案第 7.1A–7.1B 节](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约)。合并后的精确提交远端门禁已由运行 `37185470445` 通过；但 P0D-P2 未获授权，因此仍不得创建 Pilot Store。
+`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全契约见 [P0 方案第 7.1A–7.1B 节](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约)。合并后的精确提交远端门禁已由运行 `37185470445` 通过；P0D 已按精确授权完成一次初始化、首条用户 Capture、源 Store 复核及一份同盘 `operational-copy`。尚未执行 restore，也未证明异盘灾备。
 
 ### P0C 最小本地收件箱（临时 Store 范围限定 `Implemented`）
 
@@ -281,7 +281,7 @@ knowledgeflow-inbox --config <Windows 本地绝对路径>
 knowledgeflow-inbox --help
 ```
 
-配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。提交 `d149036` 已修复安装态帮助输出的区域编码问题，并通过精确远端 CI 运行 `37185470445`。该状态仍只覆盖已测试的临时 Store，不授权 P0D-P2 或真实内容。
+配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。提交 `d149036` 已修复安装态帮助输出的区域编码问题，并通过精确远端 CI 运行 `37185470445`。P0D-P5 的首份内容由用户本人选择、输入并确认回读正确；系统未代写演示或测试 Capture。更长周期的重启、续写、错误理解和真实摩擦观察属于 P0V，尚未授权。
 
 ---
 

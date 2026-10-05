@@ -753,4 +753,4 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。P0B 管理能力和 P0C 最小收件箱也已在各自临时 Store 范围闭合，但 Pilot Store、真实使用、GBrain 与路由仍未实现；当前门禁为需单独授权的低敏感度 pilot P0D-P2，不得由本契约直接推导真实数据初始化。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。P0B 管理能力和 P0C 最小收件箱也已在各自临时 Store 范围闭合；P0D-P2–P7 已按独立方案完成一个低敏感度 Pilot Store、用户首份 Capture 与同盘操作副本。持续真实使用、restore、GBrain 与路由仍未验证；当前门禁为尚未授权的 P0V，不得由本契约直接推导后续真实数据操作。
