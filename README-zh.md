@@ -7,7 +7,7 @@
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-10-08）**：MVP-0 单机单用户文本捕获内核的限定状态仍为 `Implemented`；P0B-min 与 P0C 也达到各自限定范围的 `Implemented`，项目整体仍非 `Effective` 或生产就绪。P0B-min `aa0a7ea`、P0C `2a29a1a` 和 UTF-8 可移植性修复 `d149036` 均已同步到 `origin/main`，精确提交 [Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 已通过安装、两轮各 338 项普通/严格全量、编译、依赖和文档一致性检查。P0D-P2–P7、P0V-0、P0V-1 和 P0V-2 均已完成：真实正常捕获/读取/续写、正常重启、未保存草稿边界、离线启动/读取/写入及空正文安全失败已经验证；当前 Store 的 4 个 Item、6 个 Version 均已归属并通过只读复核。已知重要摩擦是历史版本/恢复入口不可见和空正文修正提示不够明确；它们不阻塞当前备份恢复验证。下一门禁是已获顺序授权、仍须满足精确目标与零覆盖前置条件的 P0V-3 新操作副本，随后为 P0V-R 新目标恢复和 P0V-4 证据收口。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **当前状态（2026-10-08）**：MVP-0 单机单用户文本捕获内核的限定状态仍为 `Implemented`；P0B-min 与 P0C 也达到各自限定范围的 `Implemented`，项目整体仍非 `Effective` 或生产就绪。P0B-min `aa0a7ea`、P0C `2a29a1a` 和 UTF-8 可移植性修复 `d149036` 均已同步到 `origin/main`，精确提交 [Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 已通过安装、两轮各 338 项普通/严格全量、编译、依赖和文档一致性检查。P0D-P2–P7 与 P0V-0/1/2/3 均已完成：真实正常捕获/读取/续写、正常重启、未保存草稿边界、离线启动/读取/写入、空正文安全失败及第二份同盘操作副本已经验证；源 Store 在 P0V-3 前后保持 4 个 Item、6 个 Version 和同一规范快照。已知重要摩擦是历史版本/恢复入口不可见和空正文修正提示不够明确。当前门禁是为 P0V-R 确认精确全新恢复目标并演练恢复，随后为 P0V-4 证据收口；尚未执行 restore。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -249,7 +249,7 @@ MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端�
 1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
 2. [实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)、[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)和[C8 本地总验收报告](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)共同说明当前实现与证据边界。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经进入 `Approved Design`。P0B-min `aa0a7ea`、P0C `2a29a1a` 与可移植性修复 `d149036` 均已 push，精确提交 Windows CI 运行 `37185470445` 成功，因此 P0B/P0C 达到限定 `Implemented`。P0D-P2–P7 与 P0V-0/1/2 已完成并停点；当前按已获顺序授权进入 P0V-3 新操作副本，满足零覆盖前置条件后再进入 P0V-R 新目标恢复和 P0V-4 证据收口。
+4. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经进入 `Approved Design`。P0B-min `aa0a7ea`、P0C `2a29a1a` 与可移植性修复 `d149036` 均已 push，精确提交 Windows CI 运行 `37185470445` 成功，因此 P0B/P0C 达到限定 `Implemented`。P0D-P2–P7 与 P0V-0/1/2/3 已完成并停点；当前需先确认 P0V-R 的精确全新恢复目标，再执行恢复演练并进入 P0V-4 证据收口。
 5. P0V 后停止继续无证据加固 Capture 内核，先批准代表材料和测量协议，再实现“Capture 版本 → 可重建区段 → 本地检索 → Evidence Bundle → 打开原文/可选引用回答”的第一个价值切片。随后在同一证据底座上比较中小体量的轻量策展与大体量的检索优先问答，再依据实证决定持久 Task/Ledger/Profile、人工路由、SOP、候选图谱或 GBrain。唯一详细顺序见[设计权威与冲突登记第 12 节](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
