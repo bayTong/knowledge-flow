@@ -2,13 +2,11 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=D2 -->
-
 > A general-purpose, adaptive, governance-first personal knowledge-work system: start from
 > material, a question, or a vague intent; let the system do most knowledge labor while evidence,
 > trust layers, and reversible approval control high-impact changes.
 
-> **Current status (2026-10-08):** the single-machine, single-user MVP-0 text capture kernel and the tested P0B-min/P0C scopes remain `Implemented`. P0V is complete and passed only in the limited sense that the local low-sensitivity Pilot Store and minimal inbox now have initial real-usability and recovery evidence; the overall project is still neither `Effective` nor production-ready. P0B-min `aa0a7ea`, P0C `2a29a1a`, and UTF-8 portability fix `d149036` are on `origin/main`; exact-commit [Windows CI run `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) passed installation, both 338-test ordinary/strict suites, compilation, dependency checking, and documentation consistency. Real four-operation use, normal restart, the unsaved-draft boundary, offline read/write, safe empty-body rejection, a second same-disk operational copy, and a new-target restore were exercised. All four Items, six Versions, and body hashes in the restored copy matched the active Store, while the active configuration and source Store remained unchanged. Missing visible history/restore and unclear empty-body correction remain important UX frictions. The next unapproved gate is D2 documentation-duty and archive maintenance, followed by separately planned minimal history/restore UI work and the Evidence-first value slice. See the [P0 plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) and [`design authority and conflict register`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
+> **Delivery summary:** the single-machine, single-user MVP-0 text capture kernel and the tested P0B-min/P0C scopes are `Implemented`. The low-sensitivity Pilot completed an initial real-use and recovery loop, but the overall project is still neither `Effective` nor production-ready. The exact current phase, next gate, known issues, and verification evidence are maintained only in the [project status document](docs/project-status-项目状态与当前门禁.md).
 
 | Looking for | Jump to |
 |------------|---------|
@@ -20,12 +18,13 @@
 | Real-world usage data | [In Practice](#in-practice) |
 | Design philosophy | [Philosophy](#philosophy) |
 | Documentation hub and numbered reading order | [`docs/README.md`](docs/README.md) |
+| Current project status and next gate | [`docs/project-status-项目状态与当前门禁.md`](docs/project-status-项目状态与当前门禁.md) |
 | Master product requirements document (sole L0 PRD) | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
 | Current design authority and conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
-| Current MVP-0 coding execution plan | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| Completed MVP-0 coding execution record | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | C8 local final acceptance report | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
-| P0 low-sensitivity pilot and minimal inbox dogfood plan | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
+| Completed P0 low-sensitivity pilot and minimal inbox evidence | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
 | Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -196,13 +195,14 @@ knowledge-flow/
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
 ├── docs/
 │   ├── README.md                    Sole documentation hub and numbered reading order
+│   ├── project-status-项目状态与当前门禁.md                         Sole dynamic project-status source
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      Master product requirements document (sole L0 PRD)
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  Non-normative cross-topic concept map
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Completed C0–C8 batches and authorization record
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Implemented choices and test matrix
 │   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 local evidence, limits, and status recommendation
-│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  Approved low-sensitivity pilot plan and staged authorization boundaries
+│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  Completed low-sensitivity Pilot/dogfood evidence
 │   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      Completed C3 decisions pending D2 archive review
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
@@ -249,12 +249,12 @@ knowledge-flow/
 
 The single-machine, single-user MVP-0 text capture kernel passed local C8 acceptance and exact-commit remote CI, and its limited scope is `Implemented`. The low-sensitivity Pilot Store has now exercised real four-operation use, short offline dogfood, same-disk operational copies, and a new-target restore, but this does not establish sustained use, cross-disk disaster recovery, a private-data-ready environment, or overall production readiness. The next order is:
 
-1. Follow the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md).
+1. Check the [project status document](docs/project-status-项目状态与当前门禁.md) for the current checkpoint, next gate, known issues, and evidence; use the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) only for topic authority and conflict rulings.
 2. Read the [implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md), [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md), and [C8 local acceptance report](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) together for the current implementation and evidence boundary.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
 4. The [P0 low-sensitivity pilot and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) has completed every P0D/P0V checkpoint; its limited conclusion, two important UX frictions, and unproved boundaries are recorded.
-5. The next unapproved gate is D2 documentation-duty and archive maintenance. It only cleans up the roles and entry points of completed implementation material; it does not change requirements, product code, Pilot data, or feature priority. A separately authorized minimal UI batch for history/restore and empty-body wording follows.
-6. After those bounded closeouts, approve representative materials and a measurement protocol, then implement the first value slice: Capture version → rebuildable segments → local retrieval → Evidence Bundle → open source / optional cited answer. Compare light curation for small/medium content with retrieval-first Q&A for large content on that same evidence substrate; only then decide on persistent Task/Ledger/Profile state, manual routing, SOPs, candidate graphs, or GBrain. The sole detailed sequence is [design authority and conflict register §12](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘).
+5. Do not infer the current checkpoint from this README, a stable contract, or a completed plan. Only the project status document owns that fact, and every new implementation batch still requires its stated review and authorization boundary.
+6. The approved strategic direction after the capture/Pilot foundation is to validate representative materials and an Evidence-first local value slice before freezing broad Task/Ledger/Profile state or adding RAG, graphs, GBrain, or trusted writes. See [design authority and conflict register §12](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-批准的方向与阶段顺序).
 
 The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
 

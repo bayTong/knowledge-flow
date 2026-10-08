@@ -53,7 +53,6 @@ knowledge-flow/
 """
         english = (
             "# Fixture\n\n"
-            f"{STATUS_MARKER}\n\n"
             "| Looking for | Jump to |\n"
             "|---|---|\n"
             f"{route_rows}\n\n"
@@ -62,7 +61,6 @@ knowledge-flow/
         )
         chinese = (
             "# Fixture\n\n"
-            f"{STATUS_MARKER}\n\n"
             "| 想看什么 | 跳转 |\n"
             "|---|---|\n"
             f"{route_rows}\n\n"
@@ -78,9 +76,11 @@ knowledge-flow/
             elif target not in {"README.md", "README-zh.md"}:
                 self._write(root, target)
 
-        for path in self.module.STATUS_ANCHOR_FILES:
-            if path not in {"README.md", "README-zh.md"}:
-                self._write(root, path, f"# Status\n\n{STATUS_MARKER}\n")
+        self._write(
+            root,
+            self.module.STATUS_ANCHOR_FILE,
+            f"# Status\n\n{STATUS_MARKER}\n",
+        )
 
         research_body = "docs/research/2026-09-11/input.md"
         self._write(root, research_body, "# Historical input\n")
@@ -122,7 +122,7 @@ knowledge-flow/
                 "tests": 338,
                 "capture_tests": 323,
                 "script_tests": 15,
-                "next_gate": "D2",
+                "next_gate": "D2-CONTRACTS",
             },
         )
 
@@ -227,16 +227,16 @@ knowledge-flow/
 
         self.assertIn("RESEARCH_INDEX_ALLOWLIST_MISMATCH", self._codes(report))
 
-    def test_status_anchors_must_match(self) -> None:
+    def test_status_anchor_must_be_unique(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             tracked, untracked = self._fixture(root)
-            path = "docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md"
-            mismatched = STATUS_MARKER.replace(
-                "tests=156 capture_tests=141 script_tests=15",
-                "tests=155 capture_tests=141 script_tests=14",
+            self._write(
+                root,
+                "README.md",
+                (root / "README.md").read_text(encoding="utf-8")
+                + f"\n{STATUS_MARKER}\n",
             )
-            self._write(root, path, f"# Status\n\n{mismatched}\n")
 
             report = self.module.check_repository(
                 root,
@@ -244,7 +244,7 @@ knowledge-flow/
                 untracked_files=untracked,
             )
 
-        self.assertIn("STATUS_ANCHOR_MISMATCH", self._codes(report))
+        self.assertIn("STATUS_ANCHOR_NOT_UNIQUE", self._codes(report))
 
 
 if __name__ == "__main__":

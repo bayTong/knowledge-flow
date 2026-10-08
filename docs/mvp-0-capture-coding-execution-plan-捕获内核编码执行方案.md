@@ -1,8 +1,6 @@
 # MVP-0 捕获内核编码执行方案
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=D2 -->
-
-> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；C-069 修复与最终合并远端门禁已通过，P0D/P0V 已完成并在低敏感度 Pilot 范围形成初步可用性与恢复证据；下一门禁为尚未授权的 D2 文档职责与归档维护批次<br>
+> 状态：Implemented（限定 C0–C8 的 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；本文只记录已完成批次和授权历史，不维护当前门禁；当前状态见[项目状态与当前门禁](project-status-项目状态与当前门禁.md)<br>
 > 整理日期：2026-09-02<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>

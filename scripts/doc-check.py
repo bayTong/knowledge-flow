@@ -7,7 +7,7 @@ This checker intentionally validates only deterministic repository facts:
 * English and Chinese README route/tree target sets agree;
 * relative links in current project Markdown resolve to tracked targets;
 * archived research inputs are explicitly listed by the research index;
-* selected current-status documents carry one identical machine-readable anchor.
+* exactly one current project-status document carries the machine-readable anchor.
 
 Historical research bodies and the v1.0 archive are not interpreted as current
 instructions.  The checker uses only the Python standard library.
@@ -35,6 +35,7 @@ ROUTE_ALLOWLIST = frozenset(
         "docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md",
         "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
         "docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md",
+        "docs/project-status-项目状态与当前门禁.md",
         "docs/requirements-and-governance-baseline-需求与治理基线.md",
     }
 )
@@ -44,13 +45,7 @@ README_SPECS = (
     ("README-zh.md", "| 想看什么 | 跳转 |"),
 )
 
-STATUS_ANCHOR_FILES = (
-    "README.md",
-    "README-zh.md",
-    "docs/design-authority-and-conflict-register-设计权威与冲突登记.md",
-    "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
-    "docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md",
-)
+STATUS_ANCHOR_FILE = "docs/project-status-项目状态与当前门禁.md"
 
 RESEARCH_INDEX = "docs/research/README.md"
 RESEARCH_BODY_PREFIX = "docs/research/"
@@ -443,55 +438,74 @@ def _check_research_index(
     return issues
 
 
-def _check_status_anchors(
+def _check_status_anchor(
     repo_root: Path,
+    tracked_files: set[str],
 ) -> tuple[list[dict[str, str]], dict[str, int | str] | None]:
     issues: list[dict[str, str]] = []
-    values_by_path: dict[str, dict[str, int | str]] = {}
-    for path in STATUS_ANCHOR_FILES:
-        full_path = repo_root / path
-        if not full_path.is_file():
-            issues.append(_issue("STATUS_FILE_MISSING", path, "status-anchor file is missing"))
+    full_path = repo_root / STATUS_ANCHOR_FILE
+    if STATUS_ANCHOR_FILE not in tracked_files:
+        issues.append(
+            _issue(
+                "STATUS_FILE_UNTRACKED",
+                STATUS_ANCHOR_FILE,
+                "the sole project-status document must be Git-tracked",
+            )
+        )
+    if not full_path.is_file():
+        issues.append(
+            _issue("STATUS_FILE_MISSING", STATUS_ANCHOR_FILE, "status file is missing")
+        )
+
+    matches_by_path: dict[str, list[re.Match[str]]] = {}
+    for path in sorted(tracked_files):
+        if not _is_current_project_markdown(path):
+            continue
+        candidate = repo_root / path
+        if not candidate.is_file():
             continue
         matches = list(STATUS_RE.finditer(_read_text(repo_root, path)))
-        if len(matches) != 1:
-            issues.append(
-                _issue(
-                    "STATUS_ANCHOR_COUNT",
-                    path,
-                    f"expected exactly one status anchor, found {len(matches)}",
-                )
-            )
-            continue
-        groups = matches[0].groupdict()
-        values: dict[str, int | str] = {
-            "tests": int(groups["tests"]),
-            "capture_tests": int(groups["capture_tests"]),
-            "script_tests": int(groups["script_tests"]),
-            "next_gate": groups["next_gate"],
-        }
-        if values["tests"] != values["capture_tests"] + values["script_tests"]:
-            issues.append(
-                _issue(
-                    "STATUS_TEST_TOTAL_INVALID",
-                    path,
-                    "tests must equal capture_tests + script_tests",
-                )
-            )
-        values_by_path[path] = values
+        if matches:
+            matches_by_path[path] = matches
 
-    canonical = values_by_path.get(STATUS_ANCHOR_FILES[0])
-    if canonical is not None:
-        for path, values in values_by_path.items():
-            if values != canonical:
-                issues.append(
-                    _issue(
-                        "STATUS_ANCHOR_MISMATCH",
-                        path,
-                        f"expected {canonical}, found {values}",
-                    )
-                )
-    return issues, canonical
+    status_matches = matches_by_path.get(STATUS_ANCHOR_FILE, [])
+    if len(status_matches) != 1:
+        issues.append(
+            _issue(
+                "STATUS_ANCHOR_COUNT",
+                STATUS_ANCHOR_FILE,
+                f"expected exactly one status anchor, found {len(status_matches)}",
+            )
+        )
+
+    for path in sorted(set(matches_by_path) - {STATUS_ANCHOR_FILE}):
+        issues.append(
+            _issue(
+                "STATUS_ANCHOR_NOT_UNIQUE",
+                path,
+                f"status anchor is allowed only in {STATUS_ANCHOR_FILE}",
+            )
+        )
+
+    if len(status_matches) != 1:
+        return issues, None
+
+    groups = status_matches[0].groupdict()
+    status: dict[str, int | str] = {
+        "tests": int(groups["tests"]),
+        "capture_tests": int(groups["capture_tests"]),
+        "script_tests": int(groups["script_tests"]),
+        "next_gate": groups["next_gate"],
+    }
+    if status["tests"] != status["capture_tests"] + status["script_tests"]:
+        issues.append(
+            _issue(
+                "STATUS_TEST_TOTAL_INVALID",
+                STATUS_ANCHOR_FILE,
+                "tests must equal capture_tests + script_tests",
+            )
+        )
+    return issues, status
 
 
 def check_repository(
@@ -525,7 +539,7 @@ def check_repository(
     link_issues, markdown_count = _check_relative_links(root, tracked)
     issues.extend(link_issues)
     issues.extend(_check_research_index(root, tracked))
-    status_issues, status = _check_status_anchors(root)
+    status_issues, status = _check_status_anchor(root, tracked)
     issues.extend(status_issues)
     issues.sort(key=lambda item: (item["code"], item["path"], item["message"]))
 

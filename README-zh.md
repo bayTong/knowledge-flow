@@ -2,12 +2,10 @@
 
 # KnowledgeFlow
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=D2 -->
-
 > 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
 > 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
 
-> **当前状态（2026-10-08）**：MVP-0 单机单用户文本捕获内核以及 P0B-min/P0C 各自限定范围仍为 `Implemented`；P0V 已在“本机低敏感度 Pilot Store + 最小收件箱形成初步真实可用性和恢复证据”的范围完成并通过，项目整体仍非 `Effective` 或生产就绪。P0B-min `aa0a7ea`、P0C `2a29a1a` 和 UTF-8 可移植性修复 `d149036` 均已同步到 `origin/main`，精确提交 [Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 已通过安装、两轮各 338 项普通/严格全量、编译、依赖和文档一致性检查。真实四操作、正常重启、未保存草稿、离线读写、空正文安全失败、第二份同盘操作副本和全新目标恢复均已验证；恢复副本的全部 4 个 Item、6 个 Version 及正文哈希与活动 Store 一致，正式配置和源 Store 未改变。历史版本/恢复入口不可见和空正文修正提示不明确作为两项重要摩擦保留。下一门禁是尚未授权的 D2 文档职责与归档维护批次，之后再单独规划最小历史版本/恢复 UI 修复与 Evidence-first 价值切片。详见 [P0 方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)与[`设计权威与冲突登记`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **交付摘要**：MVP-0 单机单用户文本捕获内核以及 P0B-min/P0C 各自已测范围为 `Implemented`。低敏感度 Pilot 已完成初步真实使用与恢复闭环，但项目整体仍非 `Effective` 或生产就绪。准确的当前阶段、下一门禁、已知问题和验证证据只在[项目状态文档](docs/project-status-项目状态与当前门禁.md)维护。
 
 | 想看什么 | 跳转 |
 |---------|------|
@@ -20,12 +18,13 @@
 | 真实使用数据 | [实践数据](#实践数据) |
 | 设计背后的思维方式 | [设计哲学](#设计哲学) |
 | 文档总入口与编号阅读顺序 | [`docs/README.md`](docs/README.md) |
+| 当前项目状态与下一门禁 | [`docs/project-status-项目状态与当前门禁.md`](docs/project-status-项目状态与当前门禁.md) |
 | 主产品需求文档（唯一 L0 PRD） | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
 | 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | 跨主题概念架构导读 | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
-| 当前 MVP-0 编码执行方案 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| 已完成的 MVP-0 编码执行记录 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | C8 本地总验收报告 | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
-| P0 低敏感度 pilot 与最小收件箱试用方案 | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
+| 已完成的 P0 低敏感度 pilot 与最小收件箱证据 | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
 | 版本与阶段变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -193,13 +192,14 @@ knowledge-flow/
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
 ├── docs/
 │   ├── README.md                    唯一文档阅读地图与编号顺序
+│   ├── project-status-项目状态与当前门禁.md                         唯一动态项目状态入口
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      主产品需求文档（唯一 L0 PRD）
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  非规范性跨主题概念地图
 │   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       已完成 C0–C8 批次与授权记录
 │   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  已实现选择与测试矩阵
 │   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 本地证据、限制与状态建议
-│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  已批准的低敏感度 pilot 方案与分批授权边界
+│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  已完成的低敏感度 Pilot/dogfood 证据
 │   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      已完成 C3 细粒度决策，待 D2 归档评估
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
@@ -246,12 +246,12 @@ knowledge-flow/
 
 MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端验收，限定范围状态为 `Implemented`。低敏感度 Pilot Store 已完成真实四操作、短周期离线 dogfood、同盘操作副本和全新目标恢复演练，但仍不代表长期使用、异盘灾备、正式私人内容环境或整个产品已经生产就绪。后续顺序是：
 
-1. 按 [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) 确认当前边界。
+1. 从[项目状态文档](docs/project-status-项目状态与当前门禁.md)确认当前检查点、下一门禁、已知问题和证据；[设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)只用于判断主题权威和冲突裁决。
 2. [实现拆解与测试矩阵](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)、[编码执行方案](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)和[C8 本地总验收报告](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)共同说明当前实现与证据边界。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
 4. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经完成 P0D/P0V 全部停点；限定结论、两项重要 UX 摩擦和未证明边界均已登记。
-5. 下一门禁是尚未授权的 D2 文档职责与归档维护批次，只处理已完成实施材料的职责和入口，不改需求、产品代码、Pilot 数据或功能优先级；随后单独规划历史版本/恢复入口和空正文文案的最小 UI 修复。
-6. 完成上述小型收口后，先批准代表材料和测量协议，再实现“Capture 版本 → 可重建区段 → 本地检索 → Evidence Bundle → 打开原文/可选引用回答”的第一个价值切片。随后在同一证据底座上比较中小体量的轻量策展与大体量的检索优先问答，再依据实证决定持久 Task/Ledger/Profile、人工路由、SOP、候选图谱或 GBrain。唯一详细顺序见[设计权威与冲突登记第 12 节](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)。
+5. 不要从本 README、稳定契约或已完成计划推断当前检查点；该事实只由项目状态文档维护，每个新实施批次仍必须满足其中写明的复核与授权边界。
+6. 捕获/Pilot 底座之后的已批准战略方向，是先用代表材料和 Evidence-first 本地价值切片验证价值，再决定是否冻结更广的 Task/Ledger/Profile 状态或增加 RAG、图谱、GBrain 与可信写入。详见[设计权威与冲突登记第 12 节](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-批准的方向与阶段顺序)。
 
 现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
 
