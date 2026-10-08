@@ -46,7 +46,7 @@ README 是状态摘要，不是完整需求或实现授权。需要判断“必�
 4. [捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)：已完成的 C0–C8 批次、授权停点和验收顺序。
 5. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：C3 写入阶段已冻结的细粒度行为；待单独 D2 批次重新评估归档。
 
-C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。P0B-min `aa0a7ea`、P0C `2a29a1a` 与 UTF-8 可移植性修复 `d149036` 已同步到 `origin/main`；[Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 在精确修复提交上通过安装、两轮各 338 项全量、编译、依赖和文档检查。因此 P0B/P0C 达到各自限定范围的 `Implemented`。P0D-P2–P7 与 P0V-0/1/2/3/R 已完成：真实四操作、正常重启、未保存草稿、离线读写、安全输入失败、第二份同盘操作副本和全新目标恢复已经验证；恢复副本的 4 个 Item、6 个 Version 及正文哈希与活动 Store 一致，正式配置和源 Store 未改变。当前只剩 P0V-4 脱敏证据与限定状态收口；长期使用、异盘灾备和正式私人内容环境仍未验证，外部接入未获授权。
+C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证据提交 `63f3a3d` 已同步到 `origin/main`，[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交的 `windows-latest` / Python 3.13 环境通过安装、普通与严格测试、编译、依赖和文档检查。MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。P0B-min `aa0a7ea`、P0C `2a29a1a` 与 UTF-8 可移植性修复 `d149036` 已同步到 `origin/main`；[Windows CI 运行 `37185470445`](https://github.com/bayTong/knowledge-flow/actions/runs/37185470445) 在精确修复提交上通过安装、两轮各 338 项全量、编译、依赖和文档检查。因此 P0B/P0C 达到各自限定范围的 `Implemented`。P0D/P0V 已完成：真实四操作、正常重启、未保存草稿、离线读写、安全输入失败、第二份同盘操作副本和全新目标恢复均已验证；恢复副本的 4 个 Item、6 个 Version 及正文哈希与活动 Store 一致，正式配置和源 Store 未改变。P0V 只在本机低敏感度 Pilot 的初步可用性和恢复证据范围通过，长期使用、异盘灾备和正式私人内容环境仍未验证。下一门禁是尚未授权的 D2 文档职责与归档维护批次；外部接入未获授权。
 
 ## 04 — Capture 核心契约
 
@@ -87,4 +87,4 @@ C0–C8 均已完成并版本化。C8 本地总验收于 2026-09-29 通过；证
 2. 历史分析、已被吸收的愿景和退出主线的方案进入 `archive/`，不以“内容可能还有用”为由继续占据当前入口。
 3. 第三方评估和阶段性复核进入 `docs/research/`，必须在研究索引登记；它们不是项目指令。
 4. 文件名保持稳定；阅读顺序只在本页编号。确需改名或移动时，应同时修复引用、README 路由和确定性文档护栏。
-5. C8 已完成；C3-0、MVP-0 实现拆解和编码执行方案的归档由单独 D2 文档维护批次处理，不阻塞 P0A/P0B，也不得混入功能提交。
+5. C8 与 P0 已完成；下一门禁 D2 将单独重新评估 C3-0、MVP-0 实现拆解和编码执行方案的职责与归档，不得混入功能提交，也不改变已经排序的产品方向。

@@ -1,8 +1,8 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=P0V -->
+<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=D2 -->
 
-> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；C-069 修复与最终合并远端门禁已通过，P0D-P2–P7 已完成并停点，下一门禁为尚未授权的 P0V<br>
+> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；C-069 修复与最终合并远端门禁已通过，P0D/P0V 已完成并在低敏感度 Pilot 范围形成初步可用性与恢复证据；下一门禁为尚未授权的 D2 文档职责与归档维护批次<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -44,7 +44,7 @@
 > P0C 候选/提交日期：2026-10-01（提交 `2a29a1a`；新增 17 项后当前 338 项；现已 push）<br>
 > P0B/P0C 最终合并远端门禁日期：2026-10-04（C-069 修复提交 `d149036`；Windows CI 运行 `37185470445` 成功）<br>
 > 适用范围：本地 Capture Store 初始化、配置解析、四个文本操作及验证<br>
-> 边界：`Implemented` 只证明本文及 P0B/P0C 各自限定范围的版本化实现与已测行为；P0D 后已有一个默认应用目录下的低敏感度 Pilot Store、首条用户 Capture 和同盘操作副本，但持续使用、restore、真实断电、异盘灾备、GBrain、LLM、KB 路由及更完整 UI 尚未验证，不标记为 `Effective`
+> 边界：`Implemented` 只证明本文及 P0B/P0C 各自限定范围的版本化实现与已测行为；P0D/P0V 已完成低敏感度 Pilot 的真实四操作、短周期离线使用、同盘操作副本和全新目标恢复，但长期使用、真实断电、异盘灾备、正式私人内容环境、GBrain、LLM、KB 路由及更完整 UI 尚未验证，不标记为 `Effective`
 
 ## 0. 结论先行
 
