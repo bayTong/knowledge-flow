@@ -746,7 +746,7 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 ## 24. 下一步
 
 1. C0–C8 已逐批闭合；证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功，MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。这不代表生产实例、路由或整体产品已经 `Effective`。
-2. 当前独立门禁是[P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)。P0B/P0C 已在临时 Store 闭合最小管理、操作副本与只暴露既有四操作的收件箱；P0D-P2–P7 已按精确授权完成低敏感度 Pilot Store、用户首份 Capture、回读和同盘 `operational-copy`，并在证据停点结束。下一门禁 P0V 尚未授权，不得由本规范推导继续写入、恢复演练或语义处理。
+2. 当前独立门禁是[P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)。P0B/P0C 已在临时 Store 闭合最小管理、操作副本与只暴露既有四操作的收件箱；P0D-P2–P7 与 P0V-0/1/2 已完成低敏感度 Pilot 初始化、真实四操作、正常重启、离线使用和安全输入失败验证。当前按顺序授权停在 P0V-3 操作前；P0V-3/R/4 只闭合操作副本、恢复和证据，不得由本规范推导语义处理或外部接入。
 3. P0V 形成真实使用证据后，暂停继续无证据加固 Capture 内核；先批准至少覆盖中小体量和大体量/多来源材料的实验协议及测量项。
 4. 第一个价值切片只实现既有 Capture 版本到可重建区段、本地检索、实验性 Evidence Bundle 和原文回读/可选引用回答；不把模型、GBrain、图谱或正式工作知识 schema 作为前置。
 5. 在同一证据底座上比较中小体量的轻量策展与大体量的检索优先问答、问题驱动候选；根据结果再冻结 Task/Workspace、Segment、Ledger、Profile、Evidence 和 Candidate 中确实需要持久化的最小契约。
