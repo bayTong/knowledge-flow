@@ -22,6 +22,8 @@
 | Master product requirements document (sole L0 PRD) | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
 | Current design authority and conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
+| Capture Store administration, backup, and restore contract | [`docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
+| Minimal local inbox product specification | [`docs/local-inbox-product-spec-本地收件箱产品规范.md`](docs/local-inbox-product-spec-本地收件箱产品规范.md) |
 | Completed MVP-0 coding execution record | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | C8 local final acceptance report | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
 | Completed P0 low-sensitivity pilot and minimal inbox evidence | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
@@ -207,6 +209,8 @@ knowledge-flow/
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Four text-operation contract
+│   ├── capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md  Store management and Backup Bundle v1 contract
+│   ├── local-inbox-product-spec-本地收件箱产品规范.md              Current minimal local-inbox product contract
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
 │   └── research/
@@ -250,7 +254,7 @@ knowledge-flow/
 The single-machine, single-user MVP-0 text capture kernel passed local C8 acceptance and exact-commit remote CI, and its limited scope is `Implemented`. The low-sensitivity Pilot Store has now exercised real four-operation use, short offline dogfood, same-disk operational copies, and a new-target restore, but this does not establish sustained use, cross-disk disaster recovery, a private-data-ready environment, or overall production readiness. The next order is:
 
 1. Check the [project status document](docs/project-status-项目状态与当前门禁.md) for the current checkpoint, next gate, known issues, and evidence; use the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) only for topic authority and conflict rulings.
-2. Read the [implementation choices and test matrix](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md), [coding execution plan](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md), and [C8 local acceptance report](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) together for the current implementation and evidence boundary.
+2. Use the [four-operation contract](docs/mvp-0-capture-operations-本地文本捕获操作契约.md), [Store administration/backup contract](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md), and [minimal local-inbox specification](docs/local-inbox-product-spec-本地收件箱产品规范.md) for current stable behavior; completed plans and acceptance reports are evidence, not current specifications.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
 4. The [P0 low-sensitivity pilot and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) has completed every P0D/P0V checkpoint; its limited conclusion, two important UX frictions, and unproved boundaries are recorded.
 5. Do not infer the current checkpoint from this README, a stable contract, or a completed plan. Only the project status document owns that fact, and every new implementation batch still requires its stated review and authorization boundary.
@@ -269,13 +273,13 @@ knowledgeflow-capture get_capture [--config <absolute local Windows path>]
 knowledgeflow-capture list_captures [--config <absolute local Windows path>]
 ```
 
-stdin must contain one single-line UTF-8 JSON header, LF or CRLF, exactly `body_length_bytes` raw body bytes, and EOF. Read/list requests require a zero-length body. With exit 0 or 2, stdout uses the same single-line header + LF + exact body + EOF framing; exit 70 means stdout may be incomplete and must be discarded in full. The entry point deliberately has no `--help`, `--version`, Store initialization, recovery, migration, routing, or test-policy switch, and invoking it never auto-creates a production configuration or Store. See [implementation matrix §3.7](docs/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约) and [four-operation contract §7A](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射) for the exact fields, frames, exit codes, and safety boundaries.
+stdin must contain one single-line UTF-8 JSON header, LF or CRLF, exactly `body_length_bytes` raw body bytes, and EOF. Read/list requests require a zero-length body. With exit 0 or 2, stdout uses the same single-line header + LF + exact body + EOF framing; exit 70 means stdout may be incomplete and must be discarded in full. The entry point deliberately has no `--help`, `--version`, Store initialization, recovery, migration, routing, or test-policy switch, and invoking it never auto-creates a production configuration or Store. See [four-operation contract §7A](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射) for the exact fields, frames, exit codes, and safety boundaries.
 
 ### P0B administration entry (limited `Implemented`; first Pilot operational copy verified)
 
-`knowledgeflow-capture-admin` is separate from the daily four-operation protocol and exposes only `init`, `verify`, `backup`, and `restore`. It emits one path-free JSON line on public success/failure and never switches configuration during restore. Backup/restore targets must not exist; partial failed targets are preserved and never auto-resumed. The complete command, Backup Bundle v1, inclusion, exit-code, and safety contract is in [P0 plan §7.1A–§7.1B](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md#71a-p0b-min-管理入口契约). P0D/P0V completed Pilot initialization, user Captures, two same-disk `operational-copy` bundles, and one new-target restore rehearsal without switching the active configuration. Cross-disk disaster protection remains untested.
+`knowledgeflow-capture-admin` is separate from the daily four-operation protocol and exposes only `init`, `verify`, `backup`, and `restore`. It emits one path-free JSON line on public success/failure and never switches configuration during restore. Backup/restore targets must not exist; partial failed targets are preserved and never auto-resumed. The complete command, Backup Bundle v1, inclusion, exit-code, and safety behavior is maintained by the [Capture Store administration, backup, and restore contract](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md). P0D/P0V completed Pilot initialization, user Captures, two same-disk `operational-copy` bundles, and one new-target restore rehearsal without switching the active configuration. Cross-disk disaster protection remains untested.
 
-### P0C minimal local inbox (limited `Implemented` over temporary Stores)
+### P0C minimal local inbox (limited `Implemented`; low-sensitivity Pilot exercised)
 
 `knowledgeflow-inbox` opens a Windows-first Tk desktop inbox using only the Python standard library plus the existing package dependency. It calls `capture_text`, `list_captures`, `get_capture`, and `append_capture_version` directly through their public boundaries; it does not parse Store files, open a network port, or put body text in process arguments, stdout/stderr, logs, or disk spools. The default form reads the normal local configuration, and an explicit configuration may be selected for controlled use:
 
@@ -285,7 +289,7 @@ knowledgeflow-inbox --config <absolute local Windows path>
 knowledgeflow-inbox --help
 ```
 
-Missing configuration produces guidance and no initialization. “Unassigned / pending review” maps only to existing `unassigned` / `unreviewed-capture` state. Write identity and body are retained only in the live process for exact retry; after a process crash the app never auto-resends and the user must refresh and check first. Commit `d149036` fixed the installed help's locale-dependent output and passed exact remote CI run `37185470445`. For P0D-P5, the user personally chose, entered, and confirmed the first low-sensitivity Capture; the system did not inject demo or test content. P0V exercised real append, normal restart, the unsaved-draft boundary, real offline use, safe empty-body rejection, and recovery, while retaining the missing history entry and unclear correction message as important frictions for a separately authorized minimal UI batch after D2.
+Missing configuration produces guidance and no initialization. “Unassigned / pending review” maps only to existing `unassigned` / `unreviewed-capture` state. Write identity and body are retained only in the live process for exact retry; after a process crash the app never auto-resends and the user must refresh and check first. The [minimal local-inbox product specification](docs/local-inbox-product-spec-本地收件箱产品规范.md) owns the current behavior and records the missing history entry and unclear correction message as important, still-unapproved UX work. Commit `d149036` fixed the installed help's locale-dependent output and passed exact remote CI run `37185470445`; P0D/P0V supplied the limited real-use evidence.
 
 ---
 

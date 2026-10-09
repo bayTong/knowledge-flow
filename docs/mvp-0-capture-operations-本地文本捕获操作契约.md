@@ -631,7 +631,7 @@ C6A 自动化只证明进程崩溃边界：9 个 capture 与 7 个 append 内部
 
 ## 7A. C7 受限 CLI 适配映射
 
-C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线协议的命令、帧、字段白名单、退出码和资源边界以[实现拆解与测试矩阵第 3.7 节](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md#37-c7-v1-受限-cli-契约)为准；本节只冻结它与四操作的语义映射：
+C7 v1 只是本章四操作的机器适配器，不是第五个业务层。本节同时是命令、帧、字段白名单、退出码、资源边界和四操作语义映射的唯一当前规范；历史实现矩阵不再承担现行契约职责。
 
 | CLI 操作 | 构造的既有请求 | 正文方向 | 核心结果映射 |
 |---|---|---|---|
@@ -648,6 +648,87 @@ C7 v1 只是本章四操作的机器适配器，不是第五个业务层。线�
 4. 响应头新增的 `schema`、`schema_version` 和统一 `body_length_bytes` 属于传输封装；其余字段必须来自现有 `to_dict()`，不得翻译错误码、删改 details、固化动态 warning 或把未知提交状态降级为未提交。
 5. exit 0/2/70 只表示“完整成功帧 / 完整公共失败帧 / 无可靠完整帧”，调用方仍必须以 JSON 中的 `ok`、error code 和 `commit_state` 判断业务结果。
 6. 临时输入/输出 spool 不是新副本、版本、缓存真源或恢复依据；C7 不改变任何 Store schema，也不把正文、preview、幂等键或本机路径写入命令行、JSON 诊断或 stderr。
+
+### 7A.1 命令面
+
+安装后的唯一入口名为 `knowledgeflow-capture`，v1 只接受以下四种形式：
+
+```text
+knowledgeflow-capture capture_text [--config <absolute-path>]
+knowledgeflow-capture get_capture [--config <absolute-path>]
+knowledgeflow-capture list_captures [--config <absolute-path>]
+knowledgeflow-capture append_capture_version [--config <absolute-path>]
+```
+
+- 操作名与 Python 公共操作名完全一致，不再建立连字符别名；操作名必须紧跟入口名，可选 `--config` 只能出现一次并位于其后。
+- `--config` 若出现，值必须是 Windows 本地绝对路径；省略时继续使用 `%LOCALAPPDATA%\KnowledgeFlow\config.yaml`。相对路径、未知选项、额外位置参数、缺失值、重复选项和未知操作均按 `invalid_input` 处理。
+- v1 不提供 `--text`、Store 初始化、恢复、重建、迁移、路由、GBrain、LLM、测试策略切换或任意文件系统访问参数。`-h`、`--help` 和 `--version` 也不属于这个机器协议；使用它们与其他无效调用一样返回结构化失败帧，而不是输出另一种人类文本协议。
+- 操作名只在命令行出现；请求 JSON 不再重复 `operation` 字段，避免两处声明不一致。
+
+### 7A.2 stdin 请求帧
+
+请求帧是“一个 JSON 头 + 精确长度正文 + EOF”：
+
+```text
+<single-line UTF-8 JSON><LF or CRLF><exact body_length_bytes raw bytes><EOF>
+```
+
+固定解析规则：
+
+1. 规范发送方必须发 LF；接收方同时接受一个 CRLF。裸 CR、UTF-8 BOM、头部前置字节或头部内换行均拒绝。
+2. JSON 头在行终止符之前最多 65,536 byte；超限时不继续无界缓存。
+3. JSON 必须是严格 UTF-8 的单个 object：拒绝重复 key、`NaN`/`Infinity`、非 object 顶层、孤立 surrogate、类型不符和任意层级未知字段。JSON 对象 key 顺序不参与语义。
+4. 三个公共字段始终必填：`schema` 必须为 `knowledgeflow.capture-cli-request`，`schema_version` 必须为整数 `1`，`body_length_bytes` 必须为非负整数；JSON boolean 不得冒充整数。
+5. `capture_text` 与 `append_capture_version` 要求 `body_length_bytes >= 1`；`get_capture` 与 `list_captures` 必须为 `0`。正文是原始 UTF-8 字节，不是 JSON string；正文开头不得是 UTF-8 BOM。
+6. 适配器在调用四操作前，以不超过 1 MiB 的块把正文写入 Store 外、适配器独占的磁盘临时文件，同时严格验证 UTF-8、声明长度、提前 EOF 和正文后的额外任意 byte。多余换行或第二个 JSON 行也属于额外 byte；不能忽略或猜测修复。
+7. 写操作在开始正文临时文件前，先用同一受限配置解析器和受信 `PathPolicy` 读取所选配置，只把 `max_text_version_bytes` 用作帧接收上限；声明值超限直接返回 `text_too_large`。完整帧验证通过后，核心操作仍重新读取并验证配置，核心继续是 Store、事务和错误语义真源。
+8. 固定先后顺序是“命令/头部 schema → 写入配置与声明上限预检 → 正文/EOF 验证 → 请求对象构造 → 核心操作”。因此前一步已经失败时适配器可以立即关闭 stdin，不承诺继续排空调用方尚未发送的正文。
+
+四个操作的顶层业务字段如下；“可选”表示省略时使用既有 Python 请求对象默认值，显式 `null` 只在表中标明的字段允许：
+
+| 操作 | 必填业务字段 | 可选业务字段 | 正文 |
+|---|---|---|---|
+| `capture_text` | `channel` | `idempotency_key`（string/null）、`user_intent`（object/null） | 必须有 |
+| `append_capture_version` | `capture_id`、`expected_current_version`、`channel`、`idempotency_key`（非空 string） | `user_intent`（object/null） | 必须有 |
+| `get_capture` | `capture_id` | `version`（integer/null） | 禁止 |
+| `list_captures` | 无 | `routing_status`、`created_after`、`created_before`、`limit`、`cursor`（除 `limit` 外均可为 null） | 禁止 |
+
+嵌套对象也使用白名单：
+
+- `channel` 必须是 object，必填 `type`、`instance_id`，可选 `external_ref`、`source_created_at`（均可为 null）。
+- `user_intent` 若非 null 必须是 object，可选 `target_kb_id`、`processing_mode`、`requested_new_kb_name`（均可为 null）；省略或 null 都归一化为既有空 `UserIntent`。
+- 字符串、时间、Capture ID、版本、游标、limit、渠道 token、处理模式和幂等键的值域不由 CLI 另立一套规则，统一复用四操作请求类型的现有校验。
+
+### 7A.3 stdout 响应帧
+
+退出码为 0 或 2 时，stdout 必须恰好是一个完整响应帧：
+
+```text
+<single-line UTF-8 JSON><LF><exact body_length_bytes raw bytes><EOF>
+```
+
+- JSON 头固定先发 `schema: "knowledgeflow.capture-cli-response"`、`schema_version: 1`、`body_length_bytes`，随后按既有结果 `to_dict()` 的稳定字段顺序发出操作结果；使用无 BOM、无多余空白、禁止非有限数的 UTF-8 JSON 和 LF。
+- `get_capture` 成功时，CLI 所有的 `body_length_bytes` 必须与核心结果及随后正文长度完全一致，且头中只出现一次该字段。其余成功和全部失败的长度固定为 `0`，不得发送正文。
+- CLI 不重写核心的 `ok`、`saved`、`commit_state`、回执、warning 或 error。命令/帧/字段校验失败映射为固定 `invalid_input`；若已经可靠识别为两个写操作之一，失败还必须带 `commit_state: not-committed`，其他无效调用不伪造提交状态。
+- `get_capture` 不能把核心 sink 直接连到 stdout。适配器先让核心写入 Store 外的独占磁盘临时文件；核心成功返回后才发结果头，再以不超过 1 MiB 的块转发正文。这样完整性失败不会在错误头之前泄出正文。
+- 输入与输出临时文件都不是 Capture Store、规范真源或恢复证据；文件名不可进入协议或诊断，适配器只清理自己创建且仍持有的对象。
+
+### 7A.4 退出码、stderr 与敏感信息
+
+| 退出码 | 含义 | stdout | stderr |
+|---:|---|---|---|
+| `0` | `ok: true` 且整个响应帧已成功写完并 flush | 完整成功帧 | 空 |
+| `2` | 可预期调用/协议/配置/Store/四操作失败，且整个失败帧已成功写完并 flush | 完整 `ok: false` 帧 | 空 |
+| `70` | 适配器未捕获的内部故障，或 stdout 已无法可靠形成完整帧 | 必须按不可信/不完整处理，可能为空或部分写出 | 只允许固定 ASCII 行 `knowledgeflow-capture: internal failure` |
+
+JSON 中的结构化 error code 是业务语义真源，退出码不能细分或覆盖它。默认不输出 traceback、异常文本、正文、正文预览、幂等键、配置路径、Store 路径、临时文件名或本机用户名；调用方必须在看到 `70` 时丢弃全部 stdout，不能尝试从部分帧恢复。
+
+### 7A.5 生产策略与测试能力隔离
+
+- 已安装入口的 `main()` 只从受信任的包/安装上下文构造 `PathPolicy.production`：源码 checkout 中必须保护整个仓库根，普通安装中至少保护已安装包目录，并继续保护系统临时目录。无法可靠建立该边界时失败关闭。
+- CLI 参数、JSON 和环境变量均不能指定、放宽或切换 `PathPolicy`，也不能注入 reader、writer、时钟、UUID、锁或故障点。
+- 子进程集成测试继续只使用测试持有的临时 Store：测试包可调用不导出、不安装的私有 runner 并注入 `PathPolicy.test_owned`；该能力不能进入 console entry、`__all__`、命令选项、环境变量或发布包测试外接口。
+- 另设真实 `knowledgeflow-capture` 入口的无写入 smoke test，证明安装入口、生产策略和无测试后门；任何功能性子进程测试都不得因此创建真实机器配置或生产 Store。
 
 ## 8. 错误码
 

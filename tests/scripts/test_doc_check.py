@@ -122,7 +122,7 @@ knowledge-flow/
                 "tests": 338,
                 "capture_tests": 323,
                 "script_tests": 15,
-                "next_gate": "D2-CONTRACTS",
+                "next_gate": "D2-ARCHIVE",
             },
         )
 

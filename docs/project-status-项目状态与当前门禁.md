@@ -1,6 +1,6 @@
 # KnowledgeFlow 项目状态与当前门禁
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=D2-CONTRACTS -->
+<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=D2-ARCHIVE -->
 
 > 状态：Current Project Status<br>
 > 状态日期：2026-10-09<br>
@@ -12,9 +12,8 @@
 |---|---|
 | 当前阶段 | `D2` 现行文档职责收口与历史实施材料归档 |
 | 最近完成 | P0V-0/1/2/3/R/4 已全部完成；P0V 仅在“本机低敏感度 Pilot Store 与最小收件箱形成初步真实可用性和恢复证据”的限定范围通过 |
-| 本批完成点 | `D2-G`：建立唯一项目状态入口，解除 README、设计权威登记和历史实施计划对动态状态的重复维护 |
-| 下一门禁 | `D2-CONTRACTS`：提取长期 Store 管理、备份恢复和最小收件箱稳定契约；必须独立复核和提交 |
-| D2 后续 | `D2-ARCHIVE`：在稳定契约完成承接后，归档 MVP-0 与 P0 历史实施材料 |
+| 本批完成点 | `D2-CONTRACTS`：Store 管理/备份恢复与最小收件箱稳定契约已从历史 P0 方案提取；C7 完整线协议已回收到四操作契约 |
+| 下一门禁 | `D2-ARCHIVE`：只在稳定职责已经承接的前提下归档 MVP-0 与 P0 历史实施材料，并修正全部现行链接；必须独立复核和提交 |
 | D2 之后 | `P0C-UX0` 最小交互契约收口仍未授权；完成后才回到代表材料与 Evidence-first 价值切片 |
 | 整体状态 | MVP-0 捕获内核和 P0B/P0C 各自已测范围为 `Implemented`；项目整体仍非 `Effective` 或生产就绪 |
 
@@ -24,10 +23,13 @@
 2. P0B-min 管理入口、P0C 最小收件箱和 UTF-8 可移植性修复已在精确远端门禁通过。
 3. 低敏感度 Pilot 已完成真实四操作、正常重启、未保存草稿边界、离线读写、安全输入失败、两份同盘 `operational-copy` 和一次全新目标恢复演练。
 4. 恢复副本的 4 个 Item、6 个 Version 及正文哈希与活动 Store 等价；正式配置和源 Store 未在恢复中改变。
+5. P0B/P0C 的长期稳定行为已分别进入管理/备份恢复契约与最小收件箱产品规范；历史 P0 方案只保留执行与验收证据。
 
 主要证据入口：
 
 - [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)
+- [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)
+- [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md)
 - [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)
 - [变更记录](../CHANGELOG.md)
 - 远端已验证基线：提交 `d149036`，Windows CI 运行 `37185470445`
@@ -44,10 +46,12 @@
 
 ## 4. 当前边界
 
-`D2-CONTRACTS` 只允许整理和提取已经实现、已经验收的稳定行为，不允许：
+`D2-ARCHIVE` 只允许移动已经完成且职责已由稳定文档承接的实施材料，并同步索引、链接和历史状态；不允许：
 
 - 修改产品代码、Capture schema、Pilot Store、备份或恢复副本；
-- 自动批准历史浏览、删除、归档状态机、可信知识回滚或新的持久化状态；
+- 归档主 PRD、项目状态、设计权威、稳定契约、活动 Draft 方法规范或研究索引；
+- 在归档时删掉验收证据、改变历史正文含义，或让现行文档指向未纳入 Git 的目标；
+- 自动批准历史浏览、删除、产品归档状态机、可信知识回滚或新的持久化状态；
 - 接入模型、RAG、GBrain、知识图谱、外部账号或网络服务；
 - 把历史实施材料中的旧状态重新提升为当前授权。
 

@@ -4,7 +4,7 @@
 > 形成日期：2026-09-29<br>
 > 批准日期：2026-09-29<br>
 > 前置基线：MVP-0 单机单用户文本捕获内核 C0–C8 已达到 `Implemented`<br>
-> 文档职责：2026-10-08 用户明确同意的 P0V-3 → P0V-R → P0V-4 串行链已全部完成；本文保存 P0 设计、授权和验收证据，不再维护当前门禁。动态状态见[项目状态与当前门禁](project-status-项目状态与当前门禁.md)<br>
+> 文档职责：2026-10-08 用户明确同意的 P0V-3 → P0V-R → P0V-4 串行链已全部完成；本文只保存 P0 设计、授权和验收证据，不再维护当前门禁或稳定运行契约。管理/备份恢复见[Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)，当前收件箱行为见[最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md)，动态状态见[项目状态与当前门禁](project-status-项目状态与当前门禁.md)<br>
 > P0 执行边界：本计划从未授权覆盖活动 Store、覆盖或复用既有备份/恢复叶、切换配置、自动重试/续传/清理失败目标，扩大内容敏感度，修改产品代码/UI/schema，接入模型/GBrain/知识库，删除本轮 Capture，或把同盘 `operational-copy` 表述为异盘灾备
 > 后续原则：P0B、P0C、P0D、P0V 分别复核、授权、验收和提交，任何一批都不自动授权下一批
 
@@ -36,14 +36,17 @@ P0B 只建设首次 dogfood 所需的最小冷备份闭环，不建设通用备�
 
 ## 2. 文档职责与上位约束
 
-本文是 P0 的活动期实施计划，不建立第二份顶层需求文档，也不修改 Capture v1 的机器契约。
+本文是已完成的 P0 实施与验收记录，不建立第二份顶层需求文档，也不修改 Capture v1 的机器契约。正文中的“必须”“下一步”和停点应按其历史执行语境阅读；长期稳定行为以当前主题契约为准。
 
 | 主题 | 上位依据 | 本文职责 |
 |---|---|---|
 | 本地 dogfood 的产品义务 | [主产品需求文档](requirements-and-governance-baseline-需求与治理基线.md)中的 `FR-INBOX-001`、`NFR-LOCAL-001`、`NFR-REC-001`、`NFR-SEC-001`、`NFR-UX-001` | 翻译为 P0 批次、验收和停点 |
 | Capture 四操作与错误语义 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | 直接复用，不另发明接口 |
+| 初始化、校验、备份与恢复的稳定行为 | [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) | 本文只保留当时的设计过程、授权和验收证据 |
+| 当前最小收件箱的稳定行为和已知限制 | [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md) | 本文只保留 P0C/P0V 的实施与人工体验证据 |
 | 初始化、路径、迁移和测试事实 | [实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | 作为生产前置证据，不重复实现 |
-| 当前状态和主题优先级 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) | 决定本文是否获批以及后续授权 |
+| 当前阶段与下一门禁 | [项目状态与当前门禁](project-status-项目状态与当前门禁.md) | 唯一动态状态入口；本文不再更新当前下一步 |
+| 主题权威与冲突裁决 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) | 判断文档冲突和稳定阶段依赖，不维护当前位置 |
 | C8 已证明项与未证明项 | [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | 保持证据边界，不把 `Implemented` 夸大为生产有效 |
 
 若本文与上述机器契约冲突，以机器契约为准；若与主产品义务或主题权威冲突，必须先修改本文，不能反向覆盖上位文档。

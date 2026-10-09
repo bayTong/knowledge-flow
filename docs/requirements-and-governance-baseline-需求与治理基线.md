@@ -18,6 +18,7 @@
 | 2026-09-24 | 主 PRD 重构 | 将产品需求与开发进度分离，按专业 PRD 结构整理，不改变既有产品方向 | 项目所有者 |
 | 2026-09-28 | R1.3 | 澄清已有来源复用、工作知识处理授权与处理策略的 Draft 边界 | 项目所有者 |
 | 2026-10-04 | R1.4 | 明确 Windows-first 而非 Windows 绑定，将首次真实试用收缩为低敏感度 pilot，并确立价值验证优先、发布/高敏数据硬化按触发条件进入的实施原则 | 项目所有者 |
+| 2026-10-09 | D2-CONTRACTS 追踪同步 | 只把已实现的管理/备份恢复与最小收件箱稳定契约接入需求追踪；不新增或改变产品义务 | 项目所有者 |
 
 ### 本文负责什么
 
@@ -37,7 +38,7 @@
 - 机器字段、磁盘布局、序列化、错误码和事务步骤；
 - 详细页面视觉稿或完整测试脚本。
 
-这些信息分别由仓库 README、[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、主题规范、机器契约、编码执行方案和测试矩阵维护。
+动态进度由[项目状态与当前门禁](project-status-项目状态与当前门禁.md)唯一维护；主题权威、机器细节和历史证据分别由[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、主题规范、稳定契约、实施记录和测试证据维护。
 
 ### 需求层级
 
@@ -511,14 +512,15 @@ MVP-0 的产品要求是可靠保存和证明事实，不是自动分类、路�
 
 | 需求组 | 主要细化文档 | 当前需求成熟度 |
 |---|---|---|
-| `FR-CAP-*` / `FR-READ-*` / `FR-VER-*` / `FR-OPS-*` / `FR-CLI-*` | Capture Envelope、MVP-0 操作契约、实现与测试矩阵 | Approved Design / Ready |
-| `FR-INBOX-*` / `FR-ROUTE-*` / `FR-KB-*` | 捕获与路由规范、SOP-000A | Approved Design / Needs Detail；KB 激活仍为 Draft |
+| `FR-CAP-*` / `FR-READ-*` / `FR-VER-*` / `FR-OPS-*` / `FR-CLI-*` | Capture Envelope、MVP-0 操作契约、Capture Store 管理/备份恢复契约、实现与测试证据 | MVP-0 与 P0B-min 已测范围 `Implemented`；扩展范围仍需细化 |
+| `FR-INBOX-*` / `FR-ROUTE-*` / `FR-KB-*` | 最小本地收件箱产品规范、捕获与路由规范、SOP-000A | `FR-INBOX-001` 当前 P0C 范围 `Implemented`；路由与 KB 能力仍为 Approved Design / Needs Detail，KB 激活仍为 Draft |
 | `FR-TASK-*` / `FR-WORK-*` / `FR-ASSIST-*` / `FR-INTERACT-*` / `FR-NOTE-*` | 未来任务、工作知识、研究和交互 PRD | Approved Design / Needs Detail |
 | `FR-ORG-*` / `FR-GRAPH-*` / `FR-STRUCT-*` | 未来组织、图谱和结构治理 PRD | Approved Design / Needs Detail |
 | `FR-PROC-*` / `FR-EVID-*` | 渐进式知识提炼规范、未来 Evidence 契约 | 治理已确认；方法 Draft |
 | `FR-PROP-*` / `FR-TRUST-*` / `FR-ROLLBACK-*` / `FR-MAINT-*` / `FR-AUTO-*` | 未来可信写入、维护和审核规范 | 边界 Approved Design / Needs Detail；执行闭环 Draft |
 | `FR-ADAPT-*` | 各适配器独立 PRD 与契约 | Approved Design / Needs Detail |
-| `NFR-*` | 本文与各阶段测试计划 | 随对应能力冻结数值和证据 |
+| `NFR-LOCAL-001` / `NFR-REC-001` | MVP-0 操作契约、Capture Store 管理/备份恢复契约、最小本地收件箱产品规范 | 当前 Capture/P0 已测范围 `Implemented`；跨平台、长期运行、异盘灾备和正式高敏环境未证明 |
+| 其他 `NFR-*` | 本文与各阶段主题规范及测试证据 | 随对应能力冻结数值和证据 |
 
 ### 需求变更规则
 

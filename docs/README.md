@@ -40,7 +40,7 @@ KnowledgeFlow 的文件名保持语义化且稳定，**不使用数字前缀表�
 
 按下面顺序追溯已经完成的实施与验收证据；这些文件不负责当前排期：
 
-1. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)：已完成的 P0A/P0B/P0C/P0D/P0V 设计、授权、真实使用和恢复验收证据；稳定契约将在后续独立批次迁出。
+1. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)：已完成的 P0A/P0B/P0C/P0D/P0V 设计、授权、真实使用和恢复验收证据；管理/备份恢复与收件箱稳定行为已分别迁入第 04 节的长期契约。
 2. [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：C8 本地与远端证据、未证明项和状态范围。
 3. [捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)：已完成的运行时选择、模块边界和测试矩阵。
 4. [捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)：已完成的 C0–C8 批次、授权停点和验收顺序。
@@ -48,13 +48,17 @@ KnowledgeFlow 的文件名保持语义化且稳定，**不使用数字前缀表�
 
 C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P0C 各自已测范围为 `Implemented`；P0V 只在本机低敏感度 Pilot 的初步可用性和恢复证据范围通过，长期使用、异盘灾备和正式私人内容环境仍未验证。精确提交、CI 运行、当前下一门禁和开放问题统一由[项目状态文档](project-status-项目状态与当前门禁.md)导航。
 
-## 04 — Capture 核心契约
+## 04 — Capture 与本地运行稳定契约
 
 建议按业务边界到磁盘细节的顺序阅读：
 
 1. [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)：捕获、Global Intake、人工路由和未审核层边界。
 2. [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)：身份、版本、哈希、事件和原子保存事务。
-3. [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md)：`capture_text`、`get_capture`、`list_captures`、`append_capture_version` 的公共语义。
+3. [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md)：四个公共操作以及 C7 机器入口的完整命令、帧和退出语义。
+4. [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)：独立 `init/verify/backup/restore` 管理面、Backup Bundle v1、零覆盖恢复和数据保护声明。
+5. [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md)：当前 Tk 收件箱的用户任务、四操作映射、进程内重试、安全提示和已知 UX 缺口。
+
+这五份文件维护现行稳定行为；已完成的编码计划、测试矩阵、C8 报告和 P0 方案只用于追溯实现与验收证据，不能反向覆盖稳定契约。
 
 ## 05 — MVP-0 之后的已批准边界与待实验方法
 
