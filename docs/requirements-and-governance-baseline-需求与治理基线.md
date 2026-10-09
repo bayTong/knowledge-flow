@@ -2,7 +2,7 @@
 
 > 文档编号：`KF-PRD`<br>
 > 产品需求状态：`Approved Design`<br>
-> 当前修订日期：2026-10-04<br>
+> 当前修订日期：2026-10-09<br>
 > 适用范围：KnowledgeFlow 长期产品与各阶段产品需求<br>
 > 权威：本文是唯一顶层产品需求入口；主题规范只能细化本文，不能改变本文的产品目标、范围和治理边界。
 
@@ -19,6 +19,7 @@
 | 2026-09-28 | R1.3 | 澄清已有来源复用、工作知识处理授权与处理策略的 Draft 边界 | 项目所有者 |
 | 2026-10-04 | R1.4 | 明确 Windows-first 而非 Windows 绑定，将首次真实试用收缩为低敏感度 pilot，并确立价值验证优先、发布/高敏数据硬化按触发条件进入的实施原则 | 项目所有者 |
 | 2026-10-09 | D2-CONTRACTS 追踪同步 | 只把已实现的管理/备份恢复与最小收件箱稳定契约接入需求追踪；不新增或改变产品义务 | 项目所有者 |
+| 2026-10-09 | P0C-UX0 | 根据真实 P0V 摩擦，新增历史版本只读浏览、以旧版正文恢复为新版本和可行动未保存反馈的稳定产品义务；详细交互已收口但尚未实现 | 项目所有者 |
 
 ### 本文负责什么
 
@@ -335,6 +336,7 @@ MVP-0 的产品要求是可靠保存和证明事实，不是自动分类、路�
 | `FR-OPS-001` | 系统能够保守恢复自有崩溃残留、从不可变事实重建派生状态，并安全迁移 Store | 恢复和重建可重复；不猜测外来数据；迁移后事实等价 | MVP-0 | Approved Design / Ready |
 | `FR-CLI-001` | 自动化入口必须通过受限、可流式、无敏感泄漏的机器适配接口调用四个现有操作，不扩大库能力 | 安装态可调用；输入输出有界；错误不泄露正文和内部路径 | MVP-0 | Approved Design / Ready |
 | `FR-INBOX-001` | 用户能够在最小本地界面捕获、查看、读取、续写并看到未分配和待处理项；界面不得私自增加语义写入 | 完成端到端本地任务；状态可理解；不越过既有契约 | 低敏感度本地 pilot | Approved Design / Needs Detail |
+| `FR-INBOX-002` | 用户能够辨认当前与历史 Capture 版本、按明确版本只读浏览，并将选定旧版正文作为草稿显式追加成新版本；保存失败必须清楚说明是否保存及下一修正动作 | 历史正文精确可读；恢复形成 `N+1` 且旧版本不变；空正文提示不重复并可直接修正 | P0C 最小交互补足 | Approved Design / Ready |
 
 ### 工作知识、研究与交互
 
@@ -513,7 +515,7 @@ MVP-0 的产品要求是可靠保存和证明事实，不是自动分类、路�
 | 需求组 | 主要细化文档 | 当前需求成熟度 |
 |---|---|---|
 | `FR-CAP-*` / `FR-READ-*` / `FR-VER-*` / `FR-OPS-*` / `FR-CLI-*` | Capture Envelope、MVP-0 操作契约、Capture Store 管理/备份恢复契约、实现与测试证据 | MVP-0 与 P0B-min 已测范围 `Implemented`；扩展范围仍需细化 |
-| `FR-INBOX-*` / `FR-ROUTE-*` / `FR-KB-*` | 最小本地收件箱产品规范、捕获与路由规范、SOP-000A | `FR-INBOX-001` 当前 P0C 范围 `Implemented`；路由与 KB 能力仍为 Approved Design / Needs Detail，KB 激活仍为 Draft |
+| `FR-INBOX-*` / `FR-ROUTE-*` / `FR-KB-*` | 最小本地收件箱产品规范、捕获与路由规范、SOP-000A | `FR-INBOX-001` 当前 P0C 基线范围 `Implemented`；`FR-INBOX-002` 已由 P0C-UX0 细化为 Approved Design / Ready 但尚未实现；路由与 KB 能力仍为 Approved Design / Needs Detail，KB 激活仍为 Draft |
 | `FR-TASK-*` / `FR-WORK-*` / `FR-ASSIST-*` / `FR-INTERACT-*` / `FR-NOTE-*` | 未来任务、工作知识、研究和交互 PRD | Approved Design / Needs Detail |
 | `FR-ORG-*` / `FR-GRAPH-*` / `FR-STRUCT-*` | 未来组织、图谱和结构治理 PRD | Approved Design / Needs Detail |
 | `FR-PROC-*` / `FR-EVID-*` | 渐进式知识提炼规范、未来 Evidence 契约 | 治理已确认；方法 Draft |
