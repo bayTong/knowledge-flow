@@ -43,7 +43,7 @@ MVP-0 只需要四个机械操作：
 
 - [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)决定 MVP 边界和功能门禁。
 - [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)继续负责身份、Envelope、哈希、不可变版本、幂等和原子事务，是底层权威。
-- [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)冻结 `capture_text` 编码前六项补充边界，已于 2026-09-08 获批并同步进本文。
+- [已归档的 C3-0 阻塞性行为决策](../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)保留 `capture_text` 编码前六项补充边界的形成过程；生效行为已经同步进本文与 Capture Envelope，归档记录不再授权实现。
 - [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)负责 MVP-1 以后如何选择 KB 和处理方式。
 - 本文只把底层事务收敛为四个调用方可以理解和测试的操作。
 

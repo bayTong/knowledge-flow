@@ -209,7 +209,7 @@ routing: archived    -> 移出日常待处理视图，但保留历史和原件
 
 ### 步骤 C3：写入最小机器元数据
 
-`capture.yaml` 是本地可重建的当前状态投影；精确 schema、完整字段、顺序和值域只以 Capture Envelope v1 第 9 节和 C3-0 为准。本规范只引用其中的路由与信任含义，不再维护第二份机器格式示例：
+`capture.yaml` 是本地可重建的当前状态投影；精确 schema、完整字段、顺序和值域只以 Capture Envelope v1 第 9 节和 MVP-0 操作契约为准。本规范只引用其中的路由与信任含义，不再维护第二份机器格式示例：
 
 ```yaml
 routing:
@@ -746,7 +746,7 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 ## 24. 下一步
 
 1. C0–C8 已逐批闭合；证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功，MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。这不代表生产实例、路由或整体产品已经 `Effective`。
-2. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已完成 P0D/P0V 全部停点；低敏感度 Pilot 的真实四操作、正常重启、离线使用、安全输入失败、操作副本和全新目标恢复均已验证。P0 结果不得被本规范解释为语义处理或外部接入授权；当前门禁只看[项目状态文档](project-status-项目状态与当前门禁.md)。
+2. [P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md)保留 P0D/P0V 的真实四操作、正常重启、离线使用、安全输入失败、操作副本和全新目标恢复证据。P0 结果不得被本规范解释为语义处理或外部接入授权；当前门禁只看[项目状态文档](project-status-项目状态与当前门禁.md)。
 3. P0V 形成真实使用证据后，暂停继续无证据加固 Capture 内核；先批准至少覆盖中小体量和大体量/多来源材料的实验协议及测量项。
 4. 第一个价值切片只实现既有 Capture 版本到可重建区段、本地检索、实验性 Evidence Bundle 和原文回读/可选引用回答；不把模型、GBrain、图谱或正式工作知识 schema 作为前置。
 5. 在同一证据底座上比较中小体量的轻量策展与大体量的检索优先问答、问题驱动候选；根据结果再冻结 Task/Workspace、Segment、Ledger、Profile、Evidence 和 Candidate 中确实需要持久化的最小契约。

@@ -24,9 +24,9 @@
 | Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
 | Capture Store administration, backup, and restore contract | [`docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
 | Minimal local inbox product specification | [`docs/local-inbox-product-spec-本地收件箱产品规范.md`](docs/local-inbox-product-spec-本地收件箱产品规范.md) |
-| Completed MVP-0 coding execution record | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| Completed MVP-0 implementation history | [`archive/2026-implementation-history/README.md`](archive/2026-implementation-history/README.md) |
 | C8 local final acceptance report | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
-| Completed P0 low-sensitivity pilot and minimal inbox evidence | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
+| Completed P0 low-sensitivity pilot and minimal inbox history | [`archive/2026-p0-low-sensitivity-pilot/README.md`](archive/2026-p0-low-sensitivity-pilot/README.md) |
 | Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -201,11 +201,7 @@ knowledge-flow/
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      Master product requirements document (sole L0 PRD)
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  Non-normative cross-topic concept map
-│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       Completed C0–C8 batches and authorization record
-│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  Implemented choices and test matrix
 │   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 local evidence, limits, and status recommendation
-│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  Completed low-sensitivity Pilot/dogfood evidence
-│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      Completed C3 decisions pending D2 archive review
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Four text-operation contract
@@ -242,6 +238,10 @@ knowledge-flow/
 └── archive/
     ├── 2026-design-history/
     │   └── README.md                  Index for nine archived plans, vision, and SOP files
+    ├── 2026-implementation-history/
+    │   └── README.md                  MVP-0 C3-0 and C0–C8 implementation-history index
+    ├── 2026-p0-low-sensitivity-pilot/
+    │   └── README.md                  P0A–P0V pilot and recovery-history index
     └── v1.0/
         ├── README.md                  v1.0 limitations overview
         └── sop-v1-original.md        v1.0 original SOP
@@ -256,7 +256,7 @@ The single-machine, single-user MVP-0 text capture kernel passed local C8 accept
 1. Check the [project status document](docs/project-status-项目状态与当前门禁.md) for the current checkpoint, next gate, known issues, and evidence; use the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) only for topic authority and conflict rulings.
 2. Use the [four-operation contract](docs/mvp-0-capture-operations-本地文本捕获操作契约.md), [Store administration/backup contract](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md), and [minimal local-inbox specification](docs/local-inbox-product-spec-本地收件箱产品规范.md) for current stable behavior; completed plans and acceptance reports are evidence, not current specifications.
 3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. The [P0 low-sensitivity pilot and minimal inbox dogfood plan](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) has completed every P0D/P0V checkpoint; its limited conclusion, two important UX frictions, and unproved boundaries are recorded.
+4. The [P0 low-sensitivity Pilot history](archive/2026-p0-low-sensitivity-pilot/README.md) records the completed P0D/P0V checkpoints, limited conclusion, two important UX frictions, and unproved boundaries; it is evidence, not a current plan.
 5. Do not infer the current checkpoint from this README, a stable contract, or a completed plan. Only the project status document owns that fact, and every new implementation batch still requires its stated review and authorization boundary.
 6. The approved strategic direction after the capture/Pilot foundation is to validate representative materials and an Evidence-first local value slice before freezing broad Task/Ledger/Profile state or adding RAG, graphs, GBrain, or trusted writes. See [design authority and conflict register §12](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-批准的方向与阶段顺序).
 

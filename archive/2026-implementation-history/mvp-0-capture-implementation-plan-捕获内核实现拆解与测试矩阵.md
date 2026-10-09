@@ -1,6 +1,7 @@
 # MVP-0 捕获内核实现拆解与测试矩阵
 
-> 状态：Implemented（限定 MVP-0 单机单用户文本捕获内核，以及 P0B/P0C 各自已测范围）；本文只记录已完成工程选择和测试矩阵，不维护当前门禁；当前状态见[项目状态与当前门禁](project-status-项目状态与当前门禁.md)<br>
+> 状态：Historical Implementation Record；C0–C8 的实现拆解与测试矩阵已经执行完毕<br>
+> D2 归档日期：2026-10-09；本文不再维护当前状态、下一门禁或新的实现授权<br>
 > 确认日期：2026-09-02<br>
 > 补充确认日期：2026-09-03<br>
 > C2B 复核日期：2026-09-03<br>
@@ -185,7 +186,7 @@ Python 3.13 标准库不提供 YAML 解析器，而已批准契约使用 `captur
 - 语法门禁只允许单文档、mapping/list 和 string/integer/boolean/null；拒绝 float、时间对象、binary、重复键、anchor、alias、显式 tag、merge key、多文档和非字符串 key。
 - 语法通过后仍按文件类型执行严格 schema 校验：必填/可选字段、类型、枚举、nullable、顺序约束和未知字段分别检查。
 - 写出必须通过固定 golden fixture 锁定 UTF-8、LF、无 BOM、2 空格、block style、schema 字段顺序、双引号字符串、无空行和恰好一个末尾换行。
-- 完整规则以 [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)第 8.7 节为准。
+- 完整规则以 [Capture Envelope v1](../../docs/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)第 8.7 节为准。
 
 ### 3.4 UUIDv7
 

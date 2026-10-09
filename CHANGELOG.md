@@ -6,6 +6,7 @@
 
 ### 治理式捕获架构、C3 验收与 R0 初始化加固
 
+- **完成 D2 历史实施材料归档**：在长期 Store 管理/备份恢复、最小收件箱与 C7 线协议职责已由现行契约承接后，将 C3-0 决策、MVP-0 实现矩阵、C0–C8 编码方案和 P0A–P0V 实施方案移入两个带索引的历史目录；C8 总验收报告继续留作现行直接证据。同步修正双语 README、文档总入口、主题权威、当前状态、规范引用和确定性文档护栏；下一门禁为尚未授权的 `P0C-UX0` 最小交互契约收口，该门禁本身不授权实现。
 - **建立主题级设计权威**：新增需求与治理基线、设计权威与冲突登记、SOP-000A、捕获与路由规范、Capture Envelope v1、MVP-0 四操作契约、实现拆解与编码执行方案。
 - **冻结语义写入边界**：捕获允许先保存后审核；模型只生成路由或策展提案；旧 SOP-002 及其写入提示词暂停执行，策展地图迁移到 `proposals/curation-maps/`。
 - **完成 C0–C2**：新增内部 `knowledgeflow-capture` Python 包，实现结构化错误与三态提交状态、UUIDv7、Payload/Payload Set/Request Fingerprint/Envelope 四类哈希、受限 YAML 语法门禁/schema 校验/确定性发射、本地配置、Windows 路径策略、Store Manifest v1、初始化内核锁、durability 原语及安全 Store 初始化。

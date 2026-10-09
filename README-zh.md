@@ -24,9 +24,9 @@
 | 跨主题概念架构导读 | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
 | Capture Store 管理、备份与恢复契约 | [`docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
 | 最小本地收件箱产品规范 | [`docs/local-inbox-product-spec-本地收件箱产品规范.md`](docs/local-inbox-product-spec-本地收件箱产品规范.md) |
-| 已完成的 MVP-0 编码执行记录 | [`docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md`](docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| 已完成的 MVP-0 实施历史 | [`archive/2026-implementation-history/README.md`](archive/2026-implementation-history/README.md) |
 | C8 本地总验收报告 | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
-| 已完成的 P0 低敏感度 pilot 与最小收件箱证据 | [`docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md`](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) |
+| 已完成的 P0 低敏感度 Pilot 与最小收件箱历史 | [`archive/2026-p0-low-sensitivity-pilot/README.md`](archive/2026-p0-low-sensitivity-pilot/README.md) |
 | 版本与阶段变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
 
 ---
@@ -198,11 +198,7 @@ knowledge-flow/
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      主产品需求文档（唯一 L0 PRD）
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  非规范性跨主题概念地图
-│   ├── mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md       已完成 C0–C8 批次与授权记录
-│   ├── mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md  已实现选择与测试矩阵
 │   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 本地证据、限制与状态建议
-│   ├── p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md  已完成的低敏感度 Pilot/dogfood 证据
-│   ├── c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md      已完成 C3 细粒度决策，待 D2 归档评估
 │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
 │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
 │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           四个文本操作契约
@@ -239,6 +235,10 @@ knowledge-flow/
 └── archive/
     ├── 2026-design-history/
     │   └── README.md                  九份旧方案、愿景与 SOP 的归档索引
+    ├── 2026-implementation-history/
+    │   └── README.md                  MVP-0 C3-0 与 C0–C8 实施历史索引
+    ├── 2026-p0-low-sensitivity-pilot/
+    │   └── README.md                  P0A–P0V Pilot 与恢复历史索引
     └── v1.0/
         ├── README.md                  v1.0 局限性说明
         └── sop-v1-original.md        v1.0 原始 SOP
@@ -253,7 +253,7 @@ MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端�
 1. 从[项目状态文档](docs/project-status-项目状态与当前门禁.md)确认当前检查点、下一门禁、已知问题和证据；[设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)只用于判断主题权威和冲突裁决。
 2. 当前稳定行为看[四操作契约](docs/mvp-0-capture-operations-本地文本捕获操作契约.md)、[Store 管理/备份恢复契约](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)和[最小本地收件箱规范](docs/local-inbox-product-spec-本地收件箱产品规范.md)；已完成计划与验收报告只作为证据，不再承担现行规范职责。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md)已经完成 P0D/P0V 全部停点；限定结论、两项重要 UX 摩擦和未证明边界均已登记。
+4. [P0 低敏感度 Pilot 实施历史](archive/2026-p0-low-sensitivity-pilot/README.md)记录了已完成的 P0D/P0V 停点、限定结论、两项重要 UX 摩擦和未证明边界；它是证据，不是当前计划。
 5. 不要从本 README、稳定契约或已完成计划推断当前检查点；该事实只由项目状态文档维护，每个新实施批次仍必须满足其中写明的复核与授权边界。
 6. 捕获/Pilot 底座之后的已批准战略方向，是先用代表材料和 Evidence-first 本地价值切片验证价值，再决定是否冻结更广的 Task/Ledger/Profile 状态或增加 RAG、图谱、GBrain 与可信写入。详见[设计权威与冲突登记第 12 节](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-批准的方向与阶段顺序)。
 

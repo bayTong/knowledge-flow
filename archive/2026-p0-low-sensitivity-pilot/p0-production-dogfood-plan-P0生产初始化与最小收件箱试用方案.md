@@ -1,12 +1,13 @@
 # P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案
 
-> 状态：`Completed Execution Evidence`；P0A/P0A.1、P0D-P2–P7 与 P0V-0/1/2/3/R/4 均已完成并按计划停点；P0B-min、P0C 及 C-069 可移植性修复已通过精确提交远端门禁，P0B/P0C 达到各自限定范围的 `Implemented`；P0V 在低敏感度 Pilot 范围通过，保留两项重要 UX 摩擦，项目整体仍非 `Effective`<br>
+> 状态：`Historical Implementation Record`；归档前最终状态为 `Completed Execution Evidence`，P0A/P0A.1、P0D-P2–P7 与 P0V-0/1/2/3/R/4 均已完成并按计划停点<br>
+> D2 归档日期：2026-10-09；本文不再维护当前状态、下一门禁或稳定运行契约<br>
 > 形成日期：2026-09-29<br>
 > 批准日期：2026-09-29<br>
 > 前置基线：MVP-0 单机单用户文本捕获内核 C0–C8 已达到 `Implemented`<br>
-> 文档职责：2026-10-08 用户明确同意的 P0V-3 → P0V-R → P0V-4 串行链已全部完成；本文只保存 P0 设计、授权和验收证据，不再维护当前门禁或稳定运行契约。管理/备份恢复见[Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)，当前收件箱行为见[最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md)，动态状态见[项目状态与当前门禁](project-status-项目状态与当前门禁.md)<br>
+> 文档职责：2026-10-08 用户明确同意的 P0V-3 → P0V-R → P0V-4 串行链已全部完成；本文只保存 P0 设计、授权和验收证据。管理/备份恢复、当前收件箱行为和动态状态分别由现行稳定契约与项目状态文档维护<br>
 > P0 执行边界：本计划从未授权覆盖活动 Store、覆盖或复用既有备份/恢复叶、切换配置、自动重试/续传/清理失败目标，扩大内容敏感度，修改产品代码/UI/schema，接入模型/GBrain/知识库，删除本轮 Capture，或把同盘 `operational-copy` 表述为异盘灾备
-> 后续原则：P0B、P0C、P0D、P0V 分别复核、授权、验收和提交，任何一批都不自动授权下一批
+> 历史执行原则：P0B、P0C、P0D、P0V 分别复核、授权、验收和提交，任何一批都不自动授权下一批
 
 ## 1. 结论
 
@@ -40,14 +41,14 @@ P0B 只建设首次 dogfood 所需的最小冷备份闭环，不建设通用备�
 
 | 主题 | 上位依据 | 本文职责 |
 |---|---|---|
-| 本地 dogfood 的产品义务 | [主产品需求文档](requirements-and-governance-baseline-需求与治理基线.md)中的 `FR-INBOX-001`、`NFR-LOCAL-001`、`NFR-REC-001`、`NFR-SEC-001`、`NFR-UX-001` | 翻译为 P0 批次、验收和停点 |
-| Capture 四操作与错误语义 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | 直接复用，不另发明接口 |
-| 初始化、校验、备份与恢复的稳定行为 | [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) | 本文只保留当时的设计过程、授权和验收证据 |
-| 当前最小收件箱的稳定行为和已知限制 | [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md) | 本文只保留 P0C/P0V 的实施与人工体验证据 |
-| 初始化、路径、迁移和测试事实 | [实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | 作为生产前置证据，不重复实现 |
-| 当前阶段与下一门禁 | [项目状态与当前门禁](project-status-项目状态与当前门禁.md) | 唯一动态状态入口；本文不再更新当前下一步 |
-| 主题权威与冲突裁决 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) | 判断文档冲突和稳定阶段依赖，不维护当前位置 |
-| C8 已证明项与未证明项 | [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | 保持证据边界，不把 `Implemented` 夸大为生产有效 |
+| 本地 dogfood 的产品义务 | [主产品需求文档](../../docs/requirements-and-governance-baseline-需求与治理基线.md)中的 `FR-INBOX-001`、`NFR-LOCAL-001`、`NFR-REC-001`、`NFR-SEC-001`、`NFR-UX-001` | 翻译为 P0 批次、验收和停点 |
+| Capture 四操作与错误语义 | [MVP-0 本地文本捕获操作契约](../../docs/mvp-0-capture-operations-本地文本捕获操作契约.md) | 直接复用，不另发明接口 |
+| 初始化、校验、备份与恢复的稳定行为 | [Capture Store 管理、备份与恢复契约](../../docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) | 本文只保留当时的设计过程、授权和验收证据 |
+| 当前最小收件箱的稳定行为和已知限制 | [最小本地收件箱产品规范](../../docs/local-inbox-product-spec-本地收件箱产品规范.md) | 本文只保留 P0C/P0V 的实施与人工体验证据 |
+| 初始化、路径、迁移和测试事实 | [实现拆解与测试矩阵](../2026-implementation-history/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | 作为生产前置证据，不重复实现 |
+| 当前阶段与下一门禁 | [项目状态与当前门禁](../../docs/project-status-项目状态与当前门禁.md) | 唯一动态状态入口；本文不再更新当前下一步 |
+| 主题权威与冲突裁决 | [设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md) | 判断文档冲突和稳定阶段依赖，不维护当前位置 |
+| C8 已证明项与未证明项 | [C8 总验收报告](../../docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | 保持证据边界，不把 `Implemented` 夸大为生产有效 |
 
 若本文与上述机器契约冲突，以机器契约为准；若与主产品义务或主题权威冲突，必须先修改本文，不能反向覆盖上位文档。
 
@@ -77,10 +78,10 @@ P0D 必须重新执行时点一致的预检；本表既不能作为未来初始�
 
 | 能力 | 当前事实 | P0 判断 |
 |---|---|---|
-| Store 初始化 | [`store.init_capture_store`](../src/knowledgeflow_capture/store.py) 已实现显式、幂等、无覆盖初始化 | 能力存在，但没有安装态管理命令 |
+| Store 初始化 | [`store.init_capture_store`](../../src/knowledgeflow_capture/store.py) 已实现显式、幂等、无覆盖初始化 | 能力存在，但没有安装态管理命令 |
 | 日常操作 | `knowledgeflow-capture` 只暴露 capture/get/list/append 四操作 | 保持不变；不得塞入管理命令 |
-| 派生状态重建 | [`recovery.rebuild_capture_store_derived_state`](../src/knowledgeflow_capture/recovery.py) 已实现 | 它会重建派生对象，不是只读完整性检查，也不是备份 |
-| Store 迁移 | [`migration.migrate_capture_store`](../src/knowledgeflow_capture/migration.py) 已实现复制、验证、配置切换且保留源 | 它改变活动配置，不等于备份或普通恢复 |
+| 派生状态重建 | [`recovery.rebuild_capture_store_derived_state`](../../src/knowledgeflow_capture/recovery.py) 已实现 | 它会重建派生对象，不是只读完整性检查，也不是备份 |
+| Store 迁移 | [`migration.migrate_capture_store`](../../src/knowledgeflow_capture/migration.py) 已实现复制、验证、配置切换且保留源 | 它改变活动配置，不等于备份或普通恢复 |
 | 备份/恢复 | 当前没有获批的生产备份语义、可复核操作路径或恢复演练 | 是 P0B 阻塞项；只闭合首次 dogfood 所需的最小冷备份，不用手工复制假装成功，也不扩建通用备份系统 |
 | 最小收件箱 | `FR-INBOX-001` 已批准但仍为 `Needs Detail` | 由 P0C 在不扩大 Capture 语义的前提下细化和实现 |
 
@@ -623,7 +624,7 @@ P0D-P1 经方向复核后闭合为：默认使用同一 `APP-HOME`，Store 与�
 - wheel、版本化非 editable 运行环境、正式安装包、管理员级磁盘加密证明、ACL 定制和异盘灾备都保留为有价值的后续硬化项，而不是被否定；触发条件分别是准备分发、开始放入私人/高敏内容、要求稳定升级/回滚，或声明能抵御整盘故障。
 - 可移植性按“平台无关数据与操作契约 + 平台 Profile”维持。Windows 是当前首个实现与验收环境；Linux 将来可使用 XDG、POSIX 权限和其本机加密能力，不要求复刻盘符、NTFS、BitLocker 或 Windows ACL。
 - P0D/P0V 完成后暂停继续加固 Capture 内核，优先建立一个能验证 KnowledgeFlow 核心价值的代表性垂直切片：中小体量内容验证低摩擦捕获与轻量策展，大体量内容先验证检索优先问答、Evidence Bundle 和按任务形成候选知识。只有实验暴露的真实风险与摩擦，才进入下一轮需求和硬化排程。
-- P0 结束后的唯一详细优先级由[设计权威与冲突登记第 12 节](design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)维护；本文不复制第二份长期路线图。若其他方案、研究输入或历史顺序与其冲突，以该执行罗盘为准。
+- P0 结束后的唯一详细优先级由[设计权威与冲突登记第 12 节](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)维护；本文不复制第二份长期路线图。若其他方案、研究输入或历史顺序与其冲突，以该执行罗盘为准。
 
 ## 18. P0D-P2/P3 授权与准备记录
 
@@ -929,7 +930,7 @@ P0V 在精确限定范围内通过，可以声明：**本机低敏感度 Pilot S
 
 ### 27.4 P0 完成后的移交边界
 
-P0V 完成后，项目进入 **D2 文档职责与归档维护批次**：重新评估已经完成使命的 C3-0、MVP-0 和 P0 实施材料，先迁出仍有效契约，再修复入口、归档和链接。D2 不改需求、产品代码、Pilot 数据或功能优先级；其实际检查点和授权状态只看[项目状态文档](project-status-项目状态与当前门禁.md)。
+P0V 完成后，项目进入 **D2 文档职责与归档维护批次**：重新评估已经完成使命的 C3-0、MVP-0 和 P0 实施材料，先迁出仍有效契约，再修复入口、归档和链接。D2 不改需求、产品代码、Pilot 数据或功能优先级；其实际检查点和授权状态只看[项目状态文档](../../docs/project-status-项目状态与当前门禁.md)。
 
 D2 完成后，再单独规划历史版本/恢复入口与空正文文案的最小 UI 修复；随后回到代表材料与测量协议，以及 Evidence-first 本地价值切片。D2 和 UI 修复均不得演变为继续无证据加固 Capture 内核。
 

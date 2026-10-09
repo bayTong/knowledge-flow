@@ -116,15 +116,15 @@
 | 临时 KB 创建与 `provisional` 生命周期 | [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) | Approved Design | 旧 SOP-000 在冷启动、领域前置和 SCHEMA 前置方面被取代 |
 | 捕获、Global Intake、人工路由和处理方式 | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md) | Approved Design | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策 |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Implemented（限定 MVP-0 文本身份与事务范围） | C3–C8 已按本契约实现和验收；GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件，URL/文件等远期 Payload 仍未实现 |
-| C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md) | Implemented（限定 C3 行为范围） | 2026-09-09 完成编码前收口；C3A–C3V 已实现并由 C8 总验收覆盖，材料待单独 D2 归档评估 |
+| C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)与[MVP-0 操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Implemented（限定 C3 行为范围） | 已实现行为由两份现行契约维护；[C3-0 决策形成记录](../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)仅作历史追溯 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md) | Implemented（限定 MVP-0 文本范围） | 每机配置、四操作、显式恢复/迁移和受限 CLI 已按 C8 验收；不含生产实例或后续路由 |
 | Capture Store 显式初始化、非修复校验、Backup Bundle v1 和新目标恢复 | [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) | Implemented（限定 P0B-min 已测范围） | `knowledgeflow-capture-admin` 与日常四操作分离；只承诺 `operational-copy`、零覆盖目标和恢复不切配置，不承诺调度、保留、删除、静态加密或异盘灾备 |
 | 最小本地收件箱的用户任务、四操作映射、进程内重试和可见限制 | [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md) | Implemented（限定 P0C 当前已测范围） | 当前 Tk 薄壳只做列表、读取、新建和追加；历史入口与空正文修正提示仍是未授权的 `P0C-UX0` 候选，删除/归档/可信回滚不在该批范围 |
-| MVP-0 运行时、初始化、工程拆分和测试矩阵 | [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | Implemented（限定 MVP-0 文本范围） | 41 项定向验收、两轮各 305 项本地全量及精确提交 `63f3a3d` 的远端 Windows CI 已通过 |
-| MVP-0 编码批次、执行停点和授权边界 | [MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) | Implemented（C0–C8） | C8 已闭合；P0 后续由独立实施方案承接，本文不授权生产初始化 |
+| MVP-0 运行时、初始化、工程边界和已实现操作 | [MVP-0 操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md)、当前代码/测试与[C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Implemented（限定 MVP-0 文本范围） | 历史工程拆分和测试矩阵已进入[实施历史归档](../archive/2026-implementation-history/README.md)，不再充当现行规范 |
+| MVP-0 编码批次、执行停点和授权形成过程 | [2026 MVP-0 实施历史归档](../archive/2026-implementation-history/README.md) | Historical | C0–C8 已闭合；归档只保存当时的批次和授权证据，不授权新的实现或生产操作 |
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
-| P0 低敏感度 pilot 与 dogfood 的设计、授权和验收证据 | [P0 低敏感度 pilot 与最小收件箱 dogfood 实施方案](p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md) | Completed Execution Evidence | P0B/P0C 的稳定行为已由上面两份长期契约承接；本文只追溯 `aa0a7ea`、`2a29a1a`、`d149036`、远端运行 `37185470445` 及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
-| C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由当前编码方案、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
+| P0 低敏感度 Pilot 与 dogfood 的设计、授权和验收证据 | [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md) | Historical Execution Evidence | P0B/P0C 稳定行为已由上面两份长期契约承接；归档只追溯精确提交、远端门禁及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
+| C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由现行契约、项目状态、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
 | 策展地图内部格式和覆盖审计方法 | 现有 SOP-001、`prompts/` 与 `extraction-interface.md` 中不冲突的部分 | Draft，待重构 | 只复用提取和地图格式；捕获、路径、触发和写入边界服从新规范 |
@@ -414,7 +414,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-070（P0D-P1） | 项目仍会持续修改后端和前端；过早建设 wheel、版本化运行环境、正式安装包并把 Windows BitLocker/ACL/多磁盘事实都设为首次试用前置，会推迟对产品价值的验证；完全不记录源码基线又会使 editable `.venv` 的运行结果不可追溯 | 首次 P0D 收缩为低敏感度 pilot：记录精确代码基线，刷新当前仓库 `.venv` 并 smoke 三个入口；只允许低敏感度、可替代文本。wheel、非 editable 运行环境、正式安装、管理员级加密证明、ACL 定制和异盘灾备保留到分发、私人/高敏内容或更强保护声明前；核心契约保持平台无关，Windows 特性只属于首个 Profile | 2026-10-08：P0D/P0V 已按此裁定完成真实四操作、操作副本和全新目标恢复；实际继承 ACL 含本机 `CodexSandboxUsers` 只读/执行，故内容边界仍是低敏感度，发布和高敏硬化继续按触发条件后置 |
 | C-071（P0V-0） | 原 P0V 条目同时列出正常使用、重启、断网、空间变化、第三方占用、备份和恢复，容易被误解为要在真实 Store 上穷举故障、等待长期稳定或顺便扩建 UI，从而再次推迟核心价值验证 | P0V 收缩为串行短周期检查点：先完成现有界面的正常四操作旅程，再验证正常重启、用户控制的断网和无破坏输入错误；禁止在真实 Store 强杀写入、写满磁盘、故意损坏或制造锁冲突。新操作副本另停点，恢复到全新目标必须满足精确目标与零覆盖条件；以操作覆盖和用户理解为证据，不虚构 SLA、数量或 dogfood 天数 | 2026-10-08：P0V-1/2 各发现一项重要 UX 摩擦，P0V-3/R 备份恢复通过，P0V-4 已按限定状态完成收口；P0V 不升级整个项目状态 |
 
-面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，统一收录在[MVP-0 捕获内核编码执行方案](mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；本登记保留规范性裁决，避免在多个权威入口复制并逐渐漂移。
+面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，保留在[已归档的 MVP-0 捕获内核编码执行方案](../archive/2026-implementation-history/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；它只解释历史裁决，本登记继续保留规范性结论。
 
 ## 10. 功能门禁
 
@@ -472,12 +472,13 @@ KnowledgeFlow 的总体方向没有错误：可靠来源事实、可重建工作
 |---:|---|---|---|
 | 1 | 已完成 P0D-P2–P7 低敏感度 Pilot Store（2026-10-05） | 精确授权；`.venv` 三入口 smoke；空 Store 初始化/verify；用户亲自保存并回读一份低敏感度 Capture；建立并验证首份同盘 `operational-copy` | wheel、正式安装包、BitLocker/ACL 定制、异盘灾备、搜索或语义处理 |
 | 2 | 已完成短周期 P0V dogfood（2026-10-08） | 现有界面完成捕获、列表、读取、续写、正常重启、真实离线会话和错误理解；建立新操作副本；在全新目标完成恢复演练；记录两项重要摩擦与恢复证据 | 借 dogfood 扩充 UI、增加状态机、在真实 Store 注入破坏性故障或无限期等待“长期稳定” |
-| 3 | 先批准代表材料与实验协议 | 至少包含一个中小体量有界材料和一个大体量/多来源材料；冻结要记录的首次有用结果时间、引用正确性、人工操作/审核时间、模型成本、已知缺口和失败样例 | 先冻结通用 Task/Ledger/Graph schema，或把单次演示当作准确率证明 |
-| 4 | 实现第一个 Evidence-first 本地价值切片 | 从既有 Capture 版本生成可重建区段；提供不依赖云账号的本地精确/关键词检索基线；形成绑定 Capture/版本/区段的实验性 Evidence Bundle；用户能打开原文；若接模型，回答必须引用该证据且可完全关闭 | 向可信层写入、动态图谱、自动路由、GBrain 前置、一次性搭建完整 RAG 平台或提前冻结正式 Evidence schema |
-| 5 | 比较两条最小使用路径 | 中小体量验证“浏览/检索 + 可选轻量策展地图”；大体量验证“检索优先问答 + 按重复查询形成候选知识”。两者共享证据底座，显示范围、成本和缺口 | 用字数硬切所有内容；要求大材料先做完整地图；把候选冒充可信知识 |
-| 6 | 只冻结被实验证明需要的工作知识契约 | 根据步骤 3–5 的证据，决定 Task/Workspace、Segment、Ledger、Profile、Evidence 和 Candidate 中哪些身份与状态必须持久化、哪些保持派生可重建 | 为遥远场景建立全面 Ontology、图数据库、多代理调度或通用工作流引擎 |
-| 7 | 再选择路由、知识库与可信晋升切片 | 有真实的长期组织需求后，再做人工路由与 SOP-000A；有值得稳定的候选后，再设计 SOP-000B/新版 SOP-002 的批准、事务、验证和回滚 | 模型自动决定 KB、自动激活、未经批准写入可信 wiki |
-| 8 | 按实证选择扩展与产品化 | 只有本地基线证明瓶颈后才比较 GBrain、候选图谱、更完整界面、URL/文件/音频、QQ、远程或多设备；准备分发/私人高敏内容/平台承诺时才进入相应硬化 | 用集成数量、页面数量或架构完整度冒充核心价值 |
+| 3 | 冻结 `P0C-UX0` 最小交互契约（不含实现） | 明确历史版本只读浏览、以旧正文追加为新版本、空正文修正提示及自动化/人工验收边界 | 修改产品代码或 Store；引入删除、归档状态机、原地回滚、批量管理或新的持久化状态 |
+| 4 | 批准代表材料与实验协议 | 至少包含一个中小体量有界材料和一个大体量/多来源材料；冻结要记录的首次有用结果时间、引用正确性、人工操作/审核时间、模型成本、已知缺口和失败样例 | 先冻结通用 Task/Ledger/Graph schema，或把单次演示当作准确率证明 |
+| 5 | 实现第一个 Evidence-first 本地价值切片 | 从既有 Capture 版本生成可重建区段；提供不依赖云账号的本地精确/关键词检索基线；形成绑定 Capture/版本/区段的实验性 Evidence Bundle；用户能打开原文；若接模型，回答必须引用该证据且可完全关闭 | 向可信层写入、动态图谱、自动路由、GBrain 前置、一次性搭建完整 RAG 平台或提前冻结正式 Evidence schema |
+| 6 | 比较两条最小使用路径 | 中小体量验证“浏览/检索 + 可选轻量策展地图”；大体量验证“检索优先问答 + 按重复查询形成候选知识”。两者共享证据底座，显示范围、成本和缺口 | 用字数硬切所有内容；要求大材料先做完整地图；把候选冒充可信知识 |
+| 7 | 只冻结被实验证明需要的工作知识契约 | 根据步骤 4–6 的证据，决定 Task/Workspace、Segment、Ledger、Profile、Evidence 和 Candidate 中哪些身份与状态必须持久化、哪些保持派生可重建 | 为遥远场景建立全面 Ontology、图数据库、多代理调度或通用工作流引擎 |
+| 8 | 再选择路由、知识库与可信晋升切片 | 有真实的长期组织需求后，再做人工路由与 SOP-000A；有值得稳定的候选后，再设计 SOP-000B/新版 SOP-002 的批准、事务、验证和回滚 | 模型自动决定 KB、自动激活、未经批准写入可信 wiki |
+| 9 | 按实证选择扩展与产品化 | 只有本地基线证明瓶颈后才比较 GBrain、候选图谱、更完整界面、URL/文件/音频、QQ、远程或多设备；准备分发/私人高敏内容/平台承诺时才进入相应硬化 | 用集成数量、页面数量或架构完整度冒充核心价值 |
 
 本表冻结方向依赖和阶段顺序，但不维护当前执行位置，也不构成后续步骤的提前编码授权。当前正在执行的检查点、下一门禁及其授权状态只看[项目状态文档](project-status-项目状态与当前门禁.md)；每一步仍需单独需求就绪、验收和提交。
 

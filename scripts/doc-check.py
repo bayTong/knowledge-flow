@@ -35,8 +35,8 @@ ROUTE_ALLOWLIST = frozenset(
         "docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md",
         "docs/local-inbox-product-spec-本地收件箱产品规范.md",
         "docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md",
-        "docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md",
-        "docs/p0-production-dogfood-plan-P0生产初始化与最小收件箱试用方案.md",
+        "archive/2026-implementation-history/README.md",
+        "archive/2026-p0-low-sensitivity-pilot/README.md",
         "docs/project-status-项目状态与当前门禁.md",
         "docs/requirements-and-governance-baseline-需求与治理基线.md",
     }

@@ -274,6 +274,6 @@ T0 是规范来源事实，但不是“可信知识结论”；T1/T2 可以很�
 | Capture 身份、版本、哈希和事务 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) |
 | 捕获意图、人工路由和临时 KB | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)与[SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) |
 | Segment、Ledger、Profile、Evidence 和 RAG 方法假设 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
-| 当前已经实现什么、下一步是什么 | 仓库 README、权威登记和当前编码执行方案 |
+| 当前已经实现什么、下一步是什么 | [项目状态文档](project-status-项目状态与当前门禁.md)；验收证据和历史实施材料由 [docs/README](README.md) 导航 |
 
 KnowledgeFlow 的核心价值不在于单独发明 Wiki、Ontology、RAG 或人工审核，而在于让用户无需先成为领域专家或手工设计完整结构，就能从真实知识任务开始；系统先让来源可靠纳入并形成可用、状态清楚但尚未冒充可信的工作知识，再把需要长期稳定的高价值变化连接到有证据、可审核、可验证、可回滚的可信晋升链。
