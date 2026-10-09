@@ -82,10 +82,10 @@ C3A 已实现严格 Event/Projection v1、渠道和时间校验、幂等 scope/k
 实现时按以下顺序服从文档：
 
 1. [需求与治理基线](../../docs/requirements-and-governance-baseline-需求与治理基线.md)：产品目标、语义写入红线和人工批准原则。
-2. [捕获与路由规范](../../docs/capture-and-routing-spec-捕获与路由规范.md)：Capture、Global Intake、路由和后续处理边界。
-3. [Capture Envelope v1](../../docs/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)：身份、版本、哈希、事件、原子事务和恢复语义。
+2. [捕获与路由规范](../../docs/capture/capture-and-routing-spec-捕获与路由规范.md)：Capture、Global Intake、路由和后续处理边界。
+3. [Capture Envelope v1](../../docs/capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)：身份、版本、哈希、事件、原子事务和恢复语义。
 4. [C3-0 阻塞性行为决策](c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)：`capture_text` 编码前已确认的输入、原子提交、投影、写锁、幂等和 actor/时间补充边界。
-5. [MVP-0 本地文本捕获操作契约](../../docs/mvp-0-capture-operations-本地文本捕获操作契约.md)：四个操作的输入、输出、错误和大小边界。
+5. [MVP-0 本地文本捕获操作契约](../../docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md)：四个操作的输入、输出、错误和大小边界。
 6. [MVP-0 捕获内核实现拆解与测试矩阵](mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md)：运行时、工程结构、初始化和验收矩阵。
 7. 本文：编码批次、文件范围、执行停点和报告方式。
 
@@ -788,7 +788,7 @@ C6B 没有发明磁盘幂等索引或 outbox job schema：`indexes/idempotency/`
 
 ### C7：机器适配 CLI
 
-目标：给未来 Harness 或 UI 一个受限机器接口，不让调用方直接写 Store 文件。本文成文时公开协议位于实现矩阵第 3.7 节；D2 后，线协议和操作映射统一以[四操作契约第 7A 节](../../docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)为当前权威。
+目标：给未来 Harness 或 UI 一个受限机器接口，不让调用方直接写 Store 文件。本文成文时公开协议位于实现矩阵第 3.7 节；D2 后，线协议和操作映射统一以[四操作契约第 7A 节](../../docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)为当前权威。
 
 #### C7-0：CLI 编码前契约收口
 
@@ -863,7 +863,7 @@ C7V 单独复核和提交；只有 C7V 通过后才可声明 C7 完成并请求 
 
 只有自动化矩阵全部通过，且人工耐久测试的实际结果被记录后，相关文档才可从 `Approved Design` 升级为 `Implemented` 或 `Effective`。状态升级本身仍需用户确认，不由测试脚本自动修改。
 
-本地完成记录（2026-09-29）：以 `896c64c` 为被验收基线，41 项故障/边界/并发/迁移/CLI 定向验收在 89.201 秒内通过；普通与严格 `ResourceWarning` 两轮全量均为 305/305，通过时间分别为 134.157 秒和 134.296 秒，无失败、错误或跳过。`compileall`、`pip check`、文档护栏和 diff 检查通过；安装元数据、console entry、临时非 editable 安装、真实 4/64 MiB 往返、双进程竞争、Windows 强制终止后恢复均复核通过。验收前后默认机器配置与 `E:\KnowledgeFlowData\capture-store` 均不存在。本机目录元数据 flush 实际探针返回 `unsupported`，因此突然断电、控制器缓存、文件系统损坏和生产长期运行仍未证明。详见[C8 本地总验收报告](../../docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)。本地证据当时仅支持 `Implemented` 候选，不支持 `Effective`；后续正式状态闭合见下段。
+本地完成记录（2026-09-29）：以 `896c64c` 为被验收基线，41 项故障/边界/并发/迁移/CLI 定向验收在 89.201 秒内通过；普通与严格 `ResourceWarning` 两轮全量均为 305/305，通过时间分别为 134.157 秒和 134.296 秒，无失败、错误或跳过。`compileall`、`pip check`、文档护栏和 diff 检查通过；安装元数据、console entry、临时非 editable 安装、真实 4/64 MiB 往返、双进程竞争、Windows 强制终止后恢复均复核通过。验收前后默认机器配置与 `E:\KnowledgeFlowData\capture-store` 均不存在。本机目录元数据 flush 实际探针返回 `unsupported`，因此突然断电、控制器缓存、文件系统损坏和生产长期运行仍未证明。详见[C8 本地总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)。本地证据当时仅支持 `Implemented` 候选，不支持 `Effective`；后续正式状态闭合见下段。
 
 远端门禁与状态记录（2026-09-29）：C8 证据由独立提交 `63f3a3d` 封存并推送至 `origin/main`；[Windows CI 运行 `36544619016`](https://github.com/bayTong/knowledge-flow/actions/runs/36544619016) 在该精确提交上完成且成功，安装、普通与严格 `ResourceWarning` 全量测试、编译、依赖和文档检查步骤均成功。用户随后指示同步 C8 状态锚点，故 C0–C8 限定范围采用 `Implemented`。下一独立门禁 P0 先规划生产初始化、备份与最小收件箱 dogfood，再由用户明确授权执行；不把本记录解释为生产初始化、`Effective` 或外部接入授权。
 

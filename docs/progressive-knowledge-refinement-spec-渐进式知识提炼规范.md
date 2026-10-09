@@ -4,7 +4,7 @@
 >
 > 本文是对“完整策展地图是否适用于所有规模内容”这一方向问题的设计收口。产品承诺、无静默缺口、证据和信任边界已经作为治理红线确认；三类 Profile 的默认适用范围、Source Ledger 物理契约、自动路由、检索栈和候选图谱实现仍为待实验的 Draft。本文件不授权实现 RAG、知识图谱、GBrain、UI 或任何可信知识写入。
 >
-> 捕获原件、版本、哈希、事务、权限和可信写入仍分别服从 [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、[Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) 和 [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)。
+> 捕获原件、版本、哈希、事务、权限和可信写入仍分别服从 [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)、[Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md) 和 [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)。
 
 ## 1. 目的和结论
 

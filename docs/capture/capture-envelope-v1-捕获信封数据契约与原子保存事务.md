@@ -41,10 +41,10 @@ Capture Envelope v1 采用以下实现决策：
 
 本文细化以下文档中的捕获部分：
 
-- [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)
-- [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md)
+- [设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)
+- [需求与治理基线](../requirements-and-governance-baseline-需求与治理基线.md)
 - [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)
-- [SOP-000A：临时知识库骨架初始化](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)
+- [SOP-000A：临时知识库骨架初始化](../sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)
 
 边界如下：
 
@@ -1088,7 +1088,7 @@ v1 推荐暂不引入新的业务数据库：
 
 1. C0–C2 里程碑为 85 项测试，稳定化后为 93 项；C3A/C3B 完成后为 122 项，C3C 完成后为 140 项，C3V 完成后为 144 项，R0.1/R0.2 初始化所有权加固后为 148 项，D0G 后为 156 项，R0.3D 后为 159 项，R0.3F 后为 163 项，C4A 后为 182 项，C4B 后为 197 项，C4C 后为 212 项，C4V 后为 214 项，C5A 后为 231 项，C5B 后为 250 项，C5V 后为 253 项，C6A 后为 258 项，C6B 后为 265 项，C6C 后为 274 项，C7A 后为 293 项，C7B 后为 300 项，C7V 后当时全量 305 项测试通过。除原有 C3–C6 证据外，C7V 已补齐真实 CLI 4/64 MiB、双进程、零提交、stdout 故障和临时安装证据；后续 P0B 管理测试不改变本 Envelope 契约。
 2. 当前实现已包含公开 `capture_text`、C4B `get_capture`、C4C `list_captures` 和 C5B `append_capture_version`；四者及 C6A 业务崩溃恢复、C6B 派生状态重建、C6C Store 迁移和 C7 受限 CLI 均已完成。C8 本地与精确提交远端门禁也已通过，限定范围状态为 `Implemented`；真实生产运行、突然断电和整体产品仍未达到 `Effective`。
-3. [已归档的 C3-0 阻塞性行为决策](../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)保留 2026-09-08 起的决策与逐批授权形成过程；生效行为已由本文和 MVP-0 操作契约承接。C3A–C4C 当时的授权均不包含生产 Store，归档记录也不构成新的授权。
-4. C5A–C7V 与 CI 可移植性修复均已同步；C8 证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功。P0B/P0C 已在临时 Store 验证最小管理、操作副本和收件箱；P0D/P0V 已完成低敏感度 Pilot 初始化、真实四操作、正常重启、离线使用、安全输入失败、新操作副本和全新目标恢复验证。上述阶段均不接 GBrain；本契约不维护当前门禁，动态状态见[项目状态文档](project-status-项目状态与当前门禁.md)。
+3. [已归档的 C3-0 阻塞性行为决策](../../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)保留 2026-09-08 起的决策与逐批授权形成过程；生效行为已由本文和 MVP-0 操作契约承接。C3A–C4C 当时的授权均不包含生产 Store，归档记录也不构成新的授权。
+4. C5A–C7V 与 CI 可移植性修复均已同步；C8 证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功。P0B/P0C 已在临时 Store 验证最小管理、操作副本和收件箱；P0D/P0V 已完成低敏感度 Pilot 初始化、真实四操作、正常重启、离线使用、安全输入失败、新操作副本和全新目标恢复验证。上述阶段均不接 GBrain；本契约不维护当前门禁，动态状态见[项目状态文档](../project-status-项目状态与当前门禁.md)。
 5. P0V 和代表旅程/检索实验证据形成后，再决定是否把第 13.6 节细化为 GBrain POC 的命令、配置和查询验收清单。
 6. URL 和文件 Payload 入口仍需各自的大小、来源、隐私和失败门禁，不能由文本 P0 顺带授权。

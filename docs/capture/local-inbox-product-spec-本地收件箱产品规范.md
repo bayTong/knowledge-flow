@@ -158,10 +158,10 @@ knowledgeflow-inbox --help
 
 当前实现入口位于：
 
-- [`inbox.py`](../src/knowledgeflow_capture/inbox.py)：四操作适配、结果展示模型和进程内重试状态；
-- [`inbox_app.py`](../src/knowledgeflow_capture/inbox_app.py)：Tk 可见界面与安装态入口；
-- [`pyproject.toml`](../pyproject.toml)：`knowledgeflow-inbox` console script。
+- [`inbox.py`](../../src/knowledgeflow_capture/inbox.py)：四操作适配、结果展示模型和进程内重试状态；
+- [`inbox_app.py`](../../src/knowledgeflow_capture/inbox_app.py)：Tk 可见界面与安装态入口；
+- [`pyproject.toml`](../../pyproject.toml)：`knowledgeflow-inbox` console script。
 
 自动化证据覆盖空列表、Unicode、新建/列表/读取/追加/重启、真实 4 MiB 边界、双会话 CAS 冲突、配置缺失零写入、幂等重试、unknown 核对、warning、隐私和安装入口。真实 Pilot 进一步证明正常四操作、正常重启、明确丢弃未保存草稿、断网读写和空正文安全失败；它同时暴露第 7 节两项重要 UX 摩擦。
 
-动态阶段、下一门禁和是否批准 `P0C-UX0` 只看[项目状态与当前门禁](project-status-项目状态与当前门禁.md)。
+动态阶段、下一门禁和是否批准 `P0C-UX0` 只看[项目状态与当前门禁](../project-status-项目状态与当前门禁.md)。

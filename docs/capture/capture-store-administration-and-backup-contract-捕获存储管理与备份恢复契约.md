@@ -148,10 +148,10 @@ Backup Bundle v1 的 `protection_scope` 固定为 `operational-copy`。它证明
 
 当前实现入口位于：
 
-- [`management.py`](../src/knowledgeflow_capture/management.py)：四个管理操作、Backup Bundle v1 与 Manifest；
-- [`management_cli.py`](../src/knowledgeflow_capture/management_cli.py)：安装态路径安全机器入口；
-- [`pyproject.toml`](../pyproject.toml)：`knowledgeflow-capture-admin` console script。
+- [`management.py`](../../src/knowledgeflow_capture/management.py)：四个管理操作、Backup Bundle v1 与 Manifest；
+- [`management_cli.py`](../../src/knowledgeflow_capture/management_cli.py)：安装态路径安全机器入口；
+- [`pyproject.toml`](../../pyproject.toml)：`knowledgeflow-capture-admin` console script。
 
 自动化证据覆盖幂等初始化、非修复校验、完整备份/恢复循环、既有目标零覆盖、篡改拒绝、中断和空间失败残留、staging 排除、未提交尾部保留、路径脱敏回执及非 editable 安装入口。P0 的真实低敏感度 Pilot 另完成两份同盘 `operational-copy` 与一次全新目标恢复；这些是历史验收证据，不扩大本契约的数据保护声明。
 
-动态阶段、下一门禁和精确验证基线只看[项目状态与当前门禁](project-status-项目状态与当前门禁.md)。
+动态阶段、下一门禁和精确验证基线只看[项目状态与当前门禁](../project-status-项目状态与当前门禁.md)。

@@ -271,8 +271,8 @@ T0 是规范来源事实，但不是“可信知识结论”；T1/T2 可以很�
 |---|---|
 | 产品为什么存在、必须具备什么、怎样验收 | [主产品需求文档](requirements-and-governance-baseline-需求与治理基线.md) |
 | 哪份文档优先、当前功能门禁是什么 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) |
-| Capture 身份、版本、哈希和事务 | [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md) |
-| 捕获意图、人工路由和临时 KB | [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)与[SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) |
+| Capture 身份、版本、哈希和事务 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md) |
+| 捕获意图、人工路由和临时 KB | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)与[SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) |
 | Segment、Ledger、Profile、Evidence 和 RAG 方法假设 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
 | 当前已经实现什么、下一步是什么 | [项目状态文档](project-status-项目状态与当前门禁.md)；验收证据和历史实施材料由 [docs/README](README.md) 导航 |
 

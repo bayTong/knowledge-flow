@@ -42,13 +42,13 @@ P0B 只建设首次 dogfood 所需的最小冷备份闭环，不建设通用备�
 | 主题 | 上位依据 | 本文职责 |
 |---|---|---|
 | 本地 dogfood 的产品义务 | [主产品需求文档](../../docs/requirements-and-governance-baseline-需求与治理基线.md)中的 `FR-INBOX-001`、`NFR-LOCAL-001`、`NFR-REC-001`、`NFR-SEC-001`、`NFR-UX-001` | 翻译为 P0 批次、验收和停点 |
-| Capture 四操作与错误语义 | [MVP-0 本地文本捕获操作契约](../../docs/mvp-0-capture-operations-本地文本捕获操作契约.md) | 直接复用，不另发明接口 |
-| 初始化、校验、备份与恢复的稳定行为 | [Capture Store 管理、备份与恢复契约](../../docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) | 本文只保留当时的设计过程、授权和验收证据 |
-| 当前最小收件箱的稳定行为和已知限制 | [最小本地收件箱产品规范](../../docs/local-inbox-product-spec-本地收件箱产品规范.md) | 本文只保留 P0C/P0V 的实施与人工体验证据 |
+| Capture 四操作与错误语义 | [MVP-0 本地文本捕获操作契约](../../docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md) | 直接复用，不另发明接口 |
+| 初始化、校验、备份与恢复的稳定行为 | [Capture Store 管理、备份与恢复契约](../../docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) | 本文只保留当时的设计过程、授权和验收证据 |
+| 当前最小收件箱的稳定行为和已知限制 | [最小本地收件箱产品规范](../../docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) | 本文只保留 P0C/P0V 的实施与人工体验证据 |
 | 初始化、路径、迁移和测试事实 | [实现拆解与测试矩阵](../2026-implementation-history/mvp-0-capture-implementation-plan-捕获内核实现拆解与测试矩阵.md) | 作为生产前置证据，不重复实现 |
 | 当前阶段与下一门禁 | [项目状态与当前门禁](../../docs/project-status-项目状态与当前门禁.md) | 唯一动态状态入口；本文不再更新当前下一步 |
 | 主题权威与冲突裁决 | [设计权威与冲突登记](../../docs/design-authority-and-conflict-register-设计权威与冲突登记.md) | 判断文档冲突和稳定阶段依赖，不维护当前位置 |
-| C8 已证明项与未证明项 | [C8 总验收报告](../../docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | 保持证据边界，不把 `Implemented` 夸大为生产有效 |
+| C8 已证明项与未证明项 | [C8 总验收报告](../2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | 保持证据边界，不把 `Implemented` 夸大为生产有效 |
 
 若本文与上述机器契约冲突，以机器契约为准；若与主产品义务或主题权威冲突，必须先修改本文，不能反向覆盖上位文档。
 

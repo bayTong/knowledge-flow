@@ -9,11 +9,11 @@
 > 整理日期：2026-08-31<br>
 > 确认日期：2026-09-01<br>
 > 作用：定义内容从任意入口被立即保存，到确定知识库归属和后续处理方式的最小闭环<br>
-> 边界：本文件不定义策展地图内部结构，不执行可信 wiki 写入；“深度处理可以分层或按需、不能承诺语义零遗漏、候选必须绑定证据”是已确认治理边界，具体 Profile 名称、默认路由、Source Ledger 物理契约和检索方法仍以[渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)中的 Draft 假设为准且不授权实现；主题优先级见[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)
+> 边界：本文件不定义策展地图内部结构，不执行可信 wiki 写入；“深度处理可以分层或按需、不能承诺语义零遗漏、候选必须绑定证据”是已确认治理边界，具体 Profile 名称、默认路由、Source Ledger 物理契约和检索方法仍以[渐进式知识提炼规范](../progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)中的 Draft 假设为准且不授权实现；主题优先级见[设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)
 
 ## 0. 与其他文档的关系
 
-本规范位于 [需求与治理基线](requirements-and-governance-baseline-需求与治理基线.md) 和 [SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) 之间：
+本规范位于 [需求与治理基线](../requirements-and-governance-baseline-需求与治理基线.md) 和 [SOP-000A](../sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) 之间：
 
 ```text
 任意入口
@@ -717,11 +717,11 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 
 ## 22. 与现行方案的冲突和改造点
 
-1. [已归档的旧 SOP v2](../archive/2026-design-history/sop-v2-full.md) 把捕获、规模判断、领域判断都塞入 SOP-001 步骤 0；本规范将捕获和路由独立出来，让后续处理只消费已经保存、版本明确的原料。
+1. [已归档的旧 SOP v2](../../archive/2026-design-history/sop-v2-full.md) 把捕获、规模判断、领域判断都塞入 SOP-001 步骤 0；本规范将捕获和路由独立出来，让后续处理只消费已经保存、版本明确的原料。
 2. 现行 SOP-001 把原料和策展地图同时写入 `raw/`；本规范要求原料进 `raw/`、语义提案进 `proposals/`。
 3. 现行 SOP-001 会在流程中判断多原料归属；模型判断今后只能形成 Route Proposal。
 4. 现行 SOP-006 可从对话提炼后直接准备 SOP-002 输入；今后对话应先成为 Capture Item，再明确路由和处理方式。
-5. [已归档的 GBrain 集成方案](../archive/2026-design-history/gbrain-integration-plan.md)把 B-捕获描述为“直接写”；当前裁决明确其只能写入未审核捕获层，不能写入可信知识层。
+5. [已归档的 GBrain 集成方案](../../archive/2026-design-history/gbrain-integration-plan.md)把 B-捕获描述为“直接写”；当前裁决明确其只能写入未审核捕获层，不能写入可信知识层。
 6. GBrain 集成方案中的 B-搜集允许机器内容直接写入，需要进一步拆成“原始响应可直接保存、机器论断只进入提案”。
 7. 当前尚无正式 KB Registry、Global Intake 投影索引和跨库事务实现；本规范已经批准，但这些结构仍未实现。
 
@@ -746,11 +746,11 @@ embedding、摘要、候选标签、OCR 修订和路由候选都不作为唯一�
 ## 24. 下一步
 
 1. C0–C8 已逐批闭合；证据提交 `63f3a3d` 的 Windows CI 运行 `36544619016` 成功，MVP-0 单机单用户文本捕获内核的限定状态为 `Implemented`。这不代表生产实例、路由或整体产品已经 `Effective`。
-2. [P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md)保留 P0D/P0V 的真实四操作、正常重启、离线使用、安全输入失败、操作副本和全新目标恢复证据。P0 结果不得被本规范解释为语义处理或外部接入授权；当前门禁只看[项目状态文档](project-status-项目状态与当前门禁.md)。
+2. [P0 低敏感度 Pilot 实施历史归档](../../archive/2026-p0-low-sensitivity-pilot/README.md)保留 P0D/P0V 的真实四操作、正常重启、离线使用、安全输入失败、操作副本和全新目标恢复证据。P0 结果不得被本规范解释为语义处理或外部接入授权；当前门禁只看[项目状态文档](../project-status-项目状态与当前门禁.md)。
 3. P0V 形成真实使用证据后，暂停继续无证据加固 Capture 内核；先批准至少覆盖中小体量和大体量/多来源材料的实验协议及测量项。
 4. 第一个价值切片只实现既有 Capture 版本到可重建区段、本地检索、实验性 Evidence Bundle 和原文回读/可选引用回答；不把模型、GBrain、图谱或正式工作知识 schema 作为前置。
 5. 在同一证据底座上比较中小体量的轻量策展与大体量的检索优先问答、问题驱动候选；根据结果再冻结 Task/Workspace、Segment、Ledger、Profile、Evidence 和 Candidate 中确实需要持久化的最小契约。
 6. 有真实长期组织需求后再实现人工路由和 SOP-000A；有值得稳定的候选后，再重构 SOP-001 并定义 SOP-000B/新版 SOP-002 的批准、事务、验证和回滚。
 7. 候选图谱、GBrain 未审核镜像、更完整 UI、QQ、多设备和其他入口必须与本地基线比较实际增益，继续后置且保持可关闭。
 
-本节只概括与捕获/路由主题相关的交接顺序；发生排程分歧时，以[设计权威与冲突登记第 12 节](design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)为唯一动态依据。
+本节只概括与捕获/路由主题相关的交接顺序；发生排程分歧时，以[设计权威与冲突登记第 12 节](../design-authority-and-conflict-register-设计权威与冲突登记.md#12-当前执行罗盘)为唯一动态依据。

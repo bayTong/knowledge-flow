@@ -41,9 +41,9 @@ MVP-0 只需要四个机械操作：
 
 ## 1. 与其他规范的关系
 
-- [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)决定 MVP 边界和功能门禁。
+- [设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)决定 MVP 边界和功能门禁。
 - [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)继续负责身份、Envelope、哈希、不可变版本、幂等和原子事务，是底层权威。
-- [已归档的 C3-0 阻塞性行为决策](../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)保留 `capture_text` 编码前六项补充边界的形成过程；生效行为已经同步进本文与 Capture Envelope，归档记录不再授权实现。
+- [已归档的 C3-0 阻塞性行为决策](../../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)保留 `capture_text` 编码前六项补充边界的形成过程；生效行为已经同步进本文与 Capture Envelope，归档记录不再授权实现。
 - [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)负责 MVP-1 以后如何选择 KB 和处理方式。
 - 本文只把底层事务收敛为四个调用方可以理解和测试的操作。
 
@@ -834,4 +834,4 @@ JSON 中的结构化 error code 是业务语义真源，退出码不能细分或
 | 更新语义 | 只追加完整新版本，不提供覆盖和 patch 存储 |
 | MVP-0 GBrain 状态 | `not-requested`，不建立 Delivery Request |
 
-以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。P0B 管理能力和 P0C 最小收件箱也已在各自临时 Store 范围闭合；P0D/P0V 已按独立方案完成低敏感度 Pilot Store、真实四操作、短周期离线使用、同盘操作副本和全新目标恢复。长期使用、异盘灾备、正式私人内容环境、GBrain 与路由仍未验证。本契约不维护当前门禁，也不得被解释为后续真实数据操作授权；动态状态见[项目状态文档](project-status-项目状态与当前门禁.md)。
+以上默认值及错误/提交状态模型已于 2026-09-02 获批，C3-0 六项补充行为于 2026-09-08 获批。C3 `capture_text`、C4B `get_capture`、C4C `list_captures`、C5B `append_capture_version`、C6 恢复/重建/迁移和 C7 受限 CLI 均已逐批闭合；C8 本地总验收、证据提交 `63f3a3d` 及其 Windows CI 运行 `36544619016` 已通过，故本契约限定的 MVP-0 文本操作范围为 `Implemented`。P0B 管理能力和 P0C 最小收件箱也已在各自临时 Store 范围闭合；P0D/P0V 已按独立方案完成低敏感度 Pilot Store、真实四操作、短周期离线使用、同盘操作副本和全新目标恢复。长期使用、异盘灾备、正式私人内容环境、GBrain 与路由仍未验证。本契约不维护当前门禁，也不得被解释为后续真实数据操作授权；动态状态见[项目状态文档](../project-status-项目状态与当前门禁.md)。

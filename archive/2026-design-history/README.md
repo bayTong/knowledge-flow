@@ -13,7 +13,7 @@
 | 原路径 | 归档文件 | 归档原因 | 当前替代入口或用途 |
 |---|---|---|---|
 | `docs/adaptive-extraction-plan.md` | [自适应提取分层方案](adaptive-extraction-plan.md) | 记录旧 Mode A/B/C 与覆盖审计方案；阈值和写入流程不再决定当前实现 | [渐进式知识提炼规范](../../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)；旧提示词实验背景 |
-| `docs/build-plan.md` | [外置第二大脑建设规划](build-plan.md) | 长期候选能力与旧阶段划分不再决定当前顺序 | [需求与治理基线](../../docs/requirements-and-governance-baseline-需求与治理基线.md)和[当前编码执行方案](../../docs/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
+| `docs/build-plan.md` | [外置第二大脑建设规划](build-plan.md) | 长期候选能力与旧阶段划分不再决定当前顺序 | [需求与治理基线](../../docs/requirements-and-governance-baseline-需求与治理基线.md)和[已归档的编码执行方案](../2026-implementation-history/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md) |
 | `docs/curation-paradox.md` | [策展悖论](curation-paradox.md) | 核心问题已被 L0 需求基线吸收 | [需求与治理基线](../../docs/requirements-and-governance-baseline-需求与治理基线.md)中的问题、信任与治理边界 |
 | `docs/gbrain-integration-plan.md` | [GBrain 集成方案](gbrain-integration-plan.md) | 远期集成研究，不是 MVP-0 主线或当前接入指令 | 设计权威登记中的 GBrain POC 边界；重新提案后方可实施 |
 | `docs/improvement-action-plan.md` | [评估整改清单](improvement-action-plan.md) | 旧审计任务大多已完成、延期或被新的追踪体系吸收 | 当前冲突登记、需求追踪矩阵和变更记录 |

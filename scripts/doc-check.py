@@ -30,11 +30,10 @@ ROUTE_ALLOWLIST = frozenset(
     {
         "CHANGELOG.md",
         "docs/README.md",
-        "docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md",
+        "docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md",
         "docs/design-authority-and-conflict-register-设计权威与冲突登记.md",
         "docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md",
-        "docs/local-inbox-product-spec-本地收件箱产品规范.md",
-        "docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md",
+        "docs/capture/local-inbox-product-spec-本地收件箱产品规范.md",
         "archive/2026-implementation-history/README.md",
         "archive/2026-p0-low-sensitivity-pilot/README.md",
         "docs/project-status-项目状态与当前门禁.md",

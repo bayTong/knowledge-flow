@@ -11,8 +11,8 @@
 | 项目 | 当前事实 |
 |---|---|
 | 当前阶段 | `D2` 已完成；等待 `P0C-UX0` 最小交互契约收口的独立授权 |
-| 最近完成 | P0V 限定通过后，D2 已建立唯一状态入口、提取长期契约，并归档 MVP-0/P0 历史实施材料 |
-| 本批完成点 | `D2-ARCHIVE`：三份 MVP-0 实施材料和一份 P0 方案已进入两个带索引的历史目录；C8 验收报告留在现行证据区，全部现行入口已改指正确职责 |
+| 最近完成 | P0V 限定通过后，D2 已建立唯一状态入口、提取长期契约、归档 MVP-0/P0 历史材料，并完成现行 Capture 文档的目录收拢 |
+| 本批完成点 | `D2-STRUCTURE`：C8 报告已作为历史验收证据进入 MVP-0 归档，五份现行 Capture 契约/规范已集中到 `docs/capture/`；全部入口与链接已同步 |
 | 下一门禁 | `P0C-UX0`：只冻结历史版本只读浏览、“以旧版正文追加为新版本”和空正文修正提示的最小交互契约与验收边界；尚未授权实现 |
 | P0C-UX0 之后 | 先回到代表材料与 Evidence-first 价值切片；只有真实收件箱杂乱阻塞任务时，才另行评估可恢复归档状态 |
 | 整体状态 | MVP-0 捕获内核和 P0B/P0C 各自已测范围为 `Implemented`；项目整体仍非 `Effective` 或生产就绪 |
@@ -27,9 +27,9 @@
 
 主要证据入口：
 
-- [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)
-- [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)
-- [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md)
+- [C8 总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)
+- [Capture Store 管理、备份与恢复契约](capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)
+- [最小本地收件箱产品规范](capture/local-inbox-product-spec-本地收件箱产品规范.md)
 - [P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md)
 - [变更记录](../CHANGELOG.md)
 - 远端已验证基线：提交 `d149036`，Windows CI 运行 `37185470445`

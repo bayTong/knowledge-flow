@@ -186,7 +186,7 @@ Python 3.13 标准库不提供 YAML 解析器，而已批准契约使用 `captur
 - 语法门禁只允许单文档、mapping/list 和 string/integer/boolean/null；拒绝 float、时间对象、binary、重复键、anchor、alias、显式 tag、merge key、多文档和非字符串 key。
 - 语法通过后仍按文件类型执行严格 schema 校验：必填/可选字段、类型、枚举、nullable、顺序约束和未知字段分别检查。
 - 写出必须通过固定 golden fixture 锁定 UTF-8、LF、无 BOM、2 空格、block style、schema 字段顺序、双引号字符串、无空行和恰好一个末尾换行。
-- 完整规则以 [Capture Envelope v1](../../docs/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)第 8.7 节为准。
+- 完整规则以 [Capture Envelope v1](../../docs/capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)第 8.7 节为准。
 
 ### 3.4 UUIDv7
 

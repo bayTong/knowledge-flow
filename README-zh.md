@@ -22,10 +22,9 @@
 | 主产品需求文档（唯一 L0 PRD） | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
 | 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | 跨主题概念架构导读 | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
-| Capture Store 管理、备份与恢复契约 | [`docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
-| 最小本地收件箱产品规范 | [`docs/local-inbox-product-spec-本地收件箱产品规范.md`](docs/local-inbox-product-spec-本地收件箱产品规范.md) |
+| Capture Store 管理、备份与恢复契约 | [`docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
+| 最小本地收件箱产品规范 | [`docs/capture/local-inbox-product-spec-本地收件箱产品规范.md`](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) |
 | 已完成的 MVP-0 实施历史 | [`archive/2026-implementation-history/README.md`](archive/2026-implementation-history/README.md) |
-| C8 本地总验收报告 | [`docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md`](docs/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) |
 | 已完成的 P0 低敏感度 Pilot 与最小收件箱历史 | [`archive/2026-p0-low-sensitivity-pilot/README.md`](archive/2026-p0-low-sensitivity-pilot/README.md) |
 | 版本与阶段变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
 
@@ -198,12 +197,12 @@ knowledge-flow/
 │   ├── requirements-and-governance-baseline-需求与治理基线.md      主产品需求文档（唯一 L0 PRD）
 │   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
 │   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  非规范性跨主题概念地图
-│   ├── mvp-0-capture-c8-acceptance-report-C8总验收报告.md          C8 本地证据、限制与状态建议
-│   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
-│   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
-│   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           四个文本操作契约
-│   ├── capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md  Store 管理与 Backup Bundle v1 契约
-│   ├── local-inbox-product-spec-本地收件箱产品规范.md              当前最小本地收件箱产品契约
+│   ├── capture/
+│   │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
+│   │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
+│   │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           四个文本操作契约
+│   │   ├── capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md  Store 管理与 Backup Bundle v1 契约
+│   │   └── local-inbox-product-spec-本地收件箱产品规范.md              当前最小本地收件箱产品契约
 │   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   临时 KB 创建设计
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
 │   └── research/
@@ -251,7 +250,7 @@ knowledge-flow/
 MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端验收，限定范围状态为 `Implemented`。低敏感度 Pilot Store 已完成真实四操作、短周期离线 dogfood、同盘操作副本和全新目标恢复演练，但仍不代表长期使用、异盘灾备、正式私人内容环境或整个产品已经生产就绪。后续顺序是：
 
 1. 从[项目状态文档](docs/project-status-项目状态与当前门禁.md)确认当前检查点、下一门禁、已知问题和证据；[设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)只用于判断主题权威和冲突裁决。
-2. 当前稳定行为看[四操作契约](docs/mvp-0-capture-operations-本地文本捕获操作契约.md)、[Store 管理/备份恢复契约](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)和[最小本地收件箱规范](docs/local-inbox-product-spec-本地收件箱产品规范.md)；已完成计划与验收报告只作为证据，不再承担现行规范职责。
+2. 当前稳定行为看[四操作契约](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md)、[Store 管理/备份恢复契约](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)和[最小本地收件箱规范](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md)；已完成计划与验收报告只作为证据，不再承担现行规范职责。
 3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
 4. [P0 低敏感度 Pilot 实施历史](archive/2026-p0-low-sensitivity-pilot/README.md)记录了已完成的 P0D/P0V 停点、限定结论、两项重要 UX 摩擦和未证明边界；它是证据，不是当前计划。
 5. 不要从本 README、稳定契约或已完成计划推断当前检查点；该事实只由项目状态文档维护，每个新实施批次仍必须满足其中写明的复核与授权边界。
@@ -270,11 +269,11 @@ knowledgeflow-capture get_capture [--config <Windows 本地绝对路径>]
 knowledgeflow-capture list_captures [--config <Windows 本地绝对路径>]
 ```
 
-stdin 必须是“一行 UTF-8 JSON 头 + LF/CRLF + 精确 `body_length_bytes` 个正文原始字节 + EOF”；读取和列表请求的正文长度必须为 `0`。stdout 在退出码 0 或 2 时同样返回“一行 JSON 头 + LF + 精确长度正文 + EOF”；退出码 70 表示 stdout 可能不完整，调用方必须全部丢弃。入口不提供 `--help`、`--version`、Store 初始化、恢复、迁移、路由或测试策略切换，也不会因运行命令而自动创建生产配置/Store。完整字段、帧、退出码和安全边界见[四操作契约第 7A 节](docs/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)。
+stdin 必须是“一行 UTF-8 JSON 头 + LF/CRLF + 精确 `body_length_bytes` 个正文原始字节 + EOF”；读取和列表请求的正文长度必须为 `0`。stdout 在退出码 0 或 2 时同样返回“一行 JSON 头 + LF + 精确长度正文 + EOF”；退出码 70 表示 stdout 可能不完整，调用方必须全部丢弃。入口不提供 `--help`、`--version`、Store 初始化、恢复、迁移、路由或测试策略切换，也不会因运行命令而自动创建生产配置/Store。完整字段、帧、退出码和安全边界见[四操作契约第 7A 节](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)。
 
 ### P0B 管理入口（限定 `Implemented`，Pilot 首次操作副本已验证）
 
-`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全行为由[Capture Store 管理、备份与恢复契约](docs/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)长期维护。合并后的精确提交远端门禁已由运行 `37185470445` 通过；P0D/P0V 已完成 Pilot 初始化、用户 Capture、两份同盘 `operational-copy` 和一次全新目标恢复演练，正式配置在恢复中未切换。异盘灾备仍未证明。
+`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全行为由[Capture Store 管理、备份与恢复契约](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)长期维护。合并后的精确提交远端门禁已由运行 `37185470445` 通过；P0D/P0V 已完成 Pilot 初始化、用户 Capture、两份同盘 `operational-copy` 和一次全新目标恢复演练，正式配置在恢复中未切换。异盘灾备仍未证明。
 
 ### P0C 最小本地收件箱（限定 `Implemented`；已完成低敏感度 Pilot 使用）
 
@@ -286,7 +285,7 @@ knowledgeflow-inbox --config <Windows 本地绝对路径>
 knowledgeflow-inbox --help
 ```
 
-配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。[最小本地收件箱产品规范](docs/local-inbox-product-spec-本地收件箱产品规范.md)维护当前行为，并把历史入口不可见与错误修正提示不清晰登记为重要但尚未授权的 UX 工作。提交 `d149036` 已修复安装态帮助输出的区域编码问题并通过精确远端 CI 运行 `37185470445`；P0D/P0V 提供限定的真实使用证据。
+配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。[最小本地收件箱产品规范](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md)维护当前行为，并把历史入口不可见与错误修正提示不清晰登记为重要但尚未授权的 UX 工作。提交 `d149036` 已修复安装态帮助输出的区域编码问题并通过精确远端 CI 运行 `37185470445`；P0D/P0V 提供限定的真实使用证据。
 
 ---
 

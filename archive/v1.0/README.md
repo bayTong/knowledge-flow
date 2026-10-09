@@ -1,7 +1,7 @@
 # KnowledgeFlow v1.0（已归档）
 
 > 归档日期：2026-07-06
-> 替代版本：[v2.0](../../docs/sop-v2-full.md)
+> 替代版本：[已归档的 v2.0](../2026-design-history/sop-v2-full.md)
 > 变更记录：[CHANGELOG.md](../../CHANGELOG.md)
 
 ---

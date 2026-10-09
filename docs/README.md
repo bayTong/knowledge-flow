@@ -40,7 +40,7 @@ KnowledgeFlow 的文件名保持语义化且稳定，**不使用数字前缀表�
 
 按下面顺序追溯已经完成的实施与验收证据；这些文件不负责当前排期：
 
-1. [C8 总验收报告](mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：仍留在现行文档区的 MVP-0 本地与远端直接证据、未证明项和状态范围。
+1. [C8 总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md)：已归档但仍有效的 MVP-0 本地与远端直接证据、未证明项和状态范围；不承担现行契约职责。
 2. [2026 MVP-0 实施历史归档](../archive/2026-implementation-history/README.md)：C3-0 决策、实现拆解/测试矩阵和 C0–C8 编码批次的历史索引。
 3. [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md)：P0A/P0B/P0C/P0D/P0V 的设计、授权、真实使用与恢复验收索引。
 
@@ -50,13 +50,13 @@ C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P
 
 建议按业务边界到磁盘细节的顺序阅读：
 
-1. [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)：捕获、Global Intake、人工路由和未审核层边界。
-2. [Capture Envelope v1](capture-envelope-v1-捕获信封数据契约与原子保存事务.md)：身份、版本、哈希、事件和原子保存事务。
-3. [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md)：四个公共操作以及 C7 机器入口的完整命令、帧和退出语义。
-4. [Capture Store 管理、备份与恢复契约](capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)：独立 `init/verify/backup/restore` 管理面、Backup Bundle v1、零覆盖恢复和数据保护声明。
-5. [最小本地收件箱产品规范](local-inbox-product-spec-本地收件箱产品规范.md)：当前 Tk 收件箱的用户任务、四操作映射、进程内重试、安全提示和已知 UX 缺口。
+1. [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)：捕获、Global Intake、人工路由和未审核层边界。
+2. [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)：身份、版本、哈希、事件和原子保存事务。
+3. [MVP-0 本地文本捕获操作契约](capture/mvp-0-capture-operations-本地文本捕获操作契约.md)：四个公共操作以及 C7 机器入口的完整命令、帧和退出语义。
+4. [Capture Store 管理、备份与恢复契约](capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)：独立 `init/verify/backup/restore` 管理面、Backup Bundle v1、零覆盖恢复和数据保护声明。
+5. [最小本地收件箱产品规范](capture/local-inbox-product-spec-本地收件箱产品规范.md)：当前 Tk 收件箱的用户任务、四操作映射、进程内重试、安全提示和已知 UX 缺口。
 
-这五份文件维护现行稳定行为；C8 报告和两个历史归档只用于追溯实现与验收证据，不能反向覆盖稳定契约。
+`docs/capture/` 下这五份文件维护现行稳定行为；C8 报告和两个历史归档只用于追溯实现与验收证据，不能反向覆盖稳定契约。
 
 ## 05 — MVP-0 之后的已批准边界与待实验方法
 
