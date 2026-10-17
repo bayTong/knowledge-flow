@@ -4,7 +4,7 @@
 > 建立日期：2026-09-21<br>
 > 作用：提供唯一的文档阅读顺序和职责导航；本页不维护动态项目状态，也不建立新的产品需求或技术契约。
 
-KnowledgeFlow 的文件名保持语义化且稳定，**不使用数字前缀表达优先级**。数字只表示推荐阅读顺序；如果本页与[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)冲突，以后者的主题级裁决为准。
+KnowledgeFlow 根级文档的文件名保持语义化且稳定，不使用数字前缀表达权威高低。单一业务流程目录可以使用 `00/10/20/30` 前缀表达该目录内的阅读和执行顺序，但编号不能覆盖主题权威，也不能掩盖可选分支。如果本页与[设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md)冲突，以后者的主题级裁决为准。
 
 ## 00 — 先确认项目当前状态
 
@@ -56,22 +56,25 @@ C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P
 4. [Capture Store 管理、备份与恢复契约](capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)：独立 `init/verify/backup/restore` 管理面、Backup Bundle v1、零覆盖恢复和数据保护声明。
 5. [最小本地收件箱产品规范](capture/local-inbox-product-spec-本地收件箱产品规范.md)：当前 Tk 收件箱的用户任务、四操作映射、进程内重试、安全提示和已知 UX 缺口。
 
-`docs/capture/` 下这五份文件维护现行稳定行为；C8 报告和两个历史归档只用于追溯实现与验收证据，不能反向覆盖稳定契约。
+`docs/capture/` 下这五份文件维护 Capture 与本地运行的现行稳定行为；其中“捕获与路由规范”本次新增的深入策展接缝已显式标为 Review Candidate，不能被误读为已实现。C8 报告和两个历史归档只用于追溯实现与验收证据，不能反向覆盖稳定契约。
 
-## 05 — MVP-0 之后的已批准边界与待实验方法
+## 05 — 深入策展联合契约与待实验方法
 
 | 文档 | 状态 | 当前用途 |
 |---|---|---|
-| [SOP-000A：临时知识库骨架初始化](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) | `Approved Design`，尚未实现 | 人工路由后的最小 KB 冷启动边界 |
+| [00：深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md) | `Review Candidate`，非执行器 | 用编号和任务名展示已有库、新建库、无目标地图和无原料预建四条路径 |
+| [SOP-10：新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) | `Review Candidate`，尚未实现 | 可选新库分支；日期序号、稳定身份、staging、无 remote 的 `managed-local` 检查点与恢复边界 |
+| [SOP-20：材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md) | `Review Candidate`，尚未实现 | 精确来源、处理授权、范围/证据、地图版本及地图处结束 |
+| [SOP-30：批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md) | `Review Candidate`，尚未实现 | Prepare、批准失效、无模型 Apply、本地版本检查点、回执重建、事务恢复及内部新库首次启用门禁 |
 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | 治理红线已确认；具体方法仍为 `Draft` | 定义不承诺语义零遗漏、证据绑定、处理缺口可见和分层处理候选 |
-| [深入策展路径：已有 SOP 逐项审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | `Approved Direction`；SOP 重构与实现尚未授权 | 逐项说明旧 SOP 的保留、拆分、合并和修改，提出深入策展从来源到批准写入的完整闭环；不替代获批执行契约 |
+| [深入策展路径：已有 SOP 逐项审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | `Approved Direction / Design Rationale` | 解释为何形成 `00` 总览与 SOP-10/20/30；不再承担执行契约职责 |
 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | `Proposed Experiment Protocol`，不构成实现授权 | 保存代表材料、来源身份、测量与隔离方法；活动范围以对应获批修订为准，不代替深入策展 SOP 或可信写入批准 |
 
 `full-map`、`hierarchical-map`、`retrieval-first`、Source Ledger、RAG 和候选图谱的具体实现仍需实验和独立授权，不能仅凭方法文档开始编码。
 
 ## 06 — 维护工具、提示词和样例
 
-- [提示词说明](../prompts/README.md)：现有 SOP-001 提示词只作为实验材料；旧 SOP-002 写入提示词暂停执行。
+- [提示词说明](../prompts/README.md)：历史 SOP-001 提示词只作为 SOP-20 候选契约下的可替换实验处理器；历史 SOP-002 写入提示词继续暂停执行。
 - [维护脚本说明](../scripts/README.md)：旧 Markdown KB 的 lint、链接和索引维护工具，以及本仓库文档护栏。
 - [SCHEMA 模板](../templates/SCHEMA-template.md)：现有 Markdown KB 宪法模板。
 - [`examples/`](../examples/)：历史说明性样例，原始材料未随仓库提供，不能当作可复现实证。

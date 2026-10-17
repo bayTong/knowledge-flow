@@ -22,6 +22,7 @@
 > C7V CLI 阶段验收日期：2026-09-28（内容提交 `0787e60`；305 项通过）；远端门禁通过日期：2026-09-29（CI 修复 `4999232`；运行 `36529838017` 成功）<br>
 > 适用范围：MVP-0 的文本捕获，以及未来 URL、文件 Payload 必须保持的身份与事务语义<br>
 > C8 本地总验收日期：2026-09-29；远端门禁与状态同步日期：2026-09-29（`63f3a3d`；Windows CI 运行 `36544619016` 成功）<br>
+> 深入策展本地版本边界澄清日期：2026-10-15（Capture Store 继续不以 Git 为前置，不改变已实现内核）<br>
 > 边界：`Implemented` 只覆盖已经验收的 MVP-0 文本身份、版本、哈希和事务语义；生产实例、URL/文件 Payload、长期运行、真实断电和本文其余远期能力尚未完成
 
 ## 0. 结论先行
@@ -44,14 +45,14 @@ Capture Envelope v1 采用以下实现决策：
 - [设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)
 - [需求与治理基线](../requirements-and-governance-baseline-需求与治理基线.md)
 - [捕获与路由规范](capture-and-routing-spec-捕获与路由规范.md)
-- [SOP-000A：临时知识库骨架初始化](../sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md)
+- [SOP-10：新建知识库骨架](../curation/10-sop-new-kb-bootstrap-新建知识库骨架.md)
 
 边界如下：
 
 - 本文只回答“如何可靠保存一次捕获，以及如何证明保存的是哪一版”。
 - 捕获属于哪个 KB、是否新建 KB，由捕获与路由规范处理。
-- 长文如何生成策展地图，由 SOP-001 处理。
-- 获批知识如何写入可信 wiki，由后续 SOP-002 约束。
+- 长文如何生成策展地图，由 [SOP-20](../curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)处理。
+- 获批知识如何写入可信 wiki，由独立的 [SOP-30 候选契约](../curation/30-sop-trusted-write-批准后写入可信知识.md)约束；该候选尚未授权实现或执行。
 - 本文不决定每个 KB 的 Git 拓扑，也不建立 KB 领域、标签、关系或 SCHEMA。
 
 ## 2. 设计目标
@@ -282,7 +283,7 @@ idempotency_identity = (scope, key_sha256)
 
 ## 7. 推荐物理布局
 
-本文使用 `<capture-root>` 表示配置确定的 Capture Store 根目录。它应位于独立的全局捕获数据区，而不是任一领域 KB；Global Intake 只是查询视图，不是这里的物理目录。当前机器的路径建议见 [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md)，Git 拓扑仍可后置决定。
+本文使用 `<capture-root>` 表示配置确定的 Capture Store 根目录。它应位于独立的全局捕获数据区，而不是任一领域 KB；Global Intake 只是查询视图，不是这里的物理目录。当前机器的路径建议见 [MVP-0 本地文本捕获操作契约](mvp-0-capture-operations-本地文本捕获操作契约.md)。Capture Store 的保存、恢复与迁移不以 Git 为前置；若运维人员另行把数据目录纳入版本工具，也不属于本契约的提交或恢复语义。
 
 ```text
 <capture-root>/
@@ -589,6 +590,7 @@ updated_at: "2026-09-01T02:10:12.456Z"
 - C5A 将 `validate/dump/load_capture_state` 的 Event 交叉验证参数设计为向后兼容的可选关键字：版本 1 调用不新增必填参数并保持原校验；`current_version > 1` 时必须同时提供当前追加 Event 和前一 Envelope，复用严格 Event 引用校验，并要求 `updated_at == current_event.occurred_at`。不得简单删除旧相等校验后让任意投影时间通过。C4 返回值仍从不可变 Event 内存重建，不信任投影时间。
 - GBrain page ID、Git commit 和错误次数等异步信息只能进入投影或事件，不能回写旧 Envelope。
 - C3 初始投影固定使用第 9.1 节的完整字段和值域：`durable`、`unassigned`、`unreviewed-capture`、`not-requested` 与 `uncommitted`；此时不执行路由、GBrain 或 Git。
+- `backup.git_status/commit/remote_status` 是已实现 schema v1 为保持 golden 字节而保留的旧式外部 Git 投影槽，不是现行 Backup Bundle 的备份真值。没有另行实现并迁移该投影前，它保持兼容初值；备份是否存在只能由备份作业、Bundle 清单和恢复验证判定。
 - `capture.yaml` 使用受限 YAML、严格 `knowledgeflow.capture-state` v1 schema 和 schema-defined 字段顺序。缺失或损坏只产生重建需求，不代表不可变原件丢失。
 
 ### 9.3 `capture.created` State Event v1
@@ -836,7 +838,7 @@ MVP-0 的 C5 复用现有 Store 级 Windows 内核写锁，不提前引入细粒
 | outbox 索引失败 | 原件已耐久，尚未镜像 | 从 Envelope 的 Delivery Request 重建任务 |
 | GBrain 写入失败 | 原件已耐久 | 标记 failed，按同一投递幂等键重试 |
 | GBrain 成功但本地未记成功 | 远端状态不确定 | 按明确 slug、版本和哈希探测后 reconcile，不盲目新建 |
-| Git commit/push 失败 | 本地原件仍耐久，但备份未完成 | 保持 uncommitted/failed 并批量重试 |
+| 可选外部 Git/同步作业失败 | 本地原件仍耐久；只证明该外部作业失败，不单独证明备份成败 | 保留独立作业诊断；按其自身策略重试，备份真值仍由 Bundle/副本验证决定 |
 
 ## 13. GBrain 镜像契约
 
@@ -930,14 +932,14 @@ MVP 使用“一 Item 一镜像页，展示当前版本”：
 
 Git 不属于捕获成功的同步前置条件，否则每次随手记都会被 commit 延迟和仓库锁阻塞。
 
-建议：
+规则如下：
 
 - 本地原子提交完成即可返回 `durable`。
-- Capture Store 可以按时间或数量批量 commit。
-- 备份状态单独表示：`uncommitted | committed | pushed | failed`。
-- 未 commit 不等于未保存，但 UI 应能提示“仅本机耐久，尚未备份”。
-- Git 历史不能替代 Item/Event/Version 状态模型。
-- Capture Store 的 Git 拓扑与每个 KB 是否独立 Git 分开决策。
+- Capture Store 的备份状态由独立备份作业、清单和验证事实表达，例如“从未形成已验证副本 / 最近一次已验证副本 / 作业失败”；不得用 Git 的 `uncommitted/committed/pushed` 冒充备份状态。
+- UI 可以提示“仅本机 Store 耐久，尚无已验证备份”，但不能把“未 commit”显示成“未保存”。
+- 若部署者另行按时间或数量把 Store 纳入外部 Git/同步工具，commit、remote 和 push 只属于该运维工具自己的状态；它们不进入 Capture 成功、Envelope、Item/Event/Version 或 Backup Bundle v1 的真值判断。
+- Git 历史不能替代 Item/Event/Version 状态模型，也不能单独证明可恢复备份。
+- Capture Store 不依赖 Git；目标 KB 的本地版本策略由深入策展契约独立决定，二者不得混成同一个事务或仓库前置。
 
 “durable”至少保证应用进程崩溃后可恢复。对突然断电的保证依赖文件 flush、目录元数据 flush 和底层文件系统行为，必须在 Windows/Linux 实现测试中单独验证，不能只凭 rename 假设。
 
@@ -1039,7 +1041,7 @@ v1 推荐暂不引入新的业务数据库：
 - 不可变版本目录是规范真源。
 - `capture.yaml`、idempotency index 和 outbox 是可重建投影。
 - 使用文件锁、staging 和原子 rename 闭合单机事务。
-- Git 批量提交，不为每条灵感同步阻塞。
+- 如部署者另行启用外部 Git 版本纳管，可批量提交且不得阻塞每条灵感；产品本身不把它作为 Capture 或备份前置。
 - GBrain 异步镜像，不参与捕获成功判定。
 
 只有出现以下情况，再评估 SQLite/Postgres 事件索引：
@@ -1075,7 +1077,7 @@ v1 推荐暂不引入新的业务数据库：
 
 | 问题 | 当前建议 | 是否阻塞逻辑契约 |
 |---|---|---|
-| Capture Store 的 Git 拓扑 | 先跟随父级统一 Git，后续可迁移 | 否 |
+| Capture Store 的外部版本纳管 | 产品本身不依赖 Git；如运维另行纳管，必须位于 Capture 事务、恢复和一致性声明之外 | 否 |
 | 非文本文件大小上限 | 文本规则已经确认；PDF、音视频和其他二进制入口仍需单独设上限 | 是，阻塞文件入口实现 |
 | 大文件对象存储 | 后置；引用必须带不可变对象 hash | 否，若 MVP 限制大小 |
 | 敏感内容加密 | P0 不提供应用层静态加密；P0D 前明确 Windows 账户、ACL、卷加密和备份介质边界，更完整加密另行设计 | 否，但真实私人内容进入前需风险确认 |

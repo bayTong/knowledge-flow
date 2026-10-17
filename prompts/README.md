@@ -1,6 +1,6 @@
 # Prompt 模板使用说明
 
-> **状态说明（2026-09-21）**：SOP-001 系列当前只作为 `full-map` 或分层知识处理的候选实验模板使用，产物应进入 `proposals/curation-maps/` 或其他明确的未审核派生层，并停在人工审核处。这里的模式和调用次数是历史实验口径，不是当前路由器的固定阈值，也不构成语义完整性保证；内容规模路由、Source Ledger、Evidence Bundle 和覆盖边界以 [`docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md`](../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) 为准。`sop-002-curator.md` 已暂停执行，不能用于真实 KB 写入，等待新的精确版本绑定、精确 diff、事务和回滚协议。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **状态说明（2026-10-13）**：[`SOP-20 材料深度理解与策展地图候选契约`](../docs/curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)已经统一来源、授权、范围、证据、版本和地图终点；本目录沿用历史编号的 SOP-001 系列仍只是可替换实验处理器，旧 Mode A/B/C 阈值、固定调用次数和十节形式不是产品契约，也不构成语义完整性保证。[`SOP-30 批准后写入可信知识候选契约`](../docs/curation/30-sop-trusted-write-批准后写入可信知识.md)已经定义 Prepare/批准/Apply 边界，但尚未实现；`sop-002-curator.md` 继续暂停，不能用于真实 KB 写入。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
 
 本文档说明 `prompts/` 目录下的 LLM-agnostic 提示词模板的使用方式、提取模式选择、覆盖报告机制、以及如何接入不同的 LLM 工具。
 
@@ -53,7 +53,7 @@ else:
 
 | 文件 | 用途 |
 |------|------|
-| `sop-002-curator.md` | 旧 SOP-002 策展写入模板——**暂停执行，仅供重构参考** |
+| `sop-002-curator.md` | 旧 SOP-002 策展写入模板——**暂停执行，仅供与新契约逐项对照** |
 | `sop-003-lint.md` | SOP-003 知识库健康扫描 |
 
 ### 规范文档
@@ -71,7 +71,7 @@ else:
 ```
 Call 1：sop-001-modeA.md          → 第 1-9 节策展地图
 Call 2：sop-001-modeA-auditor.md  → 第 10 节覆盖报告（独立审计——对照源文检查覆盖。可用便宜模型）
-写入阶段：暂停；等待新 SOP-002 绑定精确版本、diff、事务和回滚
+写入阶段：暂停；SOP-30（历史别名 SOP-002）已形成候选契约但尚未实现
 
 人审：先看第 10 节覆盖报告（30 秒，不需要领域知识），再逐节审核第 1-9 节内容。
 ```
@@ -80,7 +80,7 @@ Call 2：sop-001-modeA-auditor.md  → 第 10 节覆盖报告（独立审计—�
 
 ```
 Call 1：sop-001-modeA-fast.md     → 完整 10 节策展地图（含自检覆盖报告）
-写入阶段：暂停；等待新 SOP-002 绑定精确版本、diff、事务和回滚
+写入阶段：暂停；SOP-30（历史别名 SOP-002）已形成候选契约但尚未实现
 
 覆盖报告标注「自检——非独立审计」。
 如有疑虑，升级到 Mode A（独立审计）或直接 Mode B。
@@ -92,7 +92,7 @@ Call 1：sop-001-modeA-fast.md     → 完整 10 节策展地图（含自检覆�
 Call 1：sop-001-modeB-pass1-entities-claims.md  → 第 1/2/3/5 节
 Call 2：sop-001-modeBC-pass2-relationships.md   → 第 4 节
 Call 3：sop-001-modeBC-assembler.md (light)     → 第 6-10 节（轻量组装）
-写入阶段：暂停；等待新 SOP-002
+写入阶段：暂停；SOP-30（历史别名 SOP-002）已形成候选契约但尚未实现
 ```
 
 ### Mode C（3 Pass，4 次活跃 LLM 调用）
@@ -102,7 +102,7 @@ Call 1：sop-001-modeC-pass1-entities.md         → 第 1/2/3 节
 Call 2：sop-001-modeBC-pass2-relationships.md   → 第 4 节
 Call 3：sop-001-modeC-pass3-claims.md           → 第 5 节
 Call 4：sop-001-modeBC-assembler.md (full)      → 第 6-10 节（完整组装）
-写入阶段：暂停；等待新 SOP-002
+写入阶段：暂停；SOP-30（历史别名 SOP-002）已形成候选契约但尚未实现
 ```
 
 ---

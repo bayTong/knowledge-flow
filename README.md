@@ -46,7 +46,7 @@ KnowledgeFlow takes a different position — **redistribute responsibility and m
 
 - **The system performs most knowledge labor** — it may assist research, summarize, cluster, discover entities and relationships, organize evidence, compare structures, and prepare exact diffs; formal candidates stay source-bound, uncertainty is explicit, and suggestions remain isolated from facts
 - **You control intent and high-impact judgment** — low-risk mechanical work may run automatically; reversible derived results may be generated within the current task or a visible, scoped, revocable rule; ordinary trusted changes may be reviewed as bounded batches, and high-impact scope or structure changes require exact approval; a ledger keeps processed, deferred, and failed boundaries visible
-- **A restricted writer performs the target-state write** — the replacement SOP-002 will process only precisely approved changes under SCHEMA, transaction, and rollback constraints. It has not been redesigned yet; the legacy write prompt must not be run
+- **A restricted writer performs the target-state write** — the SOP-30 “Approved trusted write” contract candidate accepts only precisely approved final bytes and applies them without a model under schema, transaction, and recovery constraints. It is not implemented; the legacy SOP-002 write prompt must not be run
 
 The trusted-promotion pipeline aims to **reduce manual work while preserving auditability, evidence binding, and controlled promotion**. The system does not promise one-pass semantic zero omission; it promises preserved sources, visible processing state, traceable candidates, and approved objects before trusted writes. Q&A, learning, or temporary research may remain clearly labeled derived/candidate output instead of being forced into a wiki.
 
@@ -98,7 +98,7 @@ Raw Source
                    ▼
 ┌──────────────────────────────────┐
 │  Phase 2: Trusted write           │
-│  (replacement SOP-002; not built) │
+│  (contract candidate; not built)   │
 │                                    │
 │  · Only processes human-confirmed │
 │    entries from the curation map  │
@@ -145,7 +145,7 @@ This separation mitigates the curation paradox: even without prior domain knowle
 
 | Layer | SOP | Scope | Trigger |
 |------|-----|------|------|
-| Target-state increment check | Replacement SOP-002 (pending redesign) | Format and transaction correctness of approved changes | Every trusted write |
+| Target-state increment check | SOP-30 Approved trusted write (contract candidate; not built) | Format and transaction correctness of approved changes | Every trusted write |
 | Cumulative scan | SOP-003 full lint (9 items) | Structural health of entire KB | Weekly or manual |
 | Ripple-effect check | SOP-004 SCHEMA consistency | Impact of SCHEMA changes on all pages | After any SCHEMA modification |
 
@@ -206,7 +206,11 @@ knowledge-flow/
 │   │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Four text-operation contract
 │   │   ├── capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md  Store management and Backup Bundle v1 contract
 │   │   └── local-inbox-product-spec-本地收件箱产品规范.md              Current minimal local-inbox product contract
-│   ├── sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md   Provisional KB design
+│   ├── curation/
+│   │   ├── 00-deep-curation-workflow-深入策展流程总览.md            Deep-curation order, branches, and valid endpoints
+│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 optional new-KB skeleton candidate
+│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 curation-map candidate
+│   │   └── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 trusted-write and first-activation candidate
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
 │   └── research/
 │       └── README.md                Non-authoritative research-input index

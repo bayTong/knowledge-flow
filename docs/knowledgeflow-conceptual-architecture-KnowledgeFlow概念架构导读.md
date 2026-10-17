@@ -264,6 +264,7 @@ T0 是规范来源事实，但不是“可信知识结论”；T1/T2 可以很�
 - **RAG 可以代替知识治理。** RAG 解决检索和证据组织，不决定哪些内容应获得可信身份。
 - **人工负责最终决定，所以人工必须做全部工作。** 系统应先完成机械劳动、证据和变更准备，再让用户聚焦高影响判断。
 - **Git commit 就等于业务批准。** 技术版本记录不能替代用户对精确语义对象的批准。
+- **使用本地 Git 就等于依赖 GitHub。** Capture 和未绑定知识库的地图不要求 Git；地图一旦绑定已有或新建知识库，其受管工件和首版 T3 可信 Wiki 都进入该库无 remote 的本地版本历史，不要求账号、网络或 push。事务日志、版本历史和备份仍各自解决不同问题。
 
 ## 继续阅读
 
@@ -272,7 +273,8 @@ T0 是规范来源事实，但不是“可信知识结论”；T1/T2 可以很�
 | 产品为什么存在、必须具备什么、怎样验收 | [主产品需求文档](requirements-and-governance-baseline-需求与治理基线.md) |
 | 哪份文档优先、当前功能门禁是什么 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Capture 身份、版本、哈希和事务 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md) |
-| 捕获意图、人工路由和临时 KB | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)与[SOP-000A](sop-000a-provisional-kb-bootstrap-临时知识库骨架初始化.md) |
+| 捕获意图、人工路由和新建 KB | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)、[深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md)与[SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) |
+| 深入策展地图与获批可信写入 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)与[SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md)；新知识库首次启用是 SOP-30 的内部条件，当前均为 Review Candidate，尚未实现 |
 | Segment、Ledger、Profile、Evidence 和 RAG 方法假设 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
 | 当前已经实现什么、下一步是什么 | [项目状态文档](project-status-项目状态与当前门禁.md)；验收证据和历史实施材料由 [docs/README](README.md) 导航 |
 
