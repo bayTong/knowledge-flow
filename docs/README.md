@@ -32,7 +32,7 @@ KnowledgeFlow 根级文档的文件名保持语义化且稳定，不使用数字
 
 | 文档 | 状态 | 负责回答 |
 |---|---|---|
-| [KnowledgeFlow 概念架构导读](knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) | `Explanatory Guide`，非规范性 | 用户可从哪些知识任务开始，来源级纳入、工作级可用与选择性可信晋升怎样连接，以及 Ontology、Schema、SOP、Karpathy LLM Wiki、RAG、GBrain、可信 Wiki 与知识图谱如何组合 |
+| [KnowledgeFlow 概念架构导读](knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) | `Explanatory Guide`，非规范性 | 用户可从哪些知识任务开始，工件类型与治理状态怎样分开，以及策展地图、三种 Schema、领域 Ontology、知识图谱、SOP、Karpathy LLM Wiki、RAG、GBrain 与可信 Wiki 如何组合 |
 
 这份导读不建立第二份需求或技术契约。发生冲突时，必须修改导读以服从 01 的 L0 基线、02 的主题权威和后续各主题规范，不能反向用导读覆盖它们。
 
@@ -68,7 +68,7 @@ C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P
 | [SOP-30：批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md) | `Review Candidate`，尚未实现 | Prepare、批准失效、无模型 Apply、本地版本检查点、回执重建、事务恢复及内部新库首次启用门禁 |
 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | 治理红线已确认；具体方法仍为 `Draft` | 定义不承诺语义零遗漏、证据绑定、处理缺口可见和分层处理候选 |
 | [深入策展路径：已有 SOP 逐项审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | `Approved Direction / Design Rationale` | 解释为何形成 `00` 总览与 SOP-10/20/30；不再承担执行契约职责 |
-| [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | `Proposed Experiment Protocol`，不构成实现授权 | 保存代表材料、来源身份、测量与隔离方法；活动范围以对应获批修订为准，不代替深入策展 SOP 或可信写入批准 |
+| [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | 已版本化的 `Proposed Experiment Protocol`，不构成实现授权 | 保存代表材料、来源身份、测量与隔离方法；活动范围以对应获批修订为准，不代替深入策展 SOP、`CUR-MVP-1` 实施授权或可信写入批准 |
 
 `full-map`、`hierarchical-map`、`retrieval-first`、Source Ledger、RAG 和候选图谱的具体实现仍需实验和独立授权，不能仅凭方法文档开始编码。
 
