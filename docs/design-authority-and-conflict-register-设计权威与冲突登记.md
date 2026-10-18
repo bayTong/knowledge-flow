@@ -68,6 +68,7 @@
 > 深入策展联合契约第二轮技术复核日期：2026-10-15（新增受控版本适配器与有目标地图事务边界；已纳入后续联合版本）<br>
 > 深入策展纵向 MVP 优先级纠偏日期：2026-10-18（机械来源/证据能力降为地图切片内部检查点，不再单列产品阶段）<br>
 > 深入策展联合候选与纵向顺序版本化日期：2026-10-18（提交 `37a03e6`；仍为未实现候选，`CUR-MVP-1` 需单独授权）<br>
+> `CUR-MVP-1` 实施计划与 `CUR1A` 授权日期：2026-10-18（只批准最小契约、夹具与测试；后续批次、模型调用和可信写入仍单独授权）<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突；历史完成日期只作裁决追溯<br>
 > 边界：C8 与 P0B/P0C 的本地及精确提交远端门禁均已通过；`Implemented` 只适用于各自已测限定范围。P0C-UX0 只冻结尚未实现的最小历史/提示交互。P0D/P0V 已证明低敏感度 Pilot Store 的真实四操作、短周期离线使用、同盘操作副本和全新目标恢复，但没有证明长期使用、真实断电、异盘灾备、正式私人内容环境或后续知识工作能力，项目整体不是 `Effective`
 
@@ -122,9 +123,9 @@
 | 顶层产品需求：产品目标，用户与旅程，功能/非功能需求，范围，产品治理，依赖风险，验收标准和待决问题 | [KnowledgeFlow 主产品需求文档（Master PRD）](requirements-and-governance-baseline-需求与治理基线.md) | Approved Design | 本文件是唯一 L0 顶层需求入口；README、愿景、路线图、概念导读和 Draft 方法规范只作解释或实验，不得建立并行总需求或反向覆盖产品需求 |
 | 文档优先级、冲突登记和主题功能前置条件 | 本文件 | Approved Design | 发现新冲突先登记，再修改对应规范；本文件不选择当前执行哪一个门禁 |
 | 用户知识任务、统一生命周期、工作知识空间、策展策略、Ontology、Schema、SOP、Karpathy LLM Wiki、RAG、GBrain、可信 Wiki 与知识图谱之间的跨主题概念关系 | [KnowledgeFlow 概念架构导读](knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) | Explanatory Guide，非规范性 | 只负责解释和导航，不建立新需求、机器 schema、功能门禁或实现授权；冲突时服从本矩阵和各主题权威 |
-| 深入策展路径、可选分支与阅读/执行顺序 | [深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md) | Review Candidate，未实现 | 只导航入口、SOP-10/20/30 和合法终点；不替代各 SOP 契约或项目状态 |
-| 新建 KB 骨架与 `provisional` 生命周期 | [SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) | 原方向 Approved Design；2026-10-13 执行契约为 Review Candidate | 历史别名 SOP-000A；旧 SOP-000 在冷启动、领域前置和 SCHEMA 前置方面被取代；日期序号、稳定身份、staging、Git 与恢复细节待本候选获批 |
-| 捕获、Global Intake、人工路由、两级保存和三项深入策展权限 | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md) | 既有捕获边界 Approved Design；2026-10-13 深入策展接缝为 Review Candidate | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策；目标未知时不得伪造 Route Record |
+| 深入策展路径、可选分支与阅读/执行顺序 | [深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md) | Mixed；`CUR-MVP-1` 子集为 Approved Implementation Contract | 只导航入口、SOP-10/20/30 和合法终点；SOP-30 仍是 Review Candidate，不替代各 SOP 契约或项目状态 |
+| 新建 KB 骨架与 `provisional` 生命周期 | [SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) | Approved Implementation Contract（仅 `CUR-MVP-1` 新隔离 KB） | 历史别名 SOP-000A；日期序号、稳定身份和 provisional manifest 已进入 CUR1A 契约，实际 staging、Git、发布与恢复留在 CUR1C |
+| 捕获、Global Intake、人工路由、两级保存和三项深入策展权限 | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md) | 既有捕获边界 Approved Design；`CUR-MVP-1` 所需目标决定、权限交接和无目标分支获准实施 | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策；其余路由尚未实现，目标未知时不得伪造 Route Record |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Implemented（限定 MVP-0 文本身份与事务范围） | C3–C8 已按本契约实现和验收；GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件，URL/文件等远期 Payload 仍未实现 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)与[MVP-0 操作契约](capture/mvp-0-capture-operations-本地文本捕获操作契约.md) | Implemented（限定 C3 行为范围） | 已实现行为由两份现行契约维护；[C3-0 决策形成记录](../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)仅作历史追溯 |
 | MVP-0 `capture-root` 与四个文本操作接口 | [MVP-0 本地文本捕获操作契约](capture/mvp-0-capture-operations-本地文本捕获操作契约.md) | Implemented（限定 MVP-0 文本范围） | 每机配置、四操作、显式恢复/迁移和受限 CLI 已按 C8 验收；不含生产实例或后续路由 |
@@ -135,12 +136,12 @@
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
 | P0 低敏感度 Pilot 与 dogfood 的设计、授权和验收证据 | [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md) | Historical Execution Evidence | P0B/P0C 稳定行为已由上面两份长期契约承接；归档只追溯精确提交、远端门禁及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
 | 首轮 Evidence-first 实验的材料快照、任务/问题、测量、隔离与停止条件 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | Proposed Experiment Protocol，已由 `37a03e6` 版本化但不构成实现授权 | 当前活动范围只承接深入策展和必要机械证据；既有低摩擦/多来源检索材料登记保留但后置。`CUR-MVP-1` 仍须单独规划和授权；C-K 独立核查、人工基线和语义处理器授权必须在语义地图子步骤前闭合，协议不授权正式持久化 schema、Pilot Store 写入或可信写入 |
-| `CUR-MVP-1` 当前活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Implementation Plan Candidate，待项目所有者明确授权 | 只把已确认方向和候选契约压缩为 `CUR1A–CUR1V`；服从 PRD、EVIDENCE-0 与 SOP-10/20，不自行批准编码、模型调用、外部传输或可信写入 |
+| `CUR-MVP-1` 当前活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Approved Implementation Plan；当前只授权 `CUR1A` | 把已确认方向和契约压缩为 `CUR1A–CUR1V`；后续批次、模型调用、外部传输和可信写入不因本次授权自动生效 |
 | 深入策展入口、目标判断、两级保存、地图终点、临时命名与首个垂直切片 | 本文件 D-017–D-022 + [深入策展审查理由](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | Approved Direction | 审查文档只解释原因；可执行候选由捕获/路由、`00` 总览和 SOP-10/20/30 承接 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由现行契约、项目状态、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
-| 深入策展地图的输入、授权、范围、证据、版本和终点 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md) | Review Candidate，未实现 | 历史别名 SOP-001；`prompts/` 和 `extraction-interface.md` 只作可替换实验处理器资产；固定十节和旧阈值不覆盖本候选 |
+| 深入策展地图的输入、授权、范围、证据、版本和终点 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md) | Approved Implementation Contract（仅 `CUR-MVP-1` 单来源地图切片） | 历史别名 SOP-001；CUR1A 只实现值对象、规范编码、错误语义和夹具，真实处理器与用户地图任务仍待 CUR1D 单独授权 |
 | 新知识库首次启用门禁 | [SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md#21-新知识库首次启用门禁历史-sop-000b) | Review Candidate，未实现 | 历史 SOP-000B 已并为 SOP-30 内部条件，不再是平级流程；首个新库的启用与首批可信写入使用同一事务 |
 | 可信知识写入、精确批准和恢复 | [SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md) | Review Candidate，未实现 | 历史别名 SOP-002；旧 SOP-002 提示词继续暂停；Apply 只执行批准前已存在的精确字节，不调用模型 |
 | GBrain 未审核镜像最小接入 | 本文件第 8 节 + Capture Envelope 第 13 节 | Approved Design | 仅批准 POC 边界；旧 GBrain 集成方案只作远期能力研究，不是 MVP 接入指令 |
@@ -461,14 +462,14 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-076（深入策展） | “仅生成地图不算完成”把项目必须证明写入能力误写成每个用户任务都必须入库 | 地图连同来源绑定、范围和缺口保存后可以是成功任务终点，但仍属 T1/T2；项目完整链验收另需至少一次获批 T3 写入、验证和恢复 | 2026-10-18：D-019、不可变地图版本与 `map_closed` 终点已由 `37a03e6` 版本化；尚未实现 |
 | C-077（深入策展） | 首个实现同时要求已有库、新库、多个目标和逐库恢复，会在价值链尚未跑通前引入跨库状态与事务复杂度 | 首个垂直切片只做一份来源和一个全新隔离 provisional KB；地图终点和完整写入链分别验收。已有 active KB 后续增加，多 KB 与跨库操作继续后置 | 2026-10-13：由 D-022 收口方向；不授权代码或真实 KB 写入 |
 | C-078（深入策展） | 在尚未理解材料时用语义名称创建 KB，或策展后直接改物理目录，可能造成误导、链接和配置漂移 | 用户未命名时用冲突安全的 `YYYY-MM-DD-NN`，稳定 `kb_id` 与显示名分离；首批入库后由 Agent 提议 1–3 个显示名并由用户决定，首版不自动改目录 | 2026-10-18：D-021 及 SOP-10/30 相关候选已由 `37a03e6` 版本化；尚未实现 |
-| C-079（深入策展契约） | 若临时骨架逐文件直接写入最终路径，崩溃或并发日期序号分配会留下伪可用库、重名，或出现 manifest 已可解析但初始化回执尚未闭合的窗口 | SOP-10 候选使用父级排他锁、流程拥有的 staging、完整校验，在 staging 内建立无 remote 的 `managed-local` 初始检查点后整体发布；KB 打开还须验证无未解决事务、原始/重建回执及初始 commit/树，未知残留保留并失败关闭 | 2026-10-18：发布后可用性谓词已由 `37a03e6` 版本化；尚未实现 |
+| C-079（深入策展契约） | 若临时骨架逐文件直接写入最终路径，崩溃或并发日期序号分配会留下伪可用库、重名，或出现 manifest 已可解析但初始化回执尚未闭合的窗口 | SOP-10 使用父级排他锁、流程拥有的 staging、完整校验，在 staging 内建立无 remote 的 `managed-local` 初始检查点后整体发布；KB 打开还须验证无未解决事务、原始/重建回执及初始 commit/树，未知残留保留并失败关闭 | 2026-10-18：CUR1A 仅实现 provisional manifest 校验与 golden；实际初始化、发布和恢复留在 CUR1C |
 | C-080（深入策展契约） | 地图、方案或目标在用户批准后变化，若仍沿用旧“确认入库”文字会把批准应用到不同对象 | 地图、决定记录和变更集不可变版本化；批准绑定来源、地图、决定、变更集、候选字节、目标 manifest、Git 基线和待触碰路径哈希，任一变化即失效 | 2026-10-18：候选 ID、决定摘要和批准失效边界已由 `37a03e6` 版本化；尚未实现 |
 | C-081（深入策展契约） | 激活和首批写入若分成两个成功边界，可能出现 active 空壳或可信内容已写但仍不可见的半状态 | SOP-30 内部先判定新库首次启用条件，再在同一可恢复事务中应用首批内容并最后发布 active manifest；产品可信读取还必须验证无未解决事务、原始或确定性重建的 committed 回执、结果本地 commit 和回读字节 | 2026-10-18：可见性谓词、`git_committed` 窗口和回执重建边界已由 `37a03e6` 版本化；尚未实现 |
 | C-082（深入策展契约） | 写入阶段继续调用模型或使用开放式“更新相关文件”，会让实际内容偏离批准对象 | SOP-30 Prepare 在批准前生成全部精确字节；Apply 无模型、无网络，只接受有旧哈希/不存在证明的 `create` 与 `replace-exact` | 2026-10-18：操作白名单已由 `37a03e6` 版本化；尚未实现 |
 | C-083（深入策展契约） | 把结果 Git commit 写进同一个受其哈希影响的 manifest/回执会形成自引用；只把回执留在单机又会使干净 checkout 或换机无法确认可信状态 | manifest/Route Record 只保存事务/变更身份，不保存包含自身的结果 commit；带结果 commit 的回执放在精确忽略的本机记录区，但可从唯一 commit 身份、版本化方案/批准、manifest/日志和回读字节确定性重建。提交只发生在 KB 的本地版本库并验证树差异 | 2026-10-18：本地版本与回执重建边界已由 `37a03e6` 版本化；尚未实现 |
 | C-084（深入策展契约） | `raw/` 文件名不含 Capture 版本会在同一 Capture 多版本时碰撞；单一 `.source.yaml` 又无法与“跨 Capture 共用同哈希正文”同时保持一对一来源映射 | 首个切片使用包含完整 Capture ID、补零版本和 Payload 哈希前缀的规范文件名；不同 Capture/版本不做物理正文去重，每条精确路由都有正文、旁车与最终 Route Record | 2026-10-18：捕获/路由候选已由 `37a03e6` 版本化；尚未实现 |
-| C-085（深入策展契约） | Evidence locator 只写“字节起止/行起止”而未规定基数、开闭区间和 CRLF 计数，跨实现可能定位不同原文 | 字节坐标固定为相对原始 Payload 的零基半开区间且不得切断 UTF-8 字符；行号是一基显示辅助，以 LF 推进行号，回读先验 bytes 与片段哈希 | 2026-10-18：SOP-20 locator 边界已由 `37a03e6` 版本化；尚未实现 |
-| C-086（深入策展契约） | 单一人类可读地图没有稳定候选 ID、机器清单和独立决定身份，SOP-30 无法证明用户批准的是哪个候选/修改版本 | 每版地图由 `map.yaml + map.md` 构成并计算非自引用工件摘要；候选有稳定 ID，用户决定写入绑定精确地图的不可变决定记录，SOP-30 同时绑定两者 | 2026-10-18：地图与决定身份已由 `37a03e6` 版本化；尚未实现 |
+| C-085（深入策展契约） | Evidence locator 只写“字节起止/行起止”而未规定基数、开闭区间和 CRLF 计数，跨实现可能定位不同原文 | 字节坐标固定为相对原始 Payload 的零基半开区间且不得切断 UTF-8 字符；行号是一基显示辅助，以 LF 推进行号，回读先验 bytes 与片段哈希 | 2026-10-18：CUR1A 已实现 locator 值契约和 golden；原文字符边界校验与回读留在 CUR1B |
+| C-086（深入策展契约） | 单一人类可读地图没有稳定候选 ID、机器清单和独立决定身份，SOP-30 无法证明用户批准的是哪个候选/修改版本 | 每版地图由 `map.yaml + map.md` 构成并计算非自引用工件摘要；候选有稳定 ID，用户决定写入绑定精确地图的不可变决定记录，SOP-30 同时绑定两者 | 2026-10-18：CUR1A 已实现地图/决定契约、同事实渲染、摘要和 golden；原子发布及用户操作留在 CUR1D |
 | C-087（深入策展契约） | 把 `prepared/approved` 与 Apply 事务混在一个状态机，且只看 `active` manifest，会把本地 Git 已提交但回执未闭合等窗口误判为完成 | 分开变更集/批准状态和 Apply 事务状态，显式保留 `git_committed`；启动、读取与下一次 Apply 都先恢复未解决事务，可信可见性要求 manifest、事务、原始或重建回执、本地 commit 与文件一致 | 2026-10-18：状态与恢复边界已由 `37a03e6` 版本化；尚未实现 |
 | C-088（深入策展契约） | 新库日期命名若在重试时重新读取“今天”，允许根和版本引擎政策又未进入交接，跨午夜、换机或配置变化时会得到不同目标；要求父级预先是 Git 仓库又会把高级用户工作区约束强加给普通用户 | 首次请求冻结命名日期/时区并绑定允许根与版本引擎政策；所有路径来自部署配置，不硬编码盘符。首个新库使用自身无 remote 的 `managed-local` 仓库，不接管或嵌套用户已有仓库 | 2026-10-18：命名、允许根和版本政策已由 `37a03e6` 版本化；尚未实现 |
 | C-089（本地版本管理边界） | 把 Git 与 GitHub 合写成“可选工具”，会误以为可信 Wiki 不需要本地历史；反过来，把 Git 检查点写成父仓库/远端前置，又会破坏离线、低门槛和可移植性。Capture v1 的旧 `backup.git_status` 名称还可能被误当成现行 Backup Bundle 真值 | Capture 保存与无目标地图终点不依赖 Git；绑定目标 KB 的受管地图/决定与 T3 可信 Wiki 首版使用对用户透明的本地 Git 版本引擎。新 KB 默认 `managed-local`，不配置 remote、不运行网络命令、不要求账号；Git 负责长期差异/版本，事务负责崩溃恢复，另行备份负责介质恢复。Capture 的旧 Git 投影槽仅为兼容字段，备份只由独立作业、清单与恢复验证证明 | 2026-10-18：本地 Git/远端分离及备份限界已由 `37a03e6` 版本化；尚未实现 |

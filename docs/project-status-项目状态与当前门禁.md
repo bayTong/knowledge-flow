@@ -1,6 +1,6 @@
 # KnowledgeFlow 项目状态与当前门禁
 
-<!-- knowledgeflow-doc-status tests=338 capture_tests=323 script_tests=15 next_gate=CUR-MVP-1 -->
+<!-- knowledgeflow-doc-status tests=353 capture_tests=323 curation_tests=15 script_tests=15 next_gate=CUR-MVP-1 -->
 
 > 状态：Current Project Status<br>
 > 状态日期：2026-10-18<br>
@@ -10,10 +10,10 @@
 
 | 项目 | 当前事实 |
 |---|---|
-| 当前阶段 | `CUR-MVP-1` 的产品边界、活动材料和纵向顺序已具备；当前正在复核[首个可用策展地图纵向切片实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md)。该方案仍是待批准候选，产品代码尚未进入 `CUR1A` |
-| 最近完成 | 提交 `7e4b8b2` 登记产品理解与技术概念厘清，提交 `5aa86eb` 收口工件/治理状态、三种 Schema、策展地图、Ontology 与知识图谱边界，并把下一功能门禁统一为 `CUR-MVP-1` |
-| 本批工作 | 形成 `CUR1-0` 实施方案：复核两份活动输入身份，把来源/证据机械能力、新库/`raw/`、真实处理器、可修改地图和总验收拆成 `CUR1A–CUR1V`；本批只改文档，不修改代码、Store、原件、KB 或处理器 |
-| 下一门禁 | 项目所有者复核本方案并明确授权 `CUR1A`。获批后先建立策展切片的最小执行契约、golden fixtures 和独立测试计数；不得直接跳到长文模型运行、新库创建或 SOP-30 可信写入 |
+| 当前阶段 | `CUR-MVP-1 in progress`；实施计划已获批，内部检查点 `CUR1A` 已完成本地实现与验证，尚待独立复核和单独提交。产品里程碑本身仍未完成 |
+| 最近完成 | 本地提交 `166b496` 版本化 `CUR1-0` 实施方案；项目所有者随后精确授权 `CUR1A`，未授权 `CUR1B–CUR1V`、模型调用或可信写入 |
+| 本批工作 | 新增 `knowledgeflow_curation` 的不可变最小契约、规范 YAML/Markdown、稳定错误语义、SOP-10 provisional KB manifest、7 份契约/呈现 golden、1 份来源正文夹具和 15 项独立策展测试；来源允许范围与本次实际声明范围分开记录。未读取真实 `E0-C` 正文、未创建 Store/KB、未调用模型 |
+| 下一门禁 | 独立复核并单独提交 `CUR1A`；确认提交事实后，再由项目所有者决定是否精确授权 `CUR1B` 的实验 Store、确定性分段、范围账与 Evidence 回读。不得直接跳到新库创建、语义处理或 SOP-30 |
 | 后续纵向链 | `CUR-MVP-1` 先交付“本地文件精确 Capture → 目标判断/一个新 KB → `raw/` 映射 → 最小来源证据 → 可查看、可回证、可修改且可在地图处结束”；`CUR-MVP-2` 再交付精确方案/批准/首批可信写入；`CUR-MVP-V` 验收两个用户终点。已有 active KB、多 KB、低摩擦和独立检索继续后置 |
 | 整体状态 | MVP-0 捕获内核和 P0B/P0C 各自已测范围为 `Implemented`；项目整体仍非 `Effective` 或生产就绪 |
 
@@ -44,11 +44,11 @@
 | 长期使用 | 尚未形成持续使用、SLA 或大规模数据证据 | 后续 dogfood 与价值切片按实际需要验证 |
 | 数据保护 | 未证明异盘灾备、正式私人/高敏内容环境、产品级删除或安全擦除 | 只在相应内容、发布或保护声明进入范围时另设门禁 |
 | 知识工作价值 | 尚未证明共同证据底座、深入策展、低摩擦批量整理或多来源检索的实际价值 | [实验协议候选](evidence-first-experiment-protocol-Evidence优先实验协议.md)已登记来源；[深入策展 SOP 审查](deep-curation-sop-review-深入策展SOP审查与实施建议.md)提出当前主线，设计建议不等同于实现或价值已验收 |
-| 深入策展联合契约 | `00` 总览、SOP-10/20/30 与入口/路由候选已完成两轮技术复核，并由 `37a03e6` 版本化；`CUR1-0` 已形成待批准的纵向实施方案 | 保持尚未实现的 Review Candidate；先复核方案并单独授权 `CUR1A`。E0-C 独立人工核查和人工基线在语义地图子步骤前闭合，不阻塞同一切片内此前的机械实现与测试，但机械子步骤不单独升级产品里程碑 |
+| 深入策展联合契约 | `CUR-MVP-1` 所需入口、SOP-10/20 子集和实施方案已获准分批实施；SOP-30 仍是 Review Candidate。`CUR1A` 仅完成本地契约层 | 先独立复核并提交 `CUR1A`，再单独授权 `CUR1B`。E0-C 独立人工核查和人工基线在 CUR1D 语义地图前闭合；内部机械批次不单独升级产品里程碑 |
 
 ## 4. 当前边界
 
-`EVIDENCE-0` 和深入策展联合候选已经版本化，[CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md)也已形成待批准候选，但它们仍不构成编码授权。[入口/路由候选](capture/capture-and-routing-spec-捕获与路由规范.md)以及[深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md)、[SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md)、[SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)、[SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md)仍是 Review Candidate；[实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md)只把真实长文和必要机械证据作为活动范围。下一门禁 `CUR-MVP-1` 必须：
+`EVIDENCE-0` 与联合契约候选已经版本化，[CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md)现为获批实施计划；[捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)、[深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md)、[SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md)和[SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)只有 `CUR-MVP-1` 所需子集获准分批实施。[SOP-30](curation/30-sop-trusted-write-批准后写入可信知识.md)仍是 Review Candidate。下一产品门禁 `CUR-MVP-1` 仍必须：
 
 - 明确深入策展的精确来源版本、深度处理范围与单一新隔离 KB 的首个可执行闭环，复用已登记的长篇材料和必要机械夹具；零散笔记与独立多来源材料只保留后置登记，不作为深入路径前置或当前读取范围。只使用精确白名单的隔离副本；不得触碰 Pilot Store、既有 active KB、备份或恢复副本；
 - 写清活动材料的默认任务、人工 gold 或核查方法、处理授权和代表性；特定问题与熟悉程度不是用户开始任务前的必填表单，但实际运行采用的任务和解释边界必须记录；
@@ -59,10 +59,10 @@
 - 首轮语义结果只建立实测基线，不预设无依据的命中率或接受率通过阈值；机械身份、分段、范围和 locator 仍为全通过门禁；
 - 规定数据隔离、可重复运行、结果清理和停止条件，并明确单次演示不能证明通用准确率。
 
-本门禁不允许：
+当前边界不允许：
 
-- 修改产品代码、Capture schema、Pilot Store、备份、恢复副本或当前收件箱；
-- 未经 `CUR-MVP-1` 单独实施授权开始编码；把其机械子步骤独立升级为“底座已完成”；在 C-K 独立人工核查、人工基线及语义子步骤明确授权前运行语义处理器；在精确方案批准与 `CUR-MVP-2` 单独授权前执行任何真实 KB 写入。旧 SOP-002 始终不得恢复执行；
+- `CUR1A` 修改 Capture schema、Pilot Store、备份、恢复副本或当前收件箱；当前实现只新增同级策展契约包和测试；
+- 未经 `CUR1B` 独立授权读取真实 `E0-C` 正文、建立实验 Store 或实现机械处理；把 CUR1A 独立升级为“底座产品已完成”；在 C-K 独立人工核查、人工基线及 `CUR1D` 明确授权前运行语义处理器；在精确方案批准与 `CUR-MVP-2` 单独授权前执行任何真实 KB 写入。旧 SOP-002 始终不得恢复执行；
 - 先冻结通用 Task、Ledger、Evidence、Graph 或 RAG 持久化 schema；
 - 把模型、embedding、GBrain、图数据库、外部账号或网络设为共同底座或本地检索前置；深入策展/低摩擦整理如需模型仍须另行确认并可完全关闭；
 - 把实验性摘要、回答、关系或图谱写入可信知识层；

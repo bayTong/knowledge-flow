@@ -1,0 +1,63 @@
+schema: "knowledgeflow.curation-experiment-record"
+schema_version: 1
+curation_run_id: "run_01991a7e-7b22-7a31-8d14-0b8ab6b35423"
+source:
+  capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+  capture_version: 1
+  envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+  byte_size: 41
+declared_scope:
+  start_byte: 0
+  end_byte: 41
+segmentation_profile:
+  profile_id: "experiment-markdown-blocks"
+  revision: 1
+  target_bytes: 16384
+  maximum_bytes: 32768
+  overlap_bytes: 0
+segments:
+  - segment_id: "seg_01991a7e-7b25-7a31-8d14-0b8ab6b35426"
+    ordinal: 0
+    range:
+      start_byte: 0
+      end_byte: 28
+    start_line: 1
+    end_line: 4
+    heading_path:
+      - "主题"
+    body_sha256: "sha256:dc555ee436e6c90bef5300171e68cd1e62350c40af07377b6739c77b68bbf493"
+    profile_id: "experiment-markdown-blocks"
+    profile_revision: 1
+  - segment_id: "seg_01991a7e-7b26-7a31-8d14-0b8ab6b35427"
+    ordinal: 1
+    range:
+      start_byte: 28
+      end_byte: 41
+    start_line: 5
+    end_line: 5
+    heading_path:
+      - "主题"
+    body_sha256: "sha256:aa6240fc120a0df47877d86221aa613f3fdf5620e95dc9710bbcb6839a553c9c"
+    profile_id: "experiment-markdown-blocks"
+    profile_revision: 1
+scope:
+  - range:
+      start_byte: 0
+      end_byte: 41
+    status: "processed"
+    reason: null
+locators:
+  - locator_id: "loc_01991a7e-7b27-7a31-8d14-0b8ab6b35428"
+    source:
+      capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+      capture_version: 1
+      envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+      byte_size: 41
+    range:
+      start_byte: 10
+      end_byte: 26
+    start_line: 3
+    end_line: 3
+    excerpt_sha256: "sha256:3ca3bbae9f733669394f42b5f888371f04f6fe80d1ad7af265677c289325e740"

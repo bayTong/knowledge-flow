@@ -1,6 +1,7 @@
 # SOP-10：新建知识库骨架
 
-> 状态：Review Candidate（阶段二联合契约收口稿；尚未实现，也不授权编码）<br>
+> 状态：Approved Implementation Contract（仅限 `CUR-MVP-1` 的一个全新隔离 `provisional` KB；分批实现中，不授权生产 KB 或 SOP-30）<br>
+> CUR1A 实施授权日期：2026-10-18<br>
 > 历史编号：SOP-000A（只用于旧材料追溯）<br>
 > 原设计确认日期：2026-09-01<br>
 > 联合契约修订日期：2026-10-13<br>

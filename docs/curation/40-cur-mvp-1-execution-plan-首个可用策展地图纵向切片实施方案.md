@@ -1,7 +1,8 @@
 # CUR-MVP-1：首个可用策展地图纵向切片实施方案
 
-> 状态：Implementation Plan Candidate（待项目所有者复核和明确授权；本文不构成编码、模型调用、外部传输、真实知识库写入或生产配置授权）<br>
+> 状态：Approved Implementation Plan（项目所有者已授权 `CUR1A`；后续 `CUR1B–CUR1V` 仍逐批授权；不预授权模型调用、外部传输、真实知识库写入或生产配置）<br>
 > 形成日期：2026-10-18<br>
+> CUR1A 授权日期：2026-10-18<br>
 > 产品里程碑：一份精确本地材料形成可查看、可回证、可修改、可在地图处结束的策展地图<br>
 > 上位约束：[主产品需求文档](../requirements-and-governance-baseline-需求与治理基线.md)、[设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)、[EVIDENCE-0 实验协议](../evidence-first-experiment-protocol-Evidence优先实验协议.md)<br>
 > 执行契约候选：[捕获与路由规范](../capture/capture-and-routing-spec-捕获与路由规范.md)、[SOP-10 新建知识库骨架](10-sop-new-kb-bootstrap-新建知识库骨架.md)、[SOP-20 材料深度理解与策展地图](20-sop-deep-curation-map-材料深度理解与策展地图.md)
@@ -98,7 +99,7 @@
 
 ### 4.2 实验分段 Profile
 
-首个实现只提供 `experiment-markdown-blocks-v1`，明确标记为可废弃的实验选择，不冻结为永久产品策略：
+首个实现只提供组合身份 `profile_id=experiment-markdown-blocks + revision=1`（下文简称 `experiment-markdown-blocks-v1`），明确标记为可废弃的实验选择，不冻结为永久产品策略：
 
 1. 严格按原始 UTF-8 bytes 工作，不规范化换行、不重写 Unicode。
 2. 原始 Segment 层无重叠，所有 bytes 恰好归属一个有序 Segment；空行、标题分隔、表格、代码块和消息标记不能被静默丢弃。
@@ -143,6 +144,20 @@
 
 命令名和参数在 `CUR1A` 固定；无论采用交互式提示还是显式参数，都必须提供结构化回执和单一可执行的修正提示。只有生成机械诊断文件而没有上述查看、修改和结束入口，不算完成。
 
+`CUR1A` 冻结以下用户任务名称和未来 CLI 拼写，但不暴露“尚未实现却返回成功”的空壳命令。对应子命令只在表中所列批次实现后进入可执行入口：
+
+| 用户任务 | 操作身份 / CLI 拼写 | 首次实现批次 |
+|---|---|---|
+| 准备精确来源 | `source.prepare` / `knowledgeflow-curation source prepare` | `CUR1B` |
+| 查看来源、区段与范围 | `source.inspect` / `knowledgeflow-curation source inspect` | `CUR1B` |
+| 打开精确证据 | `evidence.show` / `knowledgeflow-curation evidence show` | `CUR1B` |
+| 确认新库或暂不选库 | `target.decide` / `knowledgeflow-curation target decide` | `CUR1C` |
+| 生成地图 | `map.build` / `knowledgeflow-curation map build` | `CUR1D` |
+| 接受、拒绝、延期或修改候选 | `map.decide` / `knowledgeflow-curation map decide` | `CUR1D` |
+| 保存地图并结束 | `map.close` / `knowledgeflow-curation map close` | `CUR1D` |
+
+全部命令最终只输出一个 UTF-8 JSON 回执；失败沿用 `knowledgeflow_curation` 的稳定错误码和 `not-committed / unknown` 提交状态。`unknown` 不得伪报 `saved: false`，成功状态也不能仅凭文件存在推断。首个可执行子命令进入 `CUR1B` 时再把 `knowledgeflow-curation` 注册到 `pyproject.toml`，CUR1A 不安装误导性的占位 CLI。
+
 ## 5. 分批实施与独立停点
 
 ### `CUR1-0`：计划、合同适用范围与授权（当前批次）
@@ -171,6 +186,8 @@
 验收：golden 往返字节稳定，未知字段/非法类型/越界值拒绝，错误码和状态不冒充已提交；现有 338 项测试不回退。
 
 停点：单独复核并提交。未获下一批授权不读取真实 `E0-C` 正文。
+
+执行记录（2026-10-18）：项目所有者已精确授权本批。本地实现新增独立 `knowledgeflow_curation` 包、不可变值对象、稳定错误语义、规范编码、白名单原文件到 Capture 的来源映射、独立的处理允许范围与本次声明范围、SOP-10 provisional KB manifest、6 类机器文件与同事实 `map.md` 共 7 份契约/呈现 golden、另 1 份 41-byte 来源正文夹具，以及 15 项 `tests/curation/` 测试；地图决定摘要已按 SOP-20 校正为决定文件精确 bytes 的 SHA-256。新增测试全通过；严格 `ResourceWarning` 下其余 352 项通过；以拟提交文件清单运行文档护栏为 0 错误。当前未暂存工作树直接运行文档护栏时，会按设计把中英文 README 已列出的 5 个 CUR1A 新文件各报一次、形成 10 项“未 Git 跟踪”诊断，并另报用户保存的 `docs/research/2026-10-18/20261018-1.md`；前 10 项会在本批单独提交后自然闭合，研究输入与 CUR1A 无关且未混入本批。当前停在独立复核与单独提交前；未读取真实 `E0-C` 正文，未创建 Store/KB，未调用模型，也未授权 `CUR1B`。
 
 ### `CUR1B`：精确来源、分段、范围和 Evidence 回读
 
@@ -289,7 +306,7 @@
 - 用户认为地图增加了理解或复核负担，或无法解释结果来源；
 - 需要修改 Capture v1、触碰 Pilot、写入 `wiki/` 或扩成后置平台才能继续。
 
-## 9. 本计划获批后的第一项工作
+## 9. 当前停点与下一项工作
 
-项目所有者明确批准本计划并单独授权 `CUR1A` 后，第一项代码工作是建立 `knowledgeflow_curation` 的最小契约、错误语义、golden fixtures 和独立测试计数。不会先运行长文模型，不会先创建真实知识库，也不会先开发完整界面。
+`CUR1A` 已完成本地实现和验证，当前只进入独立复核与单独提交，不继续扩大功能。提交事实闭合后，下一候选批次是 `CUR1B`：在全新实验 Store 中实现精确来源映射、确定性分段、范围账和 Evidence 回读。只有项目所有者再次精确授权才开始 `CUR1B`；届时可机械读取 `E0-C` 全文，但仍不调用模型、不创建知识库、不写 `raw/` 或可信知识。
 

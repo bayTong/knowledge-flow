@@ -56,6 +56,7 @@ STATUS_RE = re.compile(
     r"^<!-- knowledgeflow-doc-status "
     r"tests=(?P<tests>\d+) "
     r"capture_tests=(?P<capture_tests>\d+) "
+    r"curation_tests=(?P<curation_tests>\d+) "
     r"script_tests=(?P<script_tests>\d+) "
     r"next_gate=(?P<next_gate>[A-Z0-9.-]+) -->$",
     re.MULTILINE,
@@ -495,15 +496,21 @@ def _check_status_anchor(
     status: dict[str, int | str] = {
         "tests": int(groups["tests"]),
         "capture_tests": int(groups["capture_tests"]),
+        "curation_tests": int(groups["curation_tests"]),
         "script_tests": int(groups["script_tests"]),
         "next_gate": groups["next_gate"],
     }
-    if status["tests"] != status["capture_tests"] + status["script_tests"]:
+    component_total = (
+        status["capture_tests"]
+        + status["curation_tests"]
+        + status["script_tests"]
+    )
+    if status["tests"] != component_total:
         issues.append(
             _issue(
                 "STATUS_TEST_TOTAL_INVALID",
                 STATUS_ANCHOR_FILE,
-                "tests must equal capture_tests + script_tests",
+                "tests must equal capture_tests + curation_tests + script_tests",
             )
         )
     return issues, status

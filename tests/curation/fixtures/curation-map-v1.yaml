@@ -1,0 +1,53 @@
+schema: "knowledgeflow.curation-map"
+schema_version: 1
+map_id: "map_01991a7e-7b28-7a31-8d14-0b8ab6b35429"
+map_version: 1
+curation_run_id: "run_01991a7e-7b22-7a31-8d14-0b8ab6b35423"
+created_at: "2026-10-18T01:02:03.006Z"
+source:
+  capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+  capture_version: 1
+  envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+  byte_size: 41
+declared_scope:
+  start_byte: 0
+  end_byte: 41
+scope:
+  - range:
+      start_byte: 0
+      end_byte: 41
+    status: "processed"
+    reason: null
+processor_profile:
+  kind: "test-fixture"
+  processor_id: "cur1-contract-fixture"
+  revision: 1
+  model_id: null
+  network_allowed: false
+processor_usage:
+  call_count: 0
+  input_tokens: 0
+  output_tokens: 0
+  elapsed_ms: 12
+  cost_currency: null
+  cost_minor_units: null
+target_binding: null
+candidates:
+  - candidate_id: "cand_01991a7e-7b29-7a31-8d14-0b8ab6b3542a"
+    kind: "overview"
+    summary: "样本包含一个标题和两段正文。"
+    evidence_locator_ids:
+      - "loc_01991a7e-7b27-7a31-8d14-0b8ab6b35428"
+    provenance: "source-claim"
+    uncertainty: "none"
+    markdown_anchor: "candidate-overview"
+    supersedes: null
+  - candidate_id: "cand_01991a7e-7b2a-7a31-8d14-0b8ab6b3542b"
+    kind: "gap"
+    summary: "本测试夹具不核验样本文字以外的外部事实。"
+    evidence_locator_ids: []
+    provenance: "processor-inference"
+    uncertainty: "high"
+    markdown_anchor: "candidate-external-gap"
+    supersedes: null

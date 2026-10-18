@@ -161,36 +161,44 @@ knowledge-flow/
 ├── README-zh.md                      Chinese README（中文文档）
 ├── CHANGELOG.md                      Version history
 ├── LICENSE                           MIT
-├── pyproject.toml                    Capture-kernel package and pinned runtime dependency
+├── pyproject.toml                    Capture kernel, curation slice, and pinned runtime dependency
 ├── src/
-│   └── knowledgeflow_capture/
-│       ├── __init__.py               C0/C3/C4C package identity and public capture/read surface
-│       ├── errors.py                 C1/C3A/C4A public errors and write/read results
-│       ├── models.py                 C1/C3A/C4A hash and write/read request values
-│       ├── ids.py                    C1 UUIDv7 and typed prefixes
-│       ├── hashing.py                C1/C3A four-hash and idempotency-digest primitives
-│       ├── codec.py                  C1/C3A/C4A restricted YAML and Envelope/Event/Projection schemas
-│       ├── config.py                 C2A local-config contract and canonical emission
-│       ├── paths.py                  C2A Windows path-safety policy
-│       ├── manifest.py               C2A Capture Store identity contract
-│       ├── locking.py                C2B/C3B Windows initialization and Store write locks
-│       ├── durability.py             C2B/C3B durable commit and bounded UTF-8 streaming
-│       ├── store.py                  C2B–C6B recovery, staging, and version-chain primitives
-│       ├── operations.py             C3–C6C four governed text operations and migration binding checks
-│       ├── cli.py                    C7A/C7B restricted CLI framing, spools, production dispatch, and entry
-│       ├── management.py             P0B-min explicit init, verify, backup bundle, and new-target restore
-│       ├── management_cli.py         P0B-min path-safe installed administration entry
-│       ├── runtime.py                Shared trusted production path-policy construction
-│       ├── inbox.py                  P0C public-operation adapter and process-local retry state
-│       ├── inbox_app.py              P0C Tk desktop inbox and installed interactive entry
-│       ├── recovery.py               C6B explicit derived-state rebuild operation
-│       └── migration.py              C6C explicit copy-verify-switch Store migration
+│   ├── knowledgeflow_capture/
+│   │   ├── __init__.py               C0/C3/C4C package identity and public capture/read surface
+│   │   ├── errors.py                 C1/C3A/C4A public errors and write/read results
+│   │   ├── models.py                 C1/C3A/C4A hash and write/read request values
+│   │   ├── ids.py                    C1 UUIDv7 and typed prefixes
+│   │   ├── hashing.py                C1/C3A four-hash and idempotency-digest primitives
+│   │   ├── codec.py                  C1/C3A/C4A restricted YAML and Envelope/Event/Projection schemas
+│   │   ├── config.py                 C2A local-config contract and canonical emission
+│   │   ├── paths.py                  C2A Windows path-safety policy
+│   │   ├── manifest.py               C2A Capture Store identity contract
+│   │   ├── locking.py                C2B/C3B Windows initialization and Store write locks
+│   │   ├── durability.py             C2B/C3B durable commit and bounded UTF-8 streaming
+│   │   ├── store.py                  C2B–C6B recovery, staging, and version-chain primitives
+│   │   ├── operations.py             C3–C6C four governed text operations and migration binding checks
+│   │   ├── cli.py                    C7A/C7B restricted CLI framing, spools, production dispatch, and entry
+│   │   ├── management.py             P0B-min explicit init, verify, backup bundle, and new-target restore
+│   │   ├── management_cli.py         P0B-min path-safe installed administration entry
+│   │   ├── runtime.py                Shared trusted production path-policy construction
+│   │   ├── inbox.py                  P0C public-operation adapter and process-local retry state
+│   │   ├── inbox_app.py              P0C Tk desktop inbox and installed interactive entry
+│   │   ├── recovery.py               C6B explicit derived-state rebuild operation
+│   │   └── migration.py              C6C explicit copy-verify-switch Store migration
+│   └── knowledgeflow_curation/
+│       ├── __init__.py               CUR1A public curation-contract surface
+│       ├── contracts.py              CUR1A source, permission, range, evidence, map, and KB values
+│       ├── codec.py                  CUR1A canonical YAML, same-fact Markdown, and artifact digests
+│       └── errors.py                 CUR1A stable errors, safe diagnostics, and commit states
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
 │   │   ├── unit/                     C0–P0C unit and platform tests
 │   │   ├── integration/              C2B–P0C transaction, read, CLI, management, inbox, boundary, and concurrency tests
 │   │   └── fault/                    C2B/C6A process-crash recovery tests (323 capture tests total)
+│   ├── curation/
+│   │   ├── fixtures/                 Seven CUR1A contract/presentation goldens plus one source-body fixture
+│   │   └── test_contracts.py         CUR1A contracts and error-semantics tests (15 tests)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions
@@ -208,9 +216,10 @@ knowledge-flow/
 │   │   └── local-inbox-product-spec-本地收件箱产品规范.md              Current minimal local-inbox product contract
 │   ├── curation/
 │   │   ├── 00-deep-curation-workflow-深入策展流程总览.md            Deep-curation order, branches, and valid endpoints
-│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 optional new-KB skeleton candidate
-│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 curation-map candidate
-│   │   └── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 trusted-write and first-activation candidate
+│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 CUR-MVP-1 new-KB implementation contract
+│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 CUR-MVP-1 map implementation contract
+│   │   ├── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 trusted-write and first-activation candidate
+│   │   └── 40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md  Approved CUR1A–CUR1V implementation plan
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
 │   └── research/
 │       └── README.md                Non-authoritative research-input index

@@ -1,0 +1,44 @@
+schema: "knowledgeflow.curation-experiment-run"
+schema_version: 1
+curation_run_id: "run_01991a7e-7b22-7a31-8d14-0b8ab6b35423"
+source_mapping_id: "smap_01991a7e-7b2e-7a31-8d14-0b8ab6b3542f"
+source:
+  capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+  capture_version: 1
+  envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+  byte_size: 41
+processing_authorization:
+  authorization_id: "auth_01991a7e-7b23-7a31-8d14-0b8ab6b35424"
+  authorized_by: "local-user"
+  authorized_at: "2026-10-18T01:02:03.004Z"
+  allowed_range:
+    start_byte: 0
+    end_byte: 41
+  task_ids:
+    - "c-t1"
+    - "c-t4"
+  budget_id: null
+declared_scope:
+  start_byte: 0
+  end_byte: 41
+target_decision:
+  target_decision_id: "target_01991a7e-7b24-7a31-8d14-0b8ab6b35425"
+  choice: "no-target"
+  requested_display_name: null
+  target_kb_id: null
+  decided_by: "local-user"
+  decided_at: "2026-10-18T01:02:03.005Z"
+segmentation_profile:
+  profile_id: "experiment-markdown-blocks"
+  revision: 1
+  target_bytes: 16384
+  maximum_bytes: 32768
+  overlap_bytes: 0
+processor_profile:
+  kind: "test-fixture"
+  processor_id: "cur1-contract-fixture"
+  revision: 1
+  model_id: null
+  network_allowed: false
+state: "authorized"

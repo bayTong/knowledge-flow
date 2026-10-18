@@ -158,36 +158,44 @@ knowledge-flow/
 ├── README-zh.md                      中文 README（本文档）
 ├── CHANGELOG.md                      变更记录
 ├── LICENSE                           MIT
-├── pyproject.toml                    捕获内核包与精确锁定的运行时依赖
+├── pyproject.toml                    捕获内核、策展切片包与精确锁定的运行时依赖
 ├── src/
-│   └── knowledgeflow_capture/
-│       ├── __init__.py               C0/C3/C4C 包身份与公开捕获/读取接口
-│       ├── errors.py                 C1/C3A/C4A 公共错误、写入回执与读取结果模型
-│       ├── models.py                 C1/C3A/C4A 哈希、写入及读取请求值对象
-│       ├── ids.py                    C1 UUIDv7 与类型前缀
-│       ├── hashing.py                C1/C3A 四类哈希与幂等摘要原语
-│       ├── codec.py                  C1/C3A/C4A 受限 YAML 与 Envelope/Event/Projection schema
-│       ├── config.py                 C2A 本地配置契约与规范发射
-│       ├── paths.py                  C2A Windows 路径安全策略
-│       ├── manifest.py               C2A Capture Store 身份契约
-│       ├── locking.py                C2B/C3B Windows 初始化锁与 Store 写锁
-│       ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
-│       ├── store.py                  C2B–C6B 初始化恢复、staging 与版本链纯原语
-│       ├── operations.py             C3–C6C 四个受治理文本操作与迁移绑定复核
-│       ├── cli.py                    C7A/C7B 受限 CLI 帧、spool、生产分派与安装入口
-│       ├── management.py             P0B-min 显式初始化、校验、Backup Bundle 与新目标恢复
-│       ├── management_cli.py         P0B-min 路径脱敏安装态管理入口
-│       ├── runtime.py                受信生产路径策略的共享构造入口
-│       ├── inbox.py                  P0C 公共操作适配与进程内重试状态
-│       ├── inbox_app.py              P0C Tk 桌面收件箱与交互式安装入口
-│       ├── recovery.py               C6B 显式派生状态重建操作
-│       └── migration.py              C6C 显式复制—验证—切换 Store 迁移
+│   ├── knowledgeflow_capture/
+│   │   ├── __init__.py               C0/C3/C4C 包身份与公开捕获/读取接口
+│   │   ├── errors.py                 C1/C3A/C4A 公共错误、写入回执与读取结果模型
+│   │   ├── models.py                 C1/C3A/C4A 哈希、写入及读取请求值对象
+│   │   ├── ids.py                    C1 UUIDv7 与类型前缀
+│   │   ├── hashing.py                C1/C3A 四类哈希与幂等摘要原语
+│   │   ├── codec.py                  C1/C3A/C4A 受限 YAML 与 Envelope/Event/Projection schema
+│   │   ├── config.py                 C2A 本地配置契约与规范发射
+│   │   ├── paths.py                  C2A Windows 路径安全策略
+│   │   ├── manifest.py               C2A Capture Store 身份契约
+│   │   ├── locking.py                C2B/C3B Windows 初始化锁与 Store 写锁
+│   │   ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
+│   │   ├── store.py                  C2B–C6B 初始化恢复、staging 与版本链纯原语
+│   │   ├── operations.py             C3–C6C 四个受治理文本操作与迁移绑定复核
+│   │   ├── cli.py                    C7A/C7B 受限 CLI 帧、spool、生产分派与安装入口
+│   │   ├── management.py             P0B-min 显式初始化、校验、Backup Bundle 与新目标恢复
+│   │   ├── management_cli.py         P0B-min 路径脱敏安装态管理入口
+│   │   ├── runtime.py                受信生产路径策略的共享构造入口
+│   │   ├── inbox.py                  P0C 公共操作适配与进程内重试状态
+│   │   ├── inbox_app.py              P0C Tk 桌面收件箱与交互式安装入口
+│   │   ├── recovery.py               C6B 显式派生状态重建操作
+│   │   └── migration.py              C6C 显式复制—验证—切换 Store 迁移
+│   └── knowledgeflow_curation/
+│       ├── __init__.py               CUR1A 策展契约公开入口
+│       ├── contracts.py              CUR1A 来源、权限、范围、证据、地图与 KB 值契约
+│       ├── codec.py                  CUR1A 规范 YAML、同事实 Markdown 与工件摘要
+│       └── errors.py                 CUR1A 稳定错误码、诊断字段与提交状态
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
 │   │   ├── unit/                     C0–P0C 单元与平台测试
 │   │   ├── integration/              C2B–P0C 事务、读取、CLI、管理、收件箱、真实边界与并发测试
 │   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 323 项）
+│   ├── curation/
+│   │   ├── fixtures/                 CUR1A 的 7 份契约/呈现 golden，另含 1 份来源正文夹具
+│   │   └── test_contracts.py         CUR1A 最小契约与错误语义测试（15 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
@@ -205,9 +213,10 @@ knowledge-flow/
 │   │   └── local-inbox-product-spec-本地收件箱产品规范.md              当前最小本地收件箱产品契约
 │   ├── curation/
 │   │   ├── 00-deep-curation-workflow-深入策展流程总览.md            深入策展顺序、分支与合法终点
-│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 可选新库骨架候选契约
-│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 地图候选契约
-│   │   └── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 写入及新库首次启用候选契约
+│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 CUR-MVP-1 新库实施契约
+│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 CUR-MVP-1 地图实施契约
+│   │   ├── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 写入及新库首次启用候选契约
+│   │   └── 40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md  CUR1A–CUR1V 获批实施计划
 │   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
 │   └── research/
 │       └── README.md                非权威研究输入索引

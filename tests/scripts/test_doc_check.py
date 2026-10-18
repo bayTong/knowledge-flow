@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = PROJECT_ROOT / "scripts" / "doc-check.py"
 STATUS_MARKER = (
     "<!-- knowledgeflow-doc-status tests=156 capture_tests=141 "
-    "script_tests=15 next_gate=C4-0 -->"
+    "curation_tests=0 script_tests=15 next_gate=C4-0 -->"
 )
 
 
@@ -119,8 +119,9 @@ knowledge-flow/
         self.assertEqual(
             report["stats"]["status"],
             {
-                "tests": 338,
+                "tests": 353,
                 "capture_tests": 323,
+                "curation_tests": 15,
                 "script_tests": 15,
                 "next_gate": "CUR-MVP-1",
             },
