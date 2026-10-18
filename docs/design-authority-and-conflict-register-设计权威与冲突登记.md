@@ -135,6 +135,7 @@
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
 | P0 低敏感度 Pilot 与 dogfood 的设计、授权和验收证据 | [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md) | Historical Execution Evidence | P0B/P0C 稳定行为已由上面两份长期契约承接；归档只追溯精确提交、远端门禁及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
 | 首轮 Evidence-first 实验的材料快照、任务/问题、测量、隔离与停止条件 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | Proposed Experiment Protocol，已由 `37a03e6` 版本化但不构成实现授权 | 当前活动范围只承接深入策展和必要机械证据；既有低摩擦/多来源检索材料登记保留但后置。`CUR-MVP-1` 仍须单独规划和授权；C-K 独立核查、人工基线和语义处理器授权必须在语义地图子步骤前闭合，协议不授权正式持久化 schema、Pilot Store 写入或可信写入 |
+| `CUR-MVP-1` 当前活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Implementation Plan Candidate，待项目所有者明确授权 | 只把已确认方向和候选契约压缩为 `CUR1A–CUR1V`；服从 PRD、EVIDENCE-0 与 SOP-10/20，不自行批准编码、模型调用、外部传输或可信写入 |
 | 深入策展入口、目标判断、两级保存、地图终点、临时命名与首个垂直切片 | 本文件 D-017–D-022 + [深入策展审查理由](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | Approved Direction | 审查文档只解释原因；可执行候选由捕获/路由、`00` 总览和 SOP-10/20/30 承接 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由现行契约、项目状态、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
