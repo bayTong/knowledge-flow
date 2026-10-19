@@ -1,6 +1,6 @@
 # KnowledgeFlow 项目状态与当前门禁
 
-<!-- knowledgeflow-doc-status tests=353 capture_tests=323 curation_tests=15 script_tests=15 next_gate=CUR-MVP-1 -->
+<!-- knowledgeflow-doc-status tests=367 capture_tests=323 curation_tests=29 script_tests=15 next_gate=CUR-MVP-1 -->
 
 > 状态：Current Project Status<br>
 > 状态日期：2026-10-18<br>
@@ -10,10 +10,10 @@
 
 | 项目 | 当前事实 |
 |---|---|
-| 当前阶段 | `CUR-MVP-1 in progress`；实施计划已获批，内部检查点 `CUR1A` 已完成本地实现与验证，尚待独立复核和单独提交。产品里程碑本身仍未完成 |
-| 最近完成 | 本地提交 `166b496` 版本化 `CUR1-0` 实施方案；项目所有者随后精确授权 `CUR1A`，未授权 `CUR1B–CUR1V`、模型调用或可信写入 |
-| 本批工作 | 新增 `knowledgeflow_curation` 的不可变最小契约、规范 YAML/Markdown、稳定错误语义、SOP-10 provisional KB manifest、7 份契约/呈现 golden、1 份来源正文夹具和 15 项独立策展测试；来源允许范围与本次实际声明范围分开记录。未读取真实 `E0-C` 正文、未创建 Store/KB、未调用模型 |
-| 下一门禁 | 独立复核并单独提交 `CUR1A`；确认提交事实后，再由项目所有者决定是否精确授权 `CUR1B` 的实验 Store、确定性分段、范围账与 Evidence 回读。不得直接跳到新库创建、语义处理或 SOP-30 |
+| 当前阶段 | `CUR-MVP-1 in progress`；`CUR1A` 已由本地提交 `9b33acc` 版本化，内部检查点 `CUR1B` 已完成本地实现、机械验证和独立复核，尚待单独提交。产品里程碑本身仍未完成 |
+| 最近完成 | 项目所有者精确授权 `CUR1B` 后，本地实现精确来源准备/检查、确定性分段、范围账、Evidence 回读与三个受限命令；真实 `E0-F/E0-C` 只在一次性临时实验 Store 中完成机械双跑并已清理。`CUR1C–CUR1V`、模型调用和可信写入仍未授权 |
+| 本批工作 | `knowledgeflow_curation` 复用公共 `initialize_capture_store`、`capture_text` 与 `get_capture`，把来源文件绑定到 Capture v1；实验工作层只保存映射、运行、范围、Segment 与 locator，不保存第二份正文。新增 14 项 CUR1B 测试，使策展测试为 29 项、项目测试锚点为 367；未创建 KB、未写 `raw/`/`wiki/`、未调用模型或网络 |
+| 下一门禁 | 单独提交已复核的 `CUR1B`；在此之前不进入 `CUR1C`。提交事实闭合后，再由项目所有者决定是否精确授权目标确认、一个隔离 provisional KB 与 `raw/` 映射 |
 | 后续纵向链 | `CUR-MVP-1` 先交付“本地文件精确 Capture → 目标判断/一个新 KB → `raw/` 映射 → 最小来源证据 → 可查看、可回证、可修改且可在地图处结束”；`CUR-MVP-2` 再交付精确方案/批准/首批可信写入；`CUR-MVP-V` 验收两个用户终点。已有 active KB、多 KB、低摩擦和独立检索继续后置 |
 | 整体状态 | MVP-0 捕获内核和 P0B/P0C 各自已测范围为 `Implemented`；项目整体仍非 `Effective` 或生产就绪 |
 
@@ -25,6 +25,7 @@
 4. 恢复副本的 4 个 Item、6 个 Version 及正文哈希与活动 Store 等价；正式配置和源 Store 未在恢复中改变。
 5. P0B/P0C 的长期稳定行为已分别进入管理/备份恢复契约与最小收件箱产品规范；历史 P0 方案只保留执行与验收证据。
 6. P0C-UX0 已核对现有四操作足以支持历史只读浏览和“恢复为新版本”，并冻结两项摩擦的交互与验收边界；这只是 `Approved Design`，不证明界面已经实现。
+7. `CUR1A` 已版本化最小策展契约；`CUR1B` 的本地候选已通过 29 项策展测试及真实临时机械验收：`E0-F` 17,327 bytes 分为 2 段，`E0-C` 1,184,815 bytes 分为 76 段，抽样 Evidence 回读与删除派生物后的有序范围/摘要重建一致，且两次重建复用原 Capture。隔离拟提交索引下的普通与严格 `ResourceWarning` 全量测试均为 367/367，源码编译、依赖检查、文档一致性和差异检查通过；该事实仍待本批独立提交，不表示地图、新库或知识工作价值已完成。
 
 主要证据入口：
 
@@ -44,7 +45,7 @@
 | 长期使用 | 尚未形成持续使用、SLA 或大规模数据证据 | 后续 dogfood 与价值切片按实际需要验证 |
 | 数据保护 | 未证明异盘灾备、正式私人/高敏内容环境、产品级删除或安全擦除 | 只在相应内容、发布或保护声明进入范围时另设门禁 |
 | 知识工作价值 | 尚未证明共同证据底座、深入策展、低摩擦批量整理或多来源检索的实际价值 | [实验协议候选](evidence-first-experiment-protocol-Evidence优先实验协议.md)已登记来源；[深入策展 SOP 审查](deep-curation-sop-review-深入策展SOP审查与实施建议.md)提出当前主线，设计建议不等同于实现或价值已验收 |
-| 深入策展联合契约 | `CUR-MVP-1` 所需入口、SOP-10/20 子集和实施方案已获准分批实施；SOP-30 仍是 Review Candidate。`CUR1A` 仅完成本地契约层 | 先独立复核并提交 `CUR1A`，再单独授权 `CUR1B`。E0-C 独立人工核查和人工基线在 CUR1D 语义地图前闭合；内部机械批次不单独升级产品里程碑 |
+| 深入策展联合契约 | `CUR-MVP-1` 所需入口、SOP-10/20 子集和实施方案已获准分批实施；SOP-30 仍是 Review Candidate。`CUR1A` 已提交；`CUR1B` 本地机械来源/范围/Evidence 候选已完成独立复核 | 先单独提交 `CUR1B`，再决定是否授权 `CUR1C`。E0-C 独立人工核查和人工基线在 CUR1D 语义地图前闭合；内部机械批次不单独升级产品里程碑 |
 
 ## 4. 当前边界
 
@@ -61,8 +62,8 @@
 
 当前边界不允许：
 
-- `CUR1A` 修改 Capture schema、Pilot Store、备份、恢复副本或当前收件箱；当前实现只新增同级策展契约包和测试；
-- 未经 `CUR1B` 独立授权读取真实 `E0-C` 正文、建立实验 Store 或实现机械处理；把 CUR1A 独立升级为“底座产品已完成”；在 C-K 独立人工核查、人工基线及 `CUR1D` 明确授权前运行语义处理器；在精确方案批准与 `CUR-MVP-2` 单独授权前执行任何真实 KB 写入。旧 SOP-002 始终不得恢复执行；
+- `CUR1B` 修改 Capture schema、Pilot Store、备份、恢复副本或当前收件箱；当前实现只新增同级策展机械操作，并只在测试/一次性实验 Store 中运行；
+- 把 `CUR1A/CUR1B` 独立升级为“底座产品已完成”，或把临时机械验收外推为策展价值有效；未经 `CUR1C` 独立授权创建 provisional KB、写 `raw/` 或记录目标决定；在 C-K 独立人工核查、人工基线及 `CUR1D` 明确授权前运行语义处理器；在精确方案批准与 `CUR-MVP-2` 单独授权前执行任何真实 KB 写入。旧 SOP-002 始终不得恢复执行；
 - 先冻结通用 Task、Ledger、Evidence、Graph 或 RAG 持久化 schema；
 - 把模型、embedding、GBrain、图数据库、外部账号或网络设为共同底座或本地检索前置；深入策展/低摩擦整理如需模型仍须另行确认并可完全关闭；
 - 把实验性摘要、回答、关系或图谱写入可信知识层；

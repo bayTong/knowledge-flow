@@ -45,6 +45,21 @@ from .errors import (
     CurationErrorCode,
     CurationFailure,
 )
+from .operations import (
+    EvidenceShowOperationResult,
+    EvidenceShowRequest,
+    EvidenceShowResult,
+    SourceInspectOperationResult,
+    SourceInspectRequest,
+    SourceInspectResult,
+    SourcePrepareOperationResult,
+    SourcePrepareRequest,
+    SourcePrepareResult,
+    inspect_source,
+    prepare_source,
+    show_evidence,
+)
+from .segmentation import build_evidence_record, deterministic_segment_fingerprint
 
 
 __all__ = [
@@ -59,6 +74,9 @@ __all__ = [
     "CurationOperation",
     "CurationRunManifest",
     "EvidenceLocator",
+    "EvidenceShowOperationResult",
+    "EvidenceShowRequest",
+    "EvidenceShowResult",
     "KnowledgeBaseManifest",
     "MapCandidate",
     "MapDecision",
@@ -69,11 +87,19 @@ __all__ = [
     "SegmentRecord",
     "SegmentationProfile",
     "SourceBinding",
+    "SourceInspectOperationResult",
+    "SourceInspectRequest",
+    "SourceInspectResult",
     "SourceFileMapping",
+    "SourcePrepareOperationResult",
+    "SourcePrepareRequest",
+    "SourcePrepareResult",
     "TargetBinding",
     "TargetDecision",
     "__version__",
     "curation_map_artifact_sha256",
+    "build_evidence_record",
+    "deterministic_segment_fingerprint",
     "dump_curation_evidence",
     "dump_curation_map",
     "dump_curation_run",
@@ -86,8 +112,11 @@ __all__ = [
     "load_kb_manifest",
     "load_map_decision",
     "load_source_mapping",
+    "inspect_source",
     "map_decision_sha256",
     "render_curation_map_markdown",
+    "prepare_source",
+    "show_evidence",
 ]
 
 __version__ = "0.1.0.dev0"

@@ -1,8 +1,9 @@
 # CUR-MVP-1：首个可用策展地图纵向切片实施方案
 
-> 状态：Approved Implementation Plan（项目所有者已授权 `CUR1A`；后续 `CUR1B–CUR1V` 仍逐批授权；不预授权模型调用、外部传输、真实知识库写入或生产配置）<br>
+> 状态：Approved Implementation Plan（项目所有者已授权 `CUR1A/CUR1B`；`CUR1C–CUR1V` 仍逐批授权；不预授权模型调用、外部传输、真实知识库写入或生产配置）<br>
 > 形成日期：2026-10-18<br>
 > CUR1A 授权日期：2026-10-18<br>
+> CUR1B 授权日期：2026-10-18<br>
 > 产品里程碑：一份精确本地材料形成可查看、可回证、可修改、可在地图处结束的策展地图<br>
 > 上位约束：[主产品需求文档](../requirements-and-governance-baseline-需求与治理基线.md)、[设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)、[EVIDENCE-0 实验协议](../evidence-first-experiment-protocol-Evidence优先实验协议.md)<br>
 > 执行契约候选：[捕获与路由规范](../capture/capture-and-routing-spec-捕获与路由规范.md)、[SOP-10 新建知识库骨架](10-sop-new-kb-bootstrap-新建知识库骨架.md)、[SOP-20 材料深度理解与策展地图](20-sop-deep-curation-map-材料深度理解与策展地图.md)
@@ -59,6 +60,7 @@
 
 ```text
 <experiment-root>/
+├── capture-config.yaml  # 只连接本实验 Store 的本地配置
 ├── capture-store/       # 全新实验 Store，只含 E0-F/E0-C 的获准副本
 ├── curation-work/       # 无目标地图、机械派生物和运行记录
 ├── kb-root/             # 最多一个新建 provisional KB
@@ -142,7 +144,7 @@
 - 保存新地图/决定版本；
 - 保存地图并结束。
 
-命令名和参数在 `CUR1A` 固定；无论采用交互式提示还是显式参数，都必须提供结构化回执和单一可执行的修正提示。只有生成机械诊断文件而没有上述查看、修改和结束入口，不算完成。
+命令任务名在 `CUR1A` 固定；每个命令的首个可执行批次再固定其最小参数，避免为尚未实现的后续能力预设伪接口。无论采用交互式提示还是显式参数，都必须提供结构化回执和单一可执行的修正提示。只有生成机械诊断文件而没有上述查看、修改和结束入口，不算完成。
 
 `CUR1A` 冻结以下用户任务名称和未来 CLI 拼写，但不暴露“尚未实现却返回成功”的空壳命令。对应子命令只在表中所列批次实现后进入可执行入口：
 
@@ -157,6 +159,32 @@
 | 保存地图并结束 | `map.close` / `knowledgeflow-curation map close` | `CUR1D` |
 
 全部命令最终只输出一个 UTF-8 JSON 回执；失败沿用 `knowledgeflow_curation` 的稳定错误码和 `not-committed / unknown` 提交状态。`unknown` 不得伪报 `saved: false`，成功状态也不能仅凭文件存在推断。首个可执行子命令进入 `CUR1B` 时再把 `knowledgeflow-curation` 注册到 `pyproject.toml`，CUR1A 不安装误导性的占位 CLI。
+
+`CUR1B` 固定的首组显式参数如下；所有路径由用户在本机运行时给出，产品代码不保存原件绝对路径，也不提供默认生产 Store：
+
+```text
+knowledgeflow-curation --experiment-root <绝对路径> source prepare
+  --source <绝对 UTF-8 文件路径>
+  --source-reference <安全来源代号>
+  --expected-sha256 <sha256:...>
+  --expected-bytes <正整数>
+  --request-id <幂等请求代号>
+  --authorized-by <授权者代号>
+  --task-id <任务代号> [--task-id <任务代号> ...]
+  [--budget-id <预算代号>]
+  [--authorized-start-byte N --authorized-end-byte N]
+  [--declared-start-byte N --declared-end-byte N]
+
+knowledgeflow-curation --experiment-root <绝对路径> source inspect
+  --request-id <已准备请求代号>
+
+knowledgeflow-curation --experiment-root <绝对路径> evidence show
+  --request-id <已准备请求代号>
+  --locator-id <source inspect 返回的 loc_...>
+  --output <尚不存在的绝对输出路径>
+```
+
+`source prepare` 的提交点是完整工作包的无覆盖原子发布；Capture 已提交但工作包状态无法确认时返回 `unknown/recovery_required`，不得伪报未保存。`source inspect` 只返回身份、范围和计数，不返回正文。`evidence show` 在核对精确 Capture 版本、Envelope/Payload 身份、UTF-8 范围和片段摘要后才写输出，并拒绝覆盖已有文件。失败 CLI 回执额外只给一个 `next_action` 机器动作，不输出原文或本机绝对路径。
 
 ## 5. 分批实施与独立停点
 
@@ -187,7 +215,7 @@
 
 停点：单独复核并提交。未获下一批授权不读取真实 `E0-C` 正文。
 
-执行记录（2026-10-18）：项目所有者已精确授权本批。本地实现新增独立 `knowledgeflow_curation` 包、不可变值对象、稳定错误语义、规范编码、白名单原文件到 Capture 的来源映射、独立的处理允许范围与本次声明范围、SOP-10 provisional KB manifest、6 类机器文件与同事实 `map.md` 共 7 份契约/呈现 golden、另 1 份 41-byte 来源正文夹具，以及 15 项 `tests/curation/` 测试；地图决定摘要已按 SOP-20 校正为决定文件精确 bytes 的 SHA-256。新增测试全通过；严格 `ResourceWarning` 下其余 352 项通过；以拟提交文件清单运行文档护栏为 0 错误。当前未暂存工作树直接运行文档护栏时，会按设计把中英文 README 已列出的 5 个 CUR1A 新文件各报一次、形成 10 项“未 Git 跟踪”诊断，并另报用户保存的 `docs/research/2026-10-18/20261018-1.md`；前 10 项会在本批单独提交后自然闭合，研究输入与 CUR1A 无关且未混入本批。当前停在独立复核与单独提交前；未读取真实 `E0-C` 正文，未创建 Store/KB，未调用模型，也未授权 `CUR1B`。
+执行记录（2026-10-18）：项目所有者精确授权本批后，本地实现新增独立 `knowledgeflow_curation` 包、不可变值对象、稳定错误语义、规范编码、白名单原文件到 Capture 的来源映射、独立的处理允许范围与本次声明范围、SOP-10 provisional KB manifest、6 类机器文件与同事实 `map.md` 共 7 份契约/呈现 golden、另 1 份 41-byte 来源正文夹具，以及 15 项 `tests/curation/` 测试；地图决定摘要按 SOP-20 使用决定文件精确 bytes 的 SHA-256。新增测试、严格 `ResourceWarning` 回归与文档护栏均通过，随后由本地提交 `9b33acc` 单独版本化。该批未读取真实 `E0-C` 正文、未创建 Store/KB、未调用模型。
 
 ### `CUR1B`：精确来源、分段、范围和 Evidence 回读
 
@@ -203,6 +231,10 @@
 验收至少覆盖：LF/CRLF、无尾随换行、中文与组合字符、空行、标题、表格、代码块、超长行、非法 UTF-8、错误版本、无效字符边界、越界范围、Payload 哈希变化、完整/延期/失败范围及重叠窗口记账。`E0-C` 全文只做机械读取和记账，不调用模型。
 
 停点：单独复核并提交。此时项目状态仍为 `CUR-MVP-1 in progress`，不得写“来源底座完成”或开始低摩擦/RAG。
+
+执行记录（2026-10-18，本地候选）：项目所有者已精确授权本批。实现复用公共 `initialize_capture_store`、`capture_text` 与 `get_capture`，新增 `experiment-markdown-blocks-v1` 的精确字节覆盖、UTF-8 字符边界、范围账、每段 locator、原文摘要回读、幂等工作包和 `source prepare` / `source inspect` / `evidence show` 三个受限命令；失败命令只给一个 `next_action`，且尚未实现的后续命令不暴露空壳。`target_decision` 在 CUR1B 可明确为 `null`，地图校验则在 CUR1C 记录决定前失败关闭，避免把“尚未决定”伪装成“用户选择无目标”。
+
+本批新增 14 项测试，使 `tests/curation/` 为 29 项；已覆盖 LF/CRLF、无尾随换行、中文/组合字符、空行、标题、表格、代码块、超长行、非法 UTF-8、错版本、无效字符边界、范围缺口/重叠拒绝、Payload 篡改、混合范围状态、幂等冲突、派生物重建、工作包篡改和 CLI 输出不覆盖。真实机械验收在同一个一次性临时实验 Store 中把冻结 `E0-F` 映射为 17,327 bytes / 2 Segments，把精确 `E0-C` 映射为 1,184,815 bytes / 76 Segments；抽样 Evidence 回读、删除派生物后的有序范围/摘要重建与 Capture 复用均通过，staging 为空，临时根已整体删除。独立复核使用不污染真实暂存区的拟提交索引，普通与严格 `ResourceWarning` 全量测试均为 367/367，源码编译、依赖检查、文档一致性和差异检查通过。全程没有调用模型、网络、Git 版本适配器，没有创建 KB 或写入 `raw/`/`wiki/`，也没有硬编码原件路径进产品代码。当前停在单独提交前，尚未授权 `CUR1C`。
 
 ### `CUR1C`：目标确认、新 provisional KB 与 `raw/` 映射
 
@@ -308,5 +340,5 @@
 
 ## 9. 当前停点与下一项工作
 
-`CUR1A` 已完成本地实现和验证，当前只进入独立复核与单独提交，不继续扩大功能。提交事实闭合后，下一候选批次是 `CUR1B`：在全新实验 Store 中实现精确来源映射、确定性分段、范围账和 Evidence 回读。只有项目所有者再次精确授权才开始 `CUR1B`；届时可机械读取 `E0-C` 全文，但仍不调用模型、不创建知识库、不写 `raw/` 或可信知识。
+`CUR1A` 已由本地提交 `9b33acc` 版本化；`CUR1B` 已完成本地候选实现、测试、一次性真实机械验收与独立复核，当前只进入单独提交，不继续扩大功能。提交事实闭合后，下一候选批次才是 `CUR1C`：目标确认、一个隔离 provisional KB 与 `raw/` 映射。只有项目所有者再次精确授权才开始 `CUR1C`；在此之前仍不创建知识库、不写 `raw/`/`wiki/`、不调用模型或外部网络。
 

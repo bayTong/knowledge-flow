@@ -186,10 +186,14 @@ knowledge-flow/
 │   │   ├── recovery.py               C6B explicit derived-state rebuild operation
 │   │   └── migration.py              C6C explicit copy-verify-switch Store migration
 │   └── knowledgeflow_curation/
-│       ├── __init__.py               CUR1A public curation-contract surface
-│       ├── contracts.py              CUR1A source, permission, range, evidence, map, and KB values
+│       ├── __init__.py               CUR1A/CUR1B public curation contracts and operations
+│       ├── contracts.py              CUR1A/CUR1B source, permission, range, evidence, map, and KB values
 │       ├── codec.py                  CUR1A canonical YAML, same-fact Markdown, and artifact digests
-│       └── errors.py                 CUR1A stable errors, safe diagnostics, and commit states
+│       ├── errors.py                 CUR1A stable errors, safe diagnostics, and commit states
+│       ├── ids.py                    CUR1B curation-object UUIDv7 generation
+│       ├── segmentation.py           CUR1B offline deterministic Markdown segmentation and locators
+│       ├── operations.py             CUR1B exact-source prepare, inspect, and Evidence readback
+│       └── cli.py                    CUR1B three restricted commands and single JSON receipts
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
@@ -198,7 +202,8 @@ knowledge-flow/
 │   │   └── fault/                    C2B/C6A process-crash recovery tests (323 capture tests total)
 │   ├── curation/
 │   │   ├── fixtures/                 Seven CUR1A contract/presentation goldens plus one source-body fixture
-│   │   └── test_contracts.py         CUR1A contracts and error-semantics tests (15 tests)
+│   │   ├── test_contracts.py         CUR1A contracts and error-semantics tests (15 tests)
+│   │   └── test_operations.py        CUR1B segmentation, source transaction, readback, and CLI tests (14; 29 curation tests total)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions

@@ -183,10 +183,14 @@ knowledge-flow/
 │   │   ├── recovery.py               C6B 显式派生状态重建操作
 │   │   └── migration.py              C6C 显式复制—验证—切换 Store 迁移
 │   └── knowledgeflow_curation/
-│       ├── __init__.py               CUR1A 策展契约公开入口
-│       ├── contracts.py              CUR1A 来源、权限、范围、证据、地图与 KB 值契约
+│       ├── __init__.py               CUR1A/CUR1B 策展契约与操作公开入口
+│       ├── contracts.py              CUR1A/CUR1B 来源、权限、范围、证据、地图与 KB 值契约
 │       ├── codec.py                  CUR1A 规范 YAML、同事实 Markdown 与工件摘要
-│       └── errors.py                 CUR1A 稳定错误码、诊断字段与提交状态
+│       ├── errors.py                 CUR1A 稳定错误码、诊断字段与提交状态
+│       ├── ids.py                    CUR1B 策展对象 UUIDv7 身份生成
+│       ├── segmentation.py           CUR1B 离线确定性 Markdown 分段与 locator 构造
+│       ├── operations.py             CUR1B 精确来源准备、检查与 Evidence 回读
+│       └── cli.py                    CUR1B 三个受限命令与单一 JSON 回执
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
@@ -195,7 +199,8 @@ knowledge-flow/
 │   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 323 项）
 │   ├── curation/
 │   │   ├── fixtures/                 CUR1A 的 7 份契约/呈现 golden，另含 1 份来源正文夹具
-│   │   └── test_contracts.py         CUR1A 最小契约与错误语义测试（15 项）
+│   │   ├── test_contracts.py         CUR1A 最小契约与错误语义测试（15 项）
+│   │   └── test_operations.py        CUR1B 分段、来源事务、回读与 CLI 测试（14 项；策展共 29 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）

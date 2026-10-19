@@ -66,7 +66,7 @@ C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P
 | [SOP-10：新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) | `Approved Implementation Contract`（限 `CUR-MVP-1`） | 可选新库分支；日期序号、稳定身份、staging、无 remote 的 `managed-local` 检查点与恢复边界 |
 | [SOP-20：材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md) | `Approved Implementation Contract`（限 `CUR-MVP-1`） | 精确来源、处理授权、范围/证据、地图版本及地图处结束；真实处理器仍需单独确认 |
 | [SOP-30：批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md) | `Review Candidate`，尚未实现 | Prepare、批准失效、无模型 Apply、本地版本检查点、回执重建、事务恢复及内部新库首次启用门禁 |
-| [CUR-MVP-1：首个可用策展地图纵向切片实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | `Approved Implementation Plan`；仅 `CUR1A` 已获当前授权 | 把精确 Capture、目标确认、一个隔离新库/`raw/`、范围/证据和可修改地图拆成 `CUR1A–CUR1V`；后续批次和模型/可信写入仍分别授权 |
+| [CUR-MVP-1：首个可用策展地图纵向切片实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | `Approved Implementation Plan`；`CUR1A/CUR1B` 已获授权 | 把精确 Capture、目标确认、一个隔离新库/`raw/`、范围/证据和可修改地图拆成 `CUR1A–CUR1V`；`CUR1C–CUR1V` 和模型/可信写入仍分别授权 |
 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | 治理红线已确认；具体方法仍为 `Draft` | 定义不承诺语义零遗漏、证据绑定、处理缺口可见和分层处理候选 |
 | [深入策展路径：已有 SOP 逐项审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | `Approved Direction / Design Rationale` | 解释为何形成 `00` 总览与 SOP-10/20/30；不再承担执行契约职责 |
 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | 已版本化的 `Proposed Experiment Protocol`，不构成实现授权 | 保存代表材料、来源身份、测量与隔离方法；活动范围以对应获批修订为准，不代替深入策展 SOP、`CUR-MVP-1` 实施授权或可信写入批准 |

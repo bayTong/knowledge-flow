@@ -594,7 +594,7 @@ class CurationRunManifest:
     source: SourceBinding
     processing_authorization: ProcessingAuthorization
     declared_scope: ByteRange
-    target_decision: TargetDecision
+    target_decision: TargetDecision | None
     segmentation_profile: SegmentationProfile
     processor_profile: ProcessorProfile
     state: str = "authorized"
@@ -621,8 +621,11 @@ class CurationRunManifest:
             > self.processing_authorization.allowed_range.end_byte
         ):
             raise ValueError("declared_scope exceeds processing authorization")
-        if not isinstance(self.target_decision, TargetDecision):
-            raise TypeError("target_decision must be TargetDecision")
+        if self.target_decision is not None and not isinstance(
+            self.target_decision,
+            TargetDecision,
+        ):
+            raise TypeError("target_decision must be TargetDecision or null")
         if not isinstance(self.segmentation_profile, SegmentationProfile):
             raise TypeError("segmentation_profile must be SegmentationProfile")
         if not isinstance(self.processor_profile, ProcessorProfile):
@@ -639,7 +642,11 @@ class CurationRunManifest:
             "source": self.source.as_mapping(),
             "processing_authorization": self.processing_authorization.as_mapping(),
             "declared_scope": self.declared_scope.as_mapping(),
-            "target_decision": self.target_decision.as_mapping(),
+            "target_decision": (
+                None
+                if self.target_decision is None
+                else self.target_decision.as_mapping()
+            ),
             "segmentation_profile": self.segmentation_profile.as_mapping(),
             "processor_profile": self.processor_profile.as_mapping(),
             "state": self.state,
@@ -678,7 +685,11 @@ class CurationRunManifest:
                 raw["declared_scope"],
                 "declared_scope",
             ),
-            target_decision=TargetDecision.from_mapping(raw["target_decision"]),
+            target_decision=(
+                None
+                if raw["target_decision"] is None
+                else TargetDecision.from_mapping(raw["target_decision"])
+            ),
             segmentation_profile=SegmentationProfile.from_mapping(
                 raw["segmentation_profile"]
             ),
@@ -916,6 +927,12 @@ class CurationEvidenceRecord:
             raise ValueError("segment ordinals must start at zero and be contiguous")
         if len({item.segment_id for item in segments}) != len(segments):
             raise ValueError("segment IDs must be unique")
+        if any(
+            item.byte_range.end_byte - item.byte_range.start_byte
+            > self.segmentation_profile.maximum_bytes
+            for item in segments
+        ):
+            raise ValueError("segment exceeds the segmentation profile maximum")
         _require_exact_range_cover(
             self.declared_scope,
             [item.byte_range for item in segments],
@@ -1435,6 +1452,8 @@ class CurationMap:
             raise ValueError("map and run use different declared_scope values")
         if self.processor_profile != run.processor_profile:
             raise ValueError("map and run use different processor profiles")
+        if run.target_decision is None:
+            raise ValueError("map requires a recorded target decision")
         if run.target_decision.choice == "no-target" and self.target_binding is not None:
             raise ValueError("no-target run cannot produce a target-bound map")
         if run.target_decision.choice == "new-kb" and self.target_binding is None:
