@@ -6,6 +6,8 @@ from knowledgeflow_capture.hashing import hash_bytes
 from knowledgeflow_curation.codec import (
     curation_map_artifact_sha256,
     dump_curation_map,
+    dump_kb_manifest,
+    dump_raw_source_mapping,
     render_curation_map_markdown,
 )
 from knowledgeflow_curation.contracts import (
@@ -21,12 +23,17 @@ from knowledgeflow_curation.contracts import (
     ProcessingAuthorization,
     ProcessorProfile,
     ProcessorUsage,
+    RawSourceMapping,
+    RouteRecord,
     ScopeRecord,
     SegmentRecord,
     SegmentationProfile,
     SourceBinding,
     SourceFileMapping,
     TargetDecision,
+    TargetBinding,
+    TargetDecisionRecord,
+    TargetSuggestion,
 )
 
 
@@ -46,6 +53,9 @@ CANDIDATE_2_ID = "cand_01991a7e-7b2a-7a31-8d14-0b8ab6b3542b"
 DECISION_SET_ID = "dset_01991a7e-7b2b-7a31-8d14-0b8ab6b3542c"
 KB_ID = "kb_01991a7e-7b2c-7a31-8d14-0b8ab6b3542d"
 SOURCE_MAPPING_ID = "smap_01991a7e-7b2e-7a31-8d14-0b8ab6b3542f"
+ROUTE_ID = "route_01991a7e-7b2f-7a31-8d14-0b8ab6b35430"
+TRANSACTION_ID = "txn_01991a7e-7b30-7a31-8d14-0b8ab6b35431"
+BASE_COMMIT = "2" * 40
 
 ENVELOPE_SHA256 = "sha256:" + ("1" * 64)
 SOURCE_SHA256 = hash_bytes(SOURCE_BYTES).sha256
@@ -253,6 +263,81 @@ def kb_manifest() -> KnowledgeBaseManifest:
     )
 
 
+def raw_source_mapping() -> RawSourceMapping:
+    return RawSourceMapping(
+        route_id=ROUTE_ID,
+        source=source_binding(),
+        source_reference="fixture-source-v1",
+        target_kb_id=KB_ID,
+        payload_path=(
+            f"raw/text/{CAPTURE_ID}-v0001-"
+            f"{SOURCE_SHA256.removeprefix('sha256:')[:12]}.txt"
+        ),
+        payload_sha256=SOURCE_SHA256,
+        archived_at="2026-10-18T01:02:03.009Z",
+    )
+
+
+def route_record() -> RouteRecord:
+    mapping = raw_source_mapping()
+    return RouteRecord(
+        route_id=ROUTE_ID,
+        transaction_id=TRANSACTION_ID,
+        source=source_binding(),
+        target_kb_id=KB_ID,
+        target_decision_id=TARGET_DECISION_ID,
+        processing_authorization_id=AUTHORIZATION_ID,
+        authorization_source="manual-review",
+        routed_at="2026-10-18T01:02:03.009Z",
+        payload_path=mapping.payload_path,
+        source_mapping_path=mapping.payload_path + ".source.yaml",
+        payload_sha256=SOURCE_SHA256,
+        source_mapping_sha256=hash_bytes(dump_raw_source_mapping(mapping)).sha256,
+        managed_ref="refs/heads/knowledgeflow",
+        base_commit=BASE_COMMIT,
+        version_policy_id="knowledgeflow-managed-local-git",
+        version_policy_revision=1,
+    )
+
+
+def target_decision_record() -> TargetDecisionRecord:
+    mapping = raw_source_mapping()
+    manifest = kb_manifest()
+    return TargetDecisionRecord(
+        decision_request_id="target-request-01",
+        source_request_id="bootstrap-request-01",
+        curation_run_id=RUN_ID,
+        source=source_binding(),
+        processing_authorization_id=AUTHORIZATION_ID,
+        suggestion=TargetSuggestion(
+            choice="new-kb",
+            rationale="The source warrants an isolated provisional workspace.",
+            suggested_by="local-agent",
+            suggested_at="2026-10-18T01:02:03.008Z",
+        ),
+        decision=TargetDecision(
+            target_decision_id=TARGET_DECISION_ID,
+            choice="new-kb",
+            requested_display_name=None,
+            target_kb_id=None,
+            decided_by="local-user",
+            decided_at="2026-10-18T01:02:03.008Z",
+        ),
+        root_policy_id="test-kb-root",
+        root_policy_revision=1,
+        target_storage_name=manifest.storage_name,
+        target_binding=TargetBinding(
+            kb_id=KB_ID,
+            manifest_sha256=hash_bytes(dump_kb_manifest(manifest)).sha256,
+            raw_mapping_sha256=hash_bytes(dump_raw_source_mapping(mapping)).sha256,
+            managed_ref="refs/heads/knowledgeflow",
+            base_commit=BASE_COMMIT,
+            version_policy_id="knowledgeflow-managed-local-git",
+            version_policy_revision=1,
+        ),
+    )
+
+
 __all__ = [
     "AUTHORIZATION_ID",
     "CANDIDATE_1_ID",
@@ -264,9 +349,11 @@ __all__ = [
     "LOCATOR_ID",
     "MAP_ID",
     "RUN_ID",
+    "ROUTE_ID",
     "SOURCE_BYTES",
     "SOURCE_MAPPING_ID",
     "SOURCE_SHA256",
+    "TRANSACTION_ID",
     "curation_map",
     "curation_run",
     "evidence_record",
@@ -274,8 +361,11 @@ __all__ = [
     "map_decision",
     "map_sha256",
     "processor_profile",
+    "raw_source_mapping",
+    "route_record",
     "scope",
     "segmentation_profile",
     "source_binding",
     "source_mapping",
+    "target_decision_record",
 ]

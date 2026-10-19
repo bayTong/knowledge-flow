@@ -14,9 +14,11 @@ _PREFIXES = frozenset(
         "loc_",
         "map_",
         "run_",
+        "route_",
         "seg_",
         "smap_",
         "target_",
+        "txn_",
     }
 )
 

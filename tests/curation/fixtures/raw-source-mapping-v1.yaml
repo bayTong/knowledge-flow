@@ -1,0 +1,14 @@
+schema: "knowledgeflow.raw-source-mapping"
+schema_version: 1
+route_id: "route_01991a7e-7b2f-7a31-8d14-0b8ab6b35430"
+source:
+  capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+  capture_version: 1
+  envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+  byte_size: 41
+source_reference: "fixture-source-v1"
+target_kb_id: "kb_01991a7e-7b2c-7a31-8d14-0b8ab6b3542d"
+payload_path: "raw/text/cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421-v0001-e94351e81e8e.txt"
+payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+archived_at: "2026-10-18T01:02:03.009Z"

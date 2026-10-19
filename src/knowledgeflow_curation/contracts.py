@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import PurePosixPath
 import re
 from uuid import RFC_4122, UUID
 
@@ -32,6 +33,9 @@ _WINDOWS_RESERVED_STORAGE_STEMS = frozenset(
     {"con", "prn", "aux", "nul"}
     | {f"com{index}" for index in range(1, 10)}
     | {f"lpt{index}" for index in range(1, 10)}
+)
+_AUTHORIZATION_SOURCES = frozenset(
+    {"explicit-at-capture", "manual-review", "approved-proposal"}
 )
 
 _CANDIDATE_KINDS = frozenset(
@@ -131,6 +135,34 @@ def _require_single_line_string(
     if "\n" in checked:
         raise ValueError(f"{field_name} must be a single line")
     return checked
+
+
+def _require_relative_artifact_path(value: object, field_name: str) -> str:
+    if type(value) is not str or not value or "\\" in value or "\x00" in value:
+        raise ValueError(f"{field_name} must be a canonical POSIX relative path")
+    path = PurePosixPath(value)
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+        raise ValueError(f"{field_name} must not escape the knowledge base")
+    if path.as_posix() != value or path.parts[0] == ".git":
+        raise ValueError(f"{field_name} must be a canonical POSIX relative path")
+    return value
+
+
+def _require_git_object_id(value: object, field_name: str) -> str:
+    if type(value) is not str or _GIT_OBJECT_ID.fullmatch(value) is None:
+        raise ValueError(f"{field_name} must be a lowercase Git object ID")
+    return value
+
+
+def _require_storage_name(value: object, field_name: str = "storage_name") -> str:
+    if (
+        type(value) is not str
+        or _STORAGE_NAME.fullmatch(value) is None
+        or value in {".", ".."}
+        or value.split(".", 1)[0] in _WINDOWS_RESERVED_STORAGE_STEMS
+    ):
+        raise ValueError(f"{field_name} must be a safe portable path component")
+    return value
 
 
 def _require_nonnegative(value: object, field_name: str) -> int:
@@ -1045,10 +1077,7 @@ class TargetBinding:
         require_sha256(self.raw_mapping_sha256, "raw_mapping_sha256")
         if self.managed_ref != "refs/heads/knowledgeflow":
             raise ValueError("managed_ref must be refs/heads/knowledgeflow")
-        if type(self.base_commit) is not str or _GIT_OBJECT_ID.fullmatch(
-            self.base_commit
-        ) is None:
-            raise ValueError("base_commit must be a lowercase Git object ID")
+        _require_git_object_id(self.base_commit, "base_commit")
         _require_token(self.version_policy_id, "version_policy_id")
         _require_positive(self.version_policy_revision, "version_policy_revision")
 
@@ -1082,6 +1111,386 @@ class TargetBinding:
 
 
 @dataclass(frozen=True, slots=True)
+class TargetSuggestion:
+    """A non-authoritative routing suggestion kept separate from user choice."""
+
+    choice: str
+    rationale: str
+    suggested_by: str
+    suggested_at: str
+
+    def __post_init__(self) -> None:
+        if self.choice not in {"new-kb", "no-target"}:
+            raise ValueError("suggestion choice must be new-kb or no-target")
+        _require_string(self.rationale, "rationale")
+        _require_token(self.suggested_by, "suggested_by")
+        require_canonical_utc_milliseconds(self.suggested_at, "suggested_at")
+
+    def as_mapping(self) -> dict[str, object]:
+        return {
+            "choice": self.choice,
+            "rationale": self.rationale,
+            "suggested_by": self.suggested_by,
+            "suggested_at": self.suggested_at,
+        }
+
+    @classmethod
+    def from_mapping(cls, value: object) -> TargetSuggestion:
+        raw = _require_exact_keys(
+            value,
+            {"choice", "rationale", "suggested_by", "suggested_at"},
+            "target_suggestion",
+        )
+        return cls(**raw)
+
+
+@dataclass(frozen=True, slots=True)
+class RawSourceMapping:
+    """Sidecar binding one immutable raw file to its exact Capture version."""
+
+    route_id: str
+    source: SourceBinding
+    source_reference: str
+    target_kb_id: str
+    payload_path: str
+    payload_sha256: str
+    archived_at: str
+
+    def __post_init__(self) -> None:
+        _require_uuid7_id(self.route_id, "route_", "route_id")
+        if not isinstance(self.source, SourceBinding):
+            raise TypeError("source must be SourceBinding")
+        _require_token(self.source_reference, "source_reference")
+        _require_uuid7_id(self.target_kb_id, "kb_", "target_kb_id")
+        _require_relative_artifact_path(self.payload_path, "payload_path")
+        expected_name = (
+            f"{self.source.capture_id}-v{self.source.capture_version:04d}-"
+            f"{self.source.payload_sha256.removeprefix('sha256:')[:12]}.txt"
+        )
+        if self.payload_path != f"raw/text/{expected_name}":
+            raise ValueError("payload_path does not match the canonical raw name")
+        require_sha256(self.payload_sha256, "payload_sha256")
+        if self.payload_sha256 != self.source.payload_sha256:
+            raise ValueError("payload_sha256 must match the exact Capture payload")
+        require_canonical_utc_milliseconds(self.archived_at, "archived_at")
+
+    def as_mapping(self) -> dict[str, object]:
+        return {
+            "schema": "knowledgeflow.raw-source-mapping",
+            "schema_version": 1,
+            "route_id": self.route_id,
+            "source": self.source.as_mapping(),
+            "source_reference": self.source_reference,
+            "target_kb_id": self.target_kb_id,
+            "payload_path": self.payload_path,
+            "payload_sha256": self.payload_sha256,
+            "archived_at": self.archived_at,
+        }
+
+    @classmethod
+    def from_mapping(cls, value: object) -> RawSourceMapping:
+        raw = _require_exact_keys(
+            value,
+            {
+                "schema",
+                "schema_version",
+                "route_id",
+                "source",
+                "source_reference",
+                "target_kb_id",
+                "payload_path",
+                "payload_sha256",
+                "archived_at",
+            },
+            "raw source mapping",
+        )
+        if raw["schema"] != "knowledgeflow.raw-source-mapping":
+            raise ValueError("raw source mapping schema is not supported")
+        _require_version_one(raw["schema_version"], "raw mapping schema_version")
+        return cls(
+            route_id=raw["route_id"],
+            source=SourceBinding.from_mapping(raw["source"]),
+            source_reference=raw["source_reference"],
+            target_kb_id=raw["target_kb_id"],
+            payload_path=raw["payload_path"],
+            payload_sha256=raw["payload_sha256"],
+            archived_at=raw["archived_at"],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RouteRecord:
+    """Versioned proof of the approved Capture-to-raw routing transaction."""
+
+    route_id: str
+    transaction_id: str
+    source: SourceBinding
+    target_kb_id: str
+    target_decision_id: str
+    processing_authorization_id: str
+    authorization_source: str
+    routed_at: str
+    payload_path: str
+    source_mapping_path: str
+    payload_sha256: str
+    source_mapping_sha256: str
+    managed_ref: str
+    base_commit: str
+    version_policy_id: str
+    version_policy_revision: int
+    processing_mode: str = "deep-curation"
+    state: str = "routed"
+    checkpoint_required: bool = True
+
+    def __post_init__(self) -> None:
+        _require_uuid7_id(self.route_id, "route_", "route_id")
+        _require_uuid7_id(self.transaction_id, "txn_", "transaction_id")
+        if not isinstance(self.source, SourceBinding):
+            raise TypeError("source must be SourceBinding")
+        _require_uuid7_id(self.target_kb_id, "kb_", "target_kb_id")
+        _require_uuid7_id(
+            self.target_decision_id,
+            "target_",
+            "target_decision_id",
+        )
+        _require_uuid7_id(
+            self.processing_authorization_id,
+            "auth_",
+            "processing_authorization_id",
+        )
+        if self.authorization_source not in _AUTHORIZATION_SOURCES:
+            raise ValueError("authorization_source is not supported")
+        require_canonical_utc_milliseconds(self.routed_at, "routed_at")
+        _require_relative_artifact_path(self.payload_path, "payload_path")
+        _require_relative_artifact_path(
+            self.source_mapping_path,
+            "source_mapping_path",
+        )
+        if self.source_mapping_path != self.payload_path + ".source.yaml":
+            raise ValueError("source_mapping_path must be adjacent to the payload")
+        require_sha256(self.payload_sha256, "payload_sha256")
+        require_sha256(self.source_mapping_sha256, "source_mapping_sha256")
+        if self.payload_sha256 != self.source.payload_sha256:
+            raise ValueError("payload_sha256 must match the exact Capture payload")
+        if self.managed_ref != "refs/heads/knowledgeflow":
+            raise ValueError("managed_ref must be refs/heads/knowledgeflow")
+        _require_git_object_id(self.base_commit, "base_commit")
+        _require_token(self.version_policy_id, "version_policy_id")
+        _require_positive(self.version_policy_revision, "version_policy_revision")
+        if self.processing_mode != "deep-curation":
+            raise ValueError("processing_mode must be deep-curation")
+        if self.state != "routed":
+            raise ValueError("state must be routed")
+        if type(self.checkpoint_required) is not bool or not self.checkpoint_required:
+            raise ValueError("checkpoint_required must be true")
+
+    def as_mapping(self) -> dict[str, object]:
+        return {
+            "schema": "knowledgeflow.route-record",
+            "schema_version": 1,
+            "route_id": self.route_id,
+            "transaction_id": self.transaction_id,
+            "source": self.source.as_mapping(),
+            "target_kb_id": self.target_kb_id,
+            "target_decision_id": self.target_decision_id,
+            "processing_authorization_id": self.processing_authorization_id,
+            "authorization_source": self.authorization_source,
+            "processing_mode": self.processing_mode,
+            "routed_at": self.routed_at,
+            "payload_path": self.payload_path,
+            "source_mapping_path": self.source_mapping_path,
+            "payload_sha256": self.payload_sha256,
+            "source_mapping_sha256": self.source_mapping_sha256,
+            "managed_ref": self.managed_ref,
+            "base_commit": self.base_commit,
+            "version_policy_id": self.version_policy_id,
+            "version_policy_revision": self.version_policy_revision,
+            "checkpoint_required": self.checkpoint_required,
+            "state": self.state,
+        }
+
+    @classmethod
+    def from_mapping(cls, value: object) -> RouteRecord:
+        raw = _require_exact_keys(
+            value,
+            {
+                "schema",
+                "schema_version",
+                "route_id",
+                "transaction_id",
+                "source",
+                "target_kb_id",
+                "target_decision_id",
+                "processing_authorization_id",
+                "authorization_source",
+                "processing_mode",
+                "routed_at",
+                "payload_path",
+                "source_mapping_path",
+                "payload_sha256",
+                "source_mapping_sha256",
+                "managed_ref",
+                "base_commit",
+                "version_policy_id",
+                "version_policy_revision",
+                "checkpoint_required",
+                "state",
+            },
+            "route record",
+        )
+        if raw["schema"] != "knowledgeflow.route-record":
+            raise ValueError("route record schema is not supported")
+        _require_version_one(raw["schema_version"], "route record schema_version")
+        return cls(
+            route_id=raw["route_id"],
+            transaction_id=raw["transaction_id"],
+            source=SourceBinding.from_mapping(raw["source"]),
+            target_kb_id=raw["target_kb_id"],
+            target_decision_id=raw["target_decision_id"],
+            processing_authorization_id=raw["processing_authorization_id"],
+            authorization_source=raw["authorization_source"],
+            processing_mode=raw["processing_mode"],
+            routed_at=raw["routed_at"],
+            payload_path=raw["payload_path"],
+            source_mapping_path=raw["source_mapping_path"],
+            payload_sha256=raw["payload_sha256"],
+            source_mapping_sha256=raw["source_mapping_sha256"],
+            managed_ref=raw["managed_ref"],
+            base_commit=raw["base_commit"],
+            version_policy_id=raw["version_policy_id"],
+            version_policy_revision=raw["version_policy_revision"],
+            checkpoint_required=raw["checkpoint_required"],
+            state=raw["state"],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TargetDecisionRecord:
+    """Auditable suggestion, human decision, and optional created-KB binding."""
+
+    decision_request_id: str
+    source_request_id: str
+    curation_run_id: str
+    source: SourceBinding
+    processing_authorization_id: str
+    suggestion: TargetSuggestion | None
+    decision: TargetDecision
+    root_policy_id: str | None
+    root_policy_revision: int | None
+    target_storage_name: str | None
+    target_binding: TargetBinding | None
+
+    def __post_init__(self) -> None:
+        _require_token(self.decision_request_id, "decision_request_id")
+        _require_token(self.source_request_id, "source_request_id")
+        _require_uuid7_id(self.curation_run_id, "run_", "curation_run_id")
+        if not isinstance(self.source, SourceBinding):
+            raise TypeError("source must be SourceBinding")
+        _require_uuid7_id(
+            self.processing_authorization_id,
+            "auth_",
+            "processing_authorization_id",
+        )
+        if self.suggestion is not None and not isinstance(
+            self.suggestion,
+            TargetSuggestion,
+        ):
+            raise TypeError("suggestion must be TargetSuggestion or null")
+        if not isinstance(self.decision, TargetDecision):
+            raise TypeError("decision must be TargetDecision")
+        if self.decision.choice == "no-target":
+            if any(
+                value is not None
+                for value in (
+                    self.root_policy_id,
+                    self.root_policy_revision,
+                    self.target_storage_name,
+                    self.target_binding,
+                )
+            ):
+                raise ValueError("no-target record cannot carry a KB binding")
+        else:
+            if self.root_policy_id is None:
+                raise ValueError("new-kb record requires root_policy_id")
+            _require_token(self.root_policy_id, "root_policy_id")
+            _require_positive(self.root_policy_revision, "root_policy_revision")
+            if self.target_storage_name is None:
+                raise ValueError("new-kb record requires target_storage_name")
+            _require_storage_name(self.target_storage_name, "target_storage_name")
+            if not isinstance(self.target_binding, TargetBinding):
+                raise TypeError("new-kb record requires TargetBinding")
+
+    def as_mapping(self) -> dict[str, object]:
+        return {
+            "schema": "knowledgeflow.target-decision-record",
+            "schema_version": 1,
+            "decision_request_id": self.decision_request_id,
+            "source_request_id": self.source_request_id,
+            "curation_run_id": self.curation_run_id,
+            "source": self.source.as_mapping(),
+            "processing_authorization_id": self.processing_authorization_id,
+            "suggestion": (
+                None if self.suggestion is None else self.suggestion.as_mapping()
+            ),
+            "decision": self.decision.as_mapping(),
+            "root_policy_id": self.root_policy_id,
+            "root_policy_revision": self.root_policy_revision,
+            "target_storage_name": self.target_storage_name,
+            "target_binding": (
+                None
+                if self.target_binding is None
+                else self.target_binding.as_mapping()
+            ),
+        }
+
+    @classmethod
+    def from_mapping(cls, value: object) -> TargetDecisionRecord:
+        raw = _require_exact_keys(
+            value,
+            {
+                "schema",
+                "schema_version",
+                "decision_request_id",
+                "source_request_id",
+                "curation_run_id",
+                "source",
+                "processing_authorization_id",
+                "suggestion",
+                "decision",
+                "root_policy_id",
+                "root_policy_revision",
+                "target_storage_name",
+                "target_binding",
+            },
+            "target decision record",
+        )
+        if raw["schema"] != "knowledgeflow.target-decision-record":
+            raise ValueError("target decision record schema is not supported")
+        _require_version_one(raw["schema_version"], "target record schema_version")
+        return cls(
+            decision_request_id=raw["decision_request_id"],
+            source_request_id=raw["source_request_id"],
+            curation_run_id=raw["curation_run_id"],
+            source=SourceBinding.from_mapping(raw["source"]),
+            processing_authorization_id=raw["processing_authorization_id"],
+            suggestion=(
+                None
+                if raw["suggestion"] is None
+                else TargetSuggestion.from_mapping(raw["suggestion"])
+            ),
+            decision=TargetDecision.from_mapping(raw["decision"]),
+            root_policy_id=raw["root_policy_id"],
+            root_policy_revision=raw["root_policy_revision"],
+            target_storage_name=raw["target_storage_name"],
+            target_binding=(
+                None
+                if raw["target_binding"] is None
+                else TargetBinding.from_mapping(raw["target_binding"])
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class KnowledgeBaseManifest:
     """The non-trusted, provisional KB identity defined by SOP-10."""
 
@@ -1103,14 +1512,7 @@ class KnowledgeBaseManifest:
 
     def __post_init__(self) -> None:
         _require_uuid7_id(self.kb_id, "kb_", "kb_id")
-        if (
-            type(self.storage_name) is not str
-            or _STORAGE_NAME.fullmatch(self.storage_name) is None
-            or self.storage_name in {".", ".."}
-            or self.storage_name.split(".", 1)[0]
-            in _WINDOWS_RESERVED_STORAGE_STEMS
-        ):
-            raise ValueError("storage_name must be a safe portable path component")
+        _require_storage_name(self.storage_name)
         _require_single_line_string(
             self.display_name,
             "display_name",
@@ -1605,6 +2007,8 @@ __all__ = [
     "ProcessingAuthorization",
     "ProcessorProfile",
     "ProcessorUsage",
+    "RawSourceMapping",
+    "RouteRecord",
     "ScopeRecord",
     "SegmentRecord",
     "SegmentationProfile",
@@ -1612,4 +2016,6 @@ __all__ = [
     "SourceFileMapping",
     "TargetBinding",
     "TargetDecision",
+    "TargetDecisionRecord",
+    "TargetSuggestion",
 ]

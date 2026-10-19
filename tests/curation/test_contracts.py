@@ -15,13 +15,19 @@ from knowledgeflow_curation.codec import (
     dump_curation_run,
     dump_kb_manifest,
     dump_map_decision,
+    dump_raw_source_mapping,
+    dump_route_record,
     dump_source_mapping,
+    dump_target_decision_record,
     load_curation_evidence,
     load_curation_map,
     load_curation_run,
     load_kb_manifest,
     load_map_decision,
+    load_raw_source_mapping,
+    load_route_record,
     load_source_mapping,
+    load_target_decision_record,
     map_decision_sha256,
     render_curation_map_markdown,
 )
@@ -56,7 +62,10 @@ from tests.curation._samples import (
     evidence_record,
     kb_manifest,
     map_decision,
+    raw_source_mapping,
+    route_record,
     source_mapping,
+    target_decision_record,
 )
 
 
@@ -359,6 +368,50 @@ class CurationContractTest(unittest.TestCase):
                 code=CurationErrorCode.INVALID_INPUT,
                 retryable=False,
                 details={"source_text": "must never be echoed"},
+            )
+
+    def test_cur1c_16_target_route_and_raw_mapping_match_goldens(self) -> None:
+        cases = (
+            (
+                "raw-source-mapping-v1.yaml",
+                raw_source_mapping(),
+                dump_raw_source_mapping,
+                load_raw_source_mapping,
+            ),
+            (
+                "route-record-v1.yaml",
+                route_record(),
+                dump_route_record,
+                load_route_record,
+            ),
+            (
+                "target-decision-record-v1.yaml",
+                target_decision_record(),
+                dump_target_decision_record,
+                load_target_decision_record,
+            ),
+        )
+        for name, value, dumper, loader in cases:
+            with self.subTest(name=name):
+                golden = (FIXTURES / name).read_bytes()
+                self.assertEqual(dumper(value), golden)
+                self.assertEqual(loader(golden), value)
+                self._assert_canonical_bytes(golden)
+
+        with self.assertRaises(ValueError):
+            replace(
+                raw_source_mapping(),
+                payload_path="../escaped.txt",
+            )
+        with self.assertRaises(ValueError):
+            replace(
+                route_record(),
+                source_mapping_path="raw/text/unrelated.source.yaml",
+            )
+        with self.assertRaises((TypeError, ValueError)):
+            replace(
+                target_decision_record(),
+                target_binding=None,
             )
 
 

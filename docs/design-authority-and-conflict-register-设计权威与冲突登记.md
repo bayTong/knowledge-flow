@@ -70,6 +70,7 @@
 > 深入策展联合候选与纵向顺序版本化日期：2026-10-18（提交 `37a03e6`；仍为未实现候选，`CUR-MVP-1` 需单独授权）<br>
 > `CUR-MVP-1` 实施计划与 `CUR1A/CUR1B` 授权日期：2026-10-18（批准最小契约以及精确来源/范围/Evidence 机械批次；`CUR1C–CUR1V`、模型调用和可信写入仍单独授权）<br>
 > `CUR1B` 版本化与远端门禁闭合日期：2026-10-19（实现 `79f6167`、事实同步 `3ac2ed6`、CI 可移植性修复 `b8525b9`；Windows CI 运行 `39223596557` 成功；不授权 `CUR1C`）<br>
+> `CUR1C` 精确授权与本地实现日期：2026-10-19（目标决定、实验 provisional KB、受控离线 Git 与 `raw/` 路由；独立版本化和可选远端门禁尚待闭合；不授权 `CUR1D`）<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突；历史完成日期只作裁决追溯<br>
 > 边界：C8 与 P0B/P0C 的本地及精确提交远端门禁均已通过；`Implemented` 只适用于各自已测限定范围。P0C-UX0 只冻结尚未实现的最小历史/提示交互。P0D/P0V 已证明低敏感度 Pilot Store 的真实四操作、短周期离线使用、同盘操作副本和全新目标恢复，但没有证明长期使用、真实断电、异盘灾备、正式私人内容环境或后续知识工作能力，项目整体不是 `Effective`
 
@@ -125,7 +126,7 @@
 | 文档优先级、冲突登记和主题功能前置条件 | 本文件 | Approved Design | 发现新冲突先登记，再修改对应规范；本文件不选择当前执行哪一个门禁 |
 | 用户知识任务、统一生命周期、工作知识空间、策展策略、Ontology、Schema、SOP、Karpathy LLM Wiki、RAG、GBrain、可信 Wiki 与知识图谱之间的跨主题概念关系 | [KnowledgeFlow 概念架构导读](knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) | Explanatory Guide，非规范性 | 只负责解释和导航，不建立新需求、机器 schema、功能门禁或实现授权；冲突时服从本矩阵和各主题权威 |
 | 深入策展路径、可选分支与阅读/执行顺序 | [深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md) | Mixed；`CUR-MVP-1` 子集为 Approved Implementation Contract | 只导航入口、SOP-10/20/30 和合法终点；SOP-30 仍是 Review Candidate，不替代各 SOP 契约或项目状态 |
-| 新建 KB 骨架与 `provisional` 生命周期 | [SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) | Approved Implementation Contract（仅 `CUR-MVP-1` 新隔离 KB） | 历史别名 SOP-000A；日期序号、稳定身份和 provisional manifest 已进入 CUR1A 契约，实际 staging、Git、发布与恢复留在 CUR1C |
+| 新建 KB 骨架与 `provisional` 生命周期 | [SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) | Approved Implementation Contract（仅 `CUR-MVP-1` 新隔离 KB） | 历史别名 SOP-000A；日期序号、稳定身份和 provisional manifest 已进入 CUR1A 契约，staging、受控离线 Git、发布与恢复由 CUR1C 在实验临时根内实现；精确版本化状态见项目状态 |
 | 捕获、Global Intake、人工路由、两级保存和三项深入策展权限 | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md) | 既有捕获边界 Approved Design；`CUR-MVP-1` 所需目标决定、权限交接和无目标分支获准实施 | 旧 SOP-001 步骤 0 和 SOP-006 不再负责捕获及最终归属决策；其余路由尚未实现，目标未知时不得伪造 Route Record |
 | 捕获身份、版本、哈希、事务、幂等和恢复 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md) | Implemented（限定 MVP-0 文本身份与事务范围） | C3–C8 已按本契约实现和验收；GBrain 原生 capture、可变页面或 sidecar 设想不得替代本地规范原件，URL/文件等远期 Payload 仍未实现 |
 | C3 `capture_text` 输入、原子 Item/Event、投影、写锁、幂等、回执及 actor/时间补充边界 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md)与[MVP-0 操作契约](capture/mvp-0-capture-operations-本地文本捕获操作契约.md) | Implemented（限定 C3 行为范围） | 已实现行为由两份现行契约维护；[C3-0 决策形成记录](../archive/2026-implementation-history/c3-0-blocking-behavior-decisions-C3-0阻塞性行为决策.md)仅作历史追溯 |
@@ -137,7 +138,7 @@
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
 | P0 低敏感度 Pilot 与 dogfood 的设计、授权和验收证据 | [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md) | Historical Execution Evidence | P0B/P0C 稳定行为已由上面两份长期契约承接；归档只追溯精确提交、远端门禁及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
 | 首轮 Evidence-first 实验的材料快照、任务/问题、测量、隔离与停止条件 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | Proposed Experiment Protocol，已由 `37a03e6` 版本化但不构成实现授权 | 当前活动范围只承接深入策展和必要机械证据；既有低摩擦/多来源检索材料登记保留但后置。`CUR-MVP-1` 仍须单独规划和授权；C-K 独立核查、人工基线和语义处理器授权必须在语义地图子步骤前闭合，协议不授权正式持久化 schema、Pilot Store 写入或可信写入 |
-| `CUR-MVP-1` 当前活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Approved Implementation Plan；`CUR1A/CUR1B` 已授权、版本化，且 `CUR1B` 精确远端门禁已通过 | 把已确认方向和契约压缩为 `CUR1A–CUR1V`；`CUR1C–CUR1V`、模型调用、外部传输和可信写入不因本次授权自动生效 |
+| `CUR-MVP-1` 活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Approved Implementation Plan；分批授权与实现中 | 把已确认方向和契约压缩为 `CUR1A–CUR1V`；每批仍须独立授权，精确完成点与下一门禁只见项目状态，模型、外部传输和可信写入不会因机械批次自动生效 |
 | 深入策展入口、目标判断、两级保存、地图终点、临时命名与首个垂直切片 | 本文件 D-017–D-022 + [深入策展审查理由](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | Approved Direction | 审查文档只解释原因；可执行候选由捕获/路由、`00` 总览和 SOP-10/20/30 承接 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由现行契约、项目状态、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
@@ -463,7 +464,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-076（深入策展） | “仅生成地图不算完成”把项目必须证明写入能力误写成每个用户任务都必须入库 | 地图连同来源绑定、范围和缺口保存后可以是成功任务终点，但仍属 T1/T2；项目完整链验收另需至少一次获批 T3 写入、验证和恢复 | 2026-10-18：D-019、不可变地图版本与 `map_closed` 终点已由 `37a03e6` 版本化；尚未实现 |
 | C-077（深入策展） | 首个实现同时要求已有库、新库、多个目标和逐库恢复，会在价值链尚未跑通前引入跨库状态与事务复杂度 | 首个垂直切片只做一份来源和一个全新隔离 provisional KB；地图终点和完整写入链分别验收。已有 active KB 后续增加，多 KB 与跨库操作继续后置 | 2026-10-13：由 D-022 收口方向；不授权代码或真实 KB 写入 |
 | C-078（深入策展） | 在尚未理解材料时用语义名称创建 KB，或策展后直接改物理目录，可能造成误导、链接和配置漂移 | 用户未命名时用冲突安全的 `YYYY-MM-DD-NN`，稳定 `kb_id` 与显示名分离；首批入库后由 Agent 提议 1–3 个显示名并由用户决定，首版不自动改目录 | 2026-10-18：D-021 及 SOP-10/30 相关候选已由 `37a03e6` 版本化；尚未实现 |
-| C-079（深入策展契约） | 若临时骨架逐文件直接写入最终路径，崩溃或并发日期序号分配会留下伪可用库、重名，或出现 manifest 已可解析但初始化回执尚未闭合的窗口 | SOP-10 使用父级排他锁、流程拥有的 staging、完整校验，在 staging 内建立无 remote 的 `managed-local` 初始检查点后整体发布；KB 打开还须验证无未解决事务、原始/重建回执及初始 commit/树，未知残留保留并失败关闭 | 2026-10-18：CUR1A 仅实现 provisional manifest 校验与 golden；实际初始化、发布和恢复留在 CUR1C |
+| C-079（深入策展契约） | 若临时骨架逐文件直接写入最终路径，崩溃或并发日期序号分配会留下伪可用库、重名，或出现 manifest 已可解析但初始化回执尚未闭合的窗口 | SOP-10 使用父级排他锁、流程拥有的 staging、完整校验，在 staging 内建立无 remote 的 `managed-local` 初始检查点后整体发布；KB 打开还须验证无未解决事务、原始/重建回执及初始 commit/树，未知残留保留并失败关闭 | 2026-10-19：CUR1C 已在测试临时根实现初始化、发布、回执恢复及并发/故障测试；独立版本化状态见项目状态 |
 | C-080（深入策展契约） | 地图、方案或目标在用户批准后变化，若仍沿用旧“确认入库”文字会把批准应用到不同对象 | 地图、决定记录和变更集不可变版本化；批准绑定来源、地图、决定、变更集、候选字节、目标 manifest、Git 基线和待触碰路径哈希，任一变化即失效 | 2026-10-18：候选 ID、决定摘要和批准失效边界已由 `37a03e6` 版本化；尚未实现 |
 | C-081（深入策展契约） | 激活和首批写入若分成两个成功边界，可能出现 active 空壳或可信内容已写但仍不可见的半状态 | SOP-30 内部先判定新库首次启用条件，再在同一可恢复事务中应用首批内容并最后发布 active manifest；产品可信读取还必须验证无未解决事务、原始或确定性重建的 committed 回执、结果本地 commit 和回读字节 | 2026-10-18：可见性谓词、`git_committed` 窗口和回执重建边界已由 `37a03e6` 版本化；尚未实现 |
 | C-082（深入策展契约） | 写入阶段继续调用模型或使用开放式“更新相关文件”，会让实际内容偏离批准对象 | SOP-30 Prepare 在批准前生成全部精确字节；Apply 无模型、无网络，只接受有旧哈希/不存在证明的 `create` 与 `replace-exact` | 2026-10-18：操作白名单已由 `37a03e6` 版本化；尚未实现 |

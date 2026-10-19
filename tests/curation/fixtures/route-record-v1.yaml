@@ -1,0 +1,26 @@
+schema: "knowledgeflow.route-record"
+schema_version: 1
+route_id: "route_01991a7e-7b2f-7a31-8d14-0b8ab6b35430"
+transaction_id: "txn_01991a7e-7b30-7a31-8d14-0b8ab6b35431"
+source:
+  capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+  capture_version: 1
+  envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+  byte_size: 41
+target_kb_id: "kb_01991a7e-7b2c-7a31-8d14-0b8ab6b3542d"
+target_decision_id: "target_01991a7e-7b24-7a31-8d14-0b8ab6b35425"
+processing_authorization_id: "auth_01991a7e-7b23-7a31-8d14-0b8ab6b35424"
+authorization_source: "manual-review"
+processing_mode: "deep-curation"
+routed_at: "2026-10-18T01:02:03.009Z"
+payload_path: "raw/text/cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421-v0001-e94351e81e8e.txt"
+source_mapping_path: "raw/text/cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421-v0001-e94351e81e8e.txt.source.yaml"
+payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+source_mapping_sha256: "sha256:3bd9bd534ac28bce4328d53b636beb16879991069bc1b0154c3664d4bc653865"
+managed_ref: "refs/heads/knowledgeflow"
+base_commit: "2222222222222222222222222222222222222222"
+version_policy_id: "knowledgeflow-managed-local-git"
+version_policy_revision: 1
+checkpoint_required: true
+state: "routed"

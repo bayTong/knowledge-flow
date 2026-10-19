@@ -1,0 +1,35 @@
+schema: "knowledgeflow.target-decision-record"
+schema_version: 1
+decision_request_id: "target-request-01"
+source_request_id: "bootstrap-request-01"
+curation_run_id: "run_01991a7e-7b22-7a31-8d14-0b8ab6b35423"
+source:
+  capture_id: "cap_01991a7e-7b20-7a31-8d14-0b8ab6b35421"
+  capture_version: 1
+  envelope_sha256: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  payload_sha256: "sha256:e94351e81e8e089312bd64ed77f6bb71e09967d7a69e14ecc232c13260e6f846"
+  byte_size: 41
+processing_authorization_id: "auth_01991a7e-7b23-7a31-8d14-0b8ab6b35424"
+suggestion:
+  choice: "new-kb"
+  rationale: "The source warrants an isolated provisional workspace."
+  suggested_by: "local-agent"
+  suggested_at: "2026-10-18T01:02:03.008Z"
+decision:
+  target_decision_id: "target_01991a7e-7b24-7a31-8d14-0b8ab6b35425"
+  choice: "new-kb"
+  requested_display_name: null
+  target_kb_id: null
+  decided_by: "local-user"
+  decided_at: "2026-10-18T01:02:03.008Z"
+root_policy_id: "test-kb-root"
+root_policy_revision: 1
+target_storage_name: "2026-10-18-01"
+target_binding:
+  kb_id: "kb_01991a7e-7b2c-7a31-8d14-0b8ab6b3542d"
+  manifest_sha256: "sha256:668476c4ae4f54d896a914274fa5389abf4390152f2f7f8b160aec240003590a"
+  raw_mapping_sha256: "sha256:3bd9bd534ac28bce4328d53b636beb16879991069bc1b0154c3664d4bc653865"
+  managed_ref: "refs/heads/knowledgeflow"
+  base_commit: "2222222222222222222222222222222222222222"
+  version_policy_id: "knowledgeflow-managed-local-git"
+  version_policy_revision: 1

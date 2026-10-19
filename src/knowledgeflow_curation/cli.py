@@ -1,4 +1,4 @@
-"""Restricted CUR1B command-line entry with one UTF-8 JSON receipt."""
+"""Restricted CUR1 command-line entry with one UTF-8 JSON receipt."""
 
 from __future__ import annotations
 
@@ -23,6 +23,11 @@ from .operations import (
     prepare_source,
     show_evidence,
 )
+from .targeting import (
+    KnowledgeBaseRootPolicy,
+    TargetDecideRequest,
+    target_decide,
+)
 
 
 _NEXT_ACTIONS = {
@@ -37,6 +42,9 @@ _NEXT_ACTIONS = {
     "idempotency_conflict": "use_the_original_request_or_a_new_request_id",
     "atomic_publish_failed": "verify_local_storage_then_retry_once",
     "recovery_required": "stop_and_inspect_the_request_bundle_before_retry",
+    "target_not_confirmed": "confirm_new_kb_or_no_target_before_retry",
+    "target_conflict": "stop_and_inspect_the_target_kb_before_retry",
+    "version_control_unavailable": "install_or_restore_local_git_then_retry",
 }
 
 
@@ -79,6 +87,26 @@ def _parser() -> _Parser:
     show.add_argument("--request-id", required=True)
     show.add_argument("--locator-id", required=True)
     show.add_argument("--output", required=True)
+
+    target = groups.add_parser("target", add_help=False)
+    target_commands = target.add_subparsers(dest="action", required=True)
+    decide = target_commands.add_parser("decide", add_help=False)
+    decide.add_argument("--decision-request-id", required=True)
+    decide.add_argument("--source-request-id", required=True)
+    decide.add_argument("--choice", required=True, choices=("new-kb", "no-target"))
+    decide.add_argument("--decided-by", required=True)
+    decide.add_argument("--kb-parent")
+    decide.add_argument("--storage-name")
+    decide.add_argument("--display-name")
+    decide.add_argument(
+        "--authorization-source",
+        default="manual-review",
+        choices=("explicit-at-capture", "manual-review", "approved-proposal"),
+    )
+    decide.add_argument("--suggestion-choice", choices=("new-kb", "no-target"))
+    decide.add_argument("--suggestion-rationale")
+    decide.add_argument("--suggested-by")
+    decide.add_argument("--naming-timezone", default="+08:00")
     return parser
 
 
@@ -179,7 +207,9 @@ def _write_output_new(path_value: str, body: bytes) -> None:
 
 
 def _recognized_write(argv: Sequence[str]) -> bool:
-    return "source" in argv and "prepare" in argv
+    return ("source" in argv and "prepare" in argv) or (
+        "target" in argv and "decide" in argv
+    )
 
 
 def _run_cli(
@@ -247,6 +277,51 @@ def _run_cli(
             if result.to_dict().get("ok") is True:
                 _write_output_new(arguments.output, body.getvalue())
             return _emit(stdout, _cli_mapping(result))
+
+        if arguments.group == "target" and arguments.action == "decide":
+            root_policy = None
+            selected_parent = None
+            if arguments.choice == "new-kb":
+                if arguments.kb_parent is None:
+                    raise _ArgumentError("new-kb requires --kb-parent")
+                selected_parent = Path(arguments.kb_parent)
+                if not selected_parent.is_absolute():
+                    raise _ArgumentError("KB parent must be absolute")
+                authorized_parent = experiment_root / "kb-root"
+                if (
+                    selected_parent.resolve(strict=True)
+                    != authorized_parent.resolve(strict=True)
+                ):
+                    raise _ArgumentError(
+                        "experimental KB parent must be <experiment-root>/kb-root"
+                    )
+                root_policy = KnowledgeBaseRootPolicy(
+                    policy_id="cur1-experiment-kb-root",
+                    revision=1,
+                    allowed_parents=(authorized_parent,),
+                )
+            elif arguments.kb_parent is not None:
+                raise _ArgumentError("no-target does not accept --kb-parent")
+            result = target_decide(
+                TargetDecideRequest(
+                    decision_request_id=arguments.decision_request_id,
+                    source_request_id=arguments.source_request_id,
+                    choice=arguments.choice,
+                    decided_by=arguments.decided_by,
+                    kb_parent=selected_parent,
+                    storage_name=arguments.storage_name,
+                    display_name=arguments.display_name,
+                    authorization_source=arguments.authorization_source,
+                    suggestion_choice=arguments.suggestion_choice,
+                    suggestion_rationale=arguments.suggestion_rationale,
+                    suggested_by=arguments.suggested_by,
+                    naming_timezone=arguments.naming_timezone,
+                ),
+                experiment_root=experiment_root,
+                path_policy=path_policy,
+                root_policy=root_policy,
+            )
+            return _emit(stdout, _cli_mapping(result))
         raise _ArgumentError("unsupported operation")
     except (_ArgumentError, TypeError, ValueError):
         return _emit(
@@ -265,7 +340,7 @@ def _run_cli(
 
 
 def main() -> int:
-    """Run the installed CUR1B entry without requiring an account or network."""
+    """Run the installed CUR1 entry without requiring an account or network."""
 
     stdout = getattr(sys.stdout, "buffer", sys.stdout)
     try:

@@ -22,7 +22,10 @@ from .contracts import (
     CurationRunManifest,
     KnowledgeBaseManifest,
     MapDecision,
+    RawSourceMapping,
+    RouteRecord,
     SourceFileMapping,
+    TargetDecisionRecord,
 )
 
 
@@ -73,6 +76,18 @@ _SOURCE_MAPPING_SCHEMA = _ContractSchema(
     SourceFileMapping.from_mapping,
     "CUR1 source mapping v1",
 )
+_RAW_SOURCE_MAPPING_SCHEMA = _ContractSchema(
+    RawSourceMapping.from_mapping,
+    "raw source mapping v1",
+)
+_ROUTE_RECORD_SCHEMA = _ContractSchema(
+    RouteRecord.from_mapping,
+    "route record v1",
+)
+_TARGET_DECISION_RECORD_SCHEMA = _ContractSchema(
+    TargetDecisionRecord.from_mapping,
+    "target decision record v1",
+)
 
 
 def _dump_contract(value: object, expected_type: type, schema: ValueSchema) -> bytes:
@@ -115,6 +130,52 @@ def load_source_mapping(
         source,
         _SOURCE_MAPPING_SCHEMA,
         SourceFileMapping.from_mapping,
+    )
+
+
+def dump_raw_source_mapping(value: RawSourceMapping) -> bytes:
+    return _dump_contract(
+        value,
+        RawSourceMapping,
+        _RAW_SOURCE_MAPPING_SCHEMA,
+    )
+
+
+def load_raw_source_mapping(
+    source: str | bytes | bytearray | memoryview,
+) -> RawSourceMapping:
+    return _load_contract(
+        source,
+        _RAW_SOURCE_MAPPING_SCHEMA,
+        RawSourceMapping.from_mapping,
+    )
+
+
+def dump_route_record(value: RouteRecord) -> bytes:
+    return _dump_contract(value, RouteRecord, _ROUTE_RECORD_SCHEMA)
+
+
+def load_route_record(
+    source: str | bytes | bytearray | memoryview,
+) -> RouteRecord:
+    return _load_contract(source, _ROUTE_RECORD_SCHEMA, RouteRecord.from_mapping)
+
+
+def dump_target_decision_record(value: TargetDecisionRecord) -> bytes:
+    return _dump_contract(
+        value,
+        TargetDecisionRecord,
+        _TARGET_DECISION_RECORD_SCHEMA,
+    )
+
+
+def load_target_decision_record(
+    source: str | bytes | bytearray | memoryview,
+) -> TargetDecisionRecord:
+    return _load_contract(
+        source,
+        _TARGET_DECISION_RECORD_SCHEMA,
+        TargetDecisionRecord.from_mapping,
     )
 
 
@@ -301,13 +362,19 @@ __all__ = [
     "dump_curation_run",
     "dump_kb_manifest",
     "dump_map_decision",
+    "dump_raw_source_mapping",
+    "dump_route_record",
     "dump_source_mapping",
+    "dump_target_decision_record",
     "load_curation_evidence",
     "load_curation_map",
     "load_curation_run",
     "load_kb_manifest",
     "load_map_decision",
+    "load_raw_source_mapping",
+    "load_route_record",
     "load_source_mapping",
+    "load_target_decision_record",
     "map_decision_sha256",
     "render_curation_map_markdown",
 ]
