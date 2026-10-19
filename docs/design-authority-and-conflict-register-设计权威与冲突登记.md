@@ -69,7 +69,7 @@
 > 深入策展纵向 MVP 优先级纠偏日期：2026-10-18（机械来源/证据能力降为地图切片内部检查点，不再单列产品阶段）<br>
 > 深入策展联合候选与纵向顺序版本化日期：2026-10-18（提交 `37a03e6`；仍为未实现候选，`CUR-MVP-1` 需单独授权）<br>
 > `CUR-MVP-1` 实施计划与 `CUR1A/CUR1B` 授权日期：2026-10-18（批准最小契约以及精确来源/范围/Evidence 机械批次；`CUR1C–CUR1V`、模型调用和可信写入仍单独授权）<br>
-> `CUR1B` 本地版本化日期：2026-10-19（独立提交 `79f6167`；尚未 push；不授权 `CUR1C`）<br>
+> `CUR1B` 版本化与远端门禁闭合日期：2026-10-19（实现 `79f6167`、事实同步 `3ac2ed6`、CI 可移植性修复 `b8525b9`；Windows CI 运行 `39223596557` 成功；不授权 `CUR1C`）<br>
 > 作用：规定各主题应以哪份文档为准，冻结 MVP 的最小决策，并登记尚未解决的设计冲突；历史完成日期只作裁决追溯<br>
 > 边界：C8 与 P0B/P0C 的本地及精确提交远端门禁均已通过；`Implemented` 只适用于各自已测限定范围。P0C-UX0 只冻结尚未实现的最小历史/提示交互。P0D/P0V 已证明低敏感度 Pilot Store 的真实四操作、短周期离线使用、同盘操作副本和全新目标恢复，但没有证明长期使用、真实断电、异盘灾备、正式私人内容环境或后续知识工作能力，项目整体不是 `Effective`
 
@@ -137,12 +137,12 @@
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
 | P0 低敏感度 Pilot 与 dogfood 的设计、授权和验收证据 | [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md) | Historical Execution Evidence | P0B/P0C 稳定行为已由上面两份长期契约承接；归档只追溯精确提交、远端门禁及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
 | 首轮 Evidence-first 实验的材料快照、任务/问题、测量、隔离与停止条件 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | Proposed Experiment Protocol，已由 `37a03e6` 版本化但不构成实现授权 | 当前活动范围只承接深入策展和必要机械证据；既有低摩擦/多来源检索材料登记保留但后置。`CUR-MVP-1` 仍须单独规划和授权；C-K 独立核查、人工基线和语义处理器授权必须在语义地图子步骤前闭合，协议不授权正式持久化 schema、Pilot Store 写入或可信写入 |
-| `CUR-MVP-1` 当前活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Approved Implementation Plan；`CUR1A/CUR1B` 已授权并分别版本化 | 把已确认方向和契约压缩为 `CUR1A–CUR1V`；`CUR1C–CUR1V`、模型调用、外部传输和可信写入不因本次授权自动生效 |
+| `CUR-MVP-1` 当前活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Approved Implementation Plan；`CUR1A/CUR1B` 已授权、版本化，且 `CUR1B` 精确远端门禁已通过 | 把已确认方向和契约压缩为 `CUR1A–CUR1V`；`CUR1C–CUR1V`、模型调用、外部传输和可信写入不因本次授权自动生效 |
 | 深入策展入口、目标判断、两级保存、地图终点、临时命名与首个垂直切片 | 本文件 D-017–D-022 + [深入策展审查理由](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | Approved Direction | 审查文档只解释原因；可执行候选由捕获/路由、`00` 总览和 SOP-10/20/30 承接 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由现行契约、项目状态、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
 | C3 后评估的来源证据 | [历史研究输入](research/README.md) | Historical | 仅供追溯；其中的命令、旧行号、状态与结论必须重新核验，不构成授权或主题权威 |
 | 三类 Processing Profile 的名称/默认路由、Source Segment/Ledger 物理契约、检索栈和候选图谱方法 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | Draft，待实验 | 已确认的只是上行治理红线；本行细节在方法论实验和独立功能门禁前不授权实现 RAG、候选图谱或新的持久化 schema |
-| 深入策展地图的输入、授权、范围、证据、版本和终点 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md) | Approved Implementation Contract（仅 `CUR-MVP-1` 单来源地图切片） | 历史别名 SOP-001；CUR1A 已版本化值对象/编码/错误/夹具，CUR1B 已由 `79f6167` 版本化精确来源/分段/范围/Evidence；真实处理器与用户地图任务仍待 CUR1D 单独授权 |
+| 深入策展地图的输入、授权、范围、证据、版本和终点 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md) | Approved Implementation Contract（仅 `CUR-MVP-1` 单来源地图切片） | 历史别名 SOP-001；CUR1A 已版本化值对象/编码/错误/夹具，CUR1B 已由 `79f6167` 版本化精确来源/分段/范围/Evidence，并经 `b8525b9` 修复后通过精确远端门禁；真实处理器与用户地图任务仍待 CUR1D 单独授权 |
 | 新知识库首次启用门禁 | [SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md#21-新知识库首次启用门禁历史-sop-000b) | Review Candidate，未实现 | 历史 SOP-000B 已并为 SOP-30 内部条件，不再是平级流程；首个新库的启用与首批可信写入使用同一事务 |
 | 可信知识写入、精确批准和恢复 | [SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md) | Review Candidate，未实现 | 历史别名 SOP-002；旧 SOP-002 提示词继续暂停；Apply 只执行批准前已存在的精确字节，不调用模型 |
 | GBrain 未审核镜像最小接入 | 本文件第 8 节 + Capture Envelope 第 13 节 | Approved Design | 仅批准 POC 边界；旧 GBrain 集成方案只作远期能力研究，不是 MVP 接入指令 |
@@ -477,7 +477,7 @@ page_slug:  inbox/knowledgeflow/cap-01991a7e-7b20-7a31-8d14-0b8ab6b35421
 | C-090（受控本地版本适配器） | 直接继承宿主 Git 的默认分支、姓名/邮箱、换行、文件模式、hooks/filter、签名、凭据或文件监视配置，会让同一产品操作改变树或字节、执行外部程序、要求账号，或在并发 ref 漂移时覆盖其他 commit；只用隔离索引更新 ref 又会让默认索引把本批结果显示成虚假的反向改动 | 首个切片冻结 object format、规范路径/树模式/提交消息，固定 `refs/heads/knowledgeflow`、要求 HEAD 指向该 ref，并固定本地技术身份和事务 UTC 时间；忽略能改变字节或触发外部/网络副作用的宿主配置；以隔离索引保存精确 blob，用基础 commit 比较后更新受管 ref，再只对齐本批路径的默认 index 条目。重叠工作树/索引变化失败，目标外 staged/unstaged 语义保持不变；ref/index 窗口纳入恢复 | 2026-10-18：可观察适配器边界已由 `37a03e6` 版本化；具体实现留给后续编码门禁 |
 | C-091（有目标工作工件检查点） | 若 SOP-20 只要求“地图后做一次 Git commit”而没有锁、前置状态、事务、回执与恢复，崩溃可能留下文件已出现但 `map_ready` 真伪不明，也可能把用户改动带入提交 | 有目标地图版本和决定记录分别走统一 KB 写锁、流程自有 staging、不可变发布、受控本地 commit、回执和恢复；状态只在事务/commit/字节互相匹配后发布。无目标地图继续使用无 Git 的原子工作根事务 | 2026-10-18：SOP-20 发布事务边界已由 `37a03e6` 版本化；尚未实现 |
 | C-092（方案/批准检查点与 Apply 身份） | 若 Prepare 和批准记录直到最终 Apply 才一起进入版本历史，`prepared/approved` 在崩溃、换机或文件丢失后没有稳定事实；若把“内容基础 commit”“方案检查点”“批准检查点”混成同一基线，Apply 也无法判断合法的协议提交与内容漂移。旧稿还要求候选 manifest 记录事务 ID，却到 Apply 才生成该 ID，批准时看到的就不是最终精确字节 | Prepare 预分配并冻结 `apply_transaction_id`，把它写入候选 manifest/日志与变更集摘要；提案版本和每个批准/拒绝/撤回记录分别通过本地事务、commit 与回执形成不可变检查点。显式区分 `target_content_base_commit`、`change_set_checkpoint_commit` 和 `approval_checkpoint_commit`；Apply 复用已批准的事务 ID，以批准检查点为唯一父提交且结果差异只含获批目标、manifest 与治理日志 | 2026-10-18：SOP-30 方案/批准检查点边界已由 `37a03e6` 版本化；尚未实现 |
-| C-093（纵向 MVP 与机械底座） | 旧排程虽把来源/证据称为深入策展内部能力，却仍将纯机械 `B1-C` 单列为下一产品阶段和独立完成状态，容易再次用基础设施进度替代用户可见价值；反过来若不允许小提交，又会把过多风险塞进一次修改 | 首个产品里程碑统一为 `CUR-MVP-1`：从一份本地材料到目标确认、一个新隔离 KB/`raw/`（或明确无目标分支）以及可查看、可回证、可修改、可在地图处结束的策展地图。身份、分段、范围和 locator 可以先形成独立代码提交与机械检查点，但不得单独标记为产品阶段完成，也不得扩成通用平台；随后才是 `CUR-MVP-2` 可信写入和 `CUR-MVP-V` 双终点验收 | 2026-10-19：纵向顺序已由 `37a03e6` 版本化；CUR1A 已提交、CUR1B 已由 `79f6167` 本地版本化，`CUR-MVP-1` 仍未完成 |
+| C-093（纵向 MVP 与机械底座） | 旧排程虽把来源/证据称为深入策展内部能力，却仍将纯机械 `B1-C` 单列为下一产品阶段和独立完成状态，容易再次用基础设施进度替代用户可见价值；反过来若不允许小提交，又会把过多风险塞进一次修改 | 首个产品里程碑统一为 `CUR-MVP-1`：从一份本地材料到目标确认、一个新隔离 KB/`raw/`（或明确无目标分支）以及可查看、可回证、可修改、可在地图处结束的策展地图。身份、分段、范围和 locator 可以先形成独立代码提交与机械检查点，但不得单独标记为产品阶段完成，也不得扩成通用平台；随后才是 `CUR-MVP-2` 可信写入和 `CUR-MVP-V` 双终点验收 | 2026-10-19：纵向顺序已由 `37a03e6` 版本化；CUR1A 已提交，CUR1B 已由 `79f6167` 版本化并在 `b8525b9` 精确远端门禁通过，`CUR-MVP-1` 仍未完成 |
 
 面向非实现者的 M1/M3/M4 档案室类比、错误优先级示例和 Windows 重试判断，保留在[已归档的 MVP-0 捕获内核编码执行方案](../archive/2026-implementation-history/mvp-0-capture-coding-execution-plan-捕获内核编码执行方案.md)的“R0.3D → 面向非实现者的通俗解释”小节；它只解释历史裁决，本登记继续保留规范性结论。
 

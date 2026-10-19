@@ -4,6 +4,7 @@
 > 形成日期：2026-10-18<br>
 > CUR1A 授权日期：2026-10-18<br>
 > CUR1B 授权日期：2026-10-18<br>
+> CUR1B 远端门禁闭合日期：2026-10-19（CI 可移植性修复 `b8525b9`；Windows CI #17 成功）<br>
 > 产品里程碑：一份精确本地材料形成可查看、可回证、可修改、可在地图处结束的策展地图<br>
 > 上位约束：[主产品需求文档](../requirements-and-governance-baseline-需求与治理基线.md)、[设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)、[EVIDENCE-0 实验协议](../evidence-first-experiment-protocol-Evidence优先实验协议.md)<br>
 > 执行契约候选：[捕获与路由规范](../capture/capture-and-routing-spec-捕获与路由规范.md)、[SOP-10 新建知识库骨架](10-sop-new-kb-bootstrap-新建知识库骨架.md)、[SOP-20 材料深度理解与策展地图](20-sop-deep-curation-map-材料深度理解与策展地图.md)
@@ -232,9 +233,9 @@ knowledgeflow-curation --experiment-root <绝对路径> evidence show
 
 停点：单独复核并提交。此时项目状态仍为 `CUR-MVP-1 in progress`，不得写“来源底座完成”或开始低摩擦/RAG。
 
-执行记录（2026-10-18，本地候选）：项目所有者已精确授权本批。实现复用公共 `initialize_capture_store`、`capture_text` 与 `get_capture`，新增 `experiment-markdown-blocks-v1` 的精确字节覆盖、UTF-8 字符边界、范围账、每段 locator、原文摘要回读、幂等工作包和 `source prepare` / `source inspect` / `evidence show` 三个受限命令；失败命令只给一个 `next_action`，且尚未实现的后续命令不暴露空壳。`target_decision` 在 CUR1B 可明确为 `null`，地图校验则在 CUR1C 记录决定前失败关闭，避免把“尚未决定”伪装成“用户选择无目标”。
+执行记录（2026-10-18 至 2026-10-19）：项目所有者已精确授权本批。实现复用公共 `initialize_capture_store`、`capture_text` 与 `get_capture`，新增 `experiment-markdown-blocks-v1` 的精确字节覆盖、UTF-8 字符边界、范围账、每段 locator、原文摘要回读、幂等工作包和 `source prepare` / `source inspect` / `evidence show` 三个受限命令；失败命令只给一个 `next_action`，且尚未实现的后续命令不暴露空壳。`target_decision` 在 CUR1B 可明确为 `null`，地图校验则在 CUR1C 记录决定前失败关闭，避免把“尚未决定”伪装成“用户选择无目标”。
 
-本批新增 14 项测试，使 `tests/curation/` 为 29 项；已覆盖 LF/CRLF、无尾随换行、中文/组合字符、空行、标题、表格、代码块、超长行、非法 UTF-8、错版本、无效字符边界、范围缺口/重叠拒绝、Payload 篡改、混合范围状态、幂等冲突、派生物重建、工作包篡改和 CLI 输出不覆盖。真实机械验收在同一个一次性临时实验 Store 中把冻结 `E0-F` 映射为 17,327 bytes / 2 Segments，把精确 `E0-C` 映射为 1,184,815 bytes / 76 Segments；抽样 Evidence 回读、删除派生物后的有序范围/摘要重建与 Capture 复用均通过，staging 为空，临时根已整体删除。独立复核使用不污染真实暂存区的拟提交索引，普通与严格 `ResourceWarning` 全量测试均为 367/367，源码编译、依赖检查、文档一致性和差异检查通过。全程没有调用模型、网络、Git 版本适配器，没有创建 KB 或写入 `raw/`/`wiki/`，也没有硬编码原件路径进产品代码。实现与验证已由独立本地提交 `79f6167` 版本化，尚未 push，也尚未授权 `CUR1C`。
+本批新增 14 项测试，使 `tests/curation/` 为 29 项；已覆盖 LF/CRLF、无尾随换行、中文/组合字符、空行、标题、表格、代码块、超长行、非法 UTF-8、错版本、无效字符边界、范围缺口/重叠拒绝、Payload 篡改、混合范围状态、幂等冲突、派生物重建、工作包篡改和 CLI 输出不覆盖。真实机械验收在同一个一次性临时实验 Store 中把冻结 `E0-F` 映射为 17,327 bytes / 2 Segments，把精确 `E0-C` 映射为 1,184,815 bytes / 76 Segments；抽样 Evidence 回读、删除派生物后的有序范围/摘要重建与 Capture 复用均通过，staging 为空，临时根已整体删除。独立复核使用不污染真实暂存区的拟提交索引，普通与严格 `ResourceWarning` 全量测试均为 367/367，源码编译、依赖检查、文档一致性和差异检查通过。全程没有调用模型、网络、Git 版本适配器，没有创建 KB 或写入 `raw/`/`wiki/`，也没有硬编码原件路径进产品代码。实现与验证由独立提交 `79f6167` 版本化，事实由 `3ac2ed6` 同步；首次远端 Windows CI #16 只因未受保护的策展 fixture 在全新 Windows 检出时转换为 CRLF 而失败，`b8525b9` 固定 fixture LF 后，[Windows CI #17](https://github.com/bayTong/knowledge-flow/actions/runs/39223596557) 通过安装、普通与严格两轮 367 项测试以及全部静态门禁。`CUR1C` 仍未授权。
 
 ### `CUR1C`：目标确认、新 provisional KB 与 `raw/` 映射
 
@@ -340,5 +341,5 @@ knowledgeflow-curation --experiment-root <绝对路径> evidence show
 
 ## 9. 当前停点与下一项工作
 
-`CUR1A` 已由本地提交 `9b33acc` 版本化；`CUR1B` 已完成实现、测试、一次性真实机械验收与独立复核，并由本地提交 `79f6167` 版本化。是否 push 和观察远端 Windows CI 由项目所有者决定；下一候选批次才是 `CUR1C`：目标确认、一个隔离 provisional KB 与 `raw/` 映射。只有项目所有者再次精确授权才开始 `CUR1C`；在此之前仍不创建知识库、不写 `raw/`/`wiki/`、不调用模型或外部网络。
+`CUR1A` 已由提交 `9b33acc` 版本化；`CUR1B` 已完成实现、测试、一次性真实机械验收、独立复核及精确提交的远端 Windows 门禁，最终验证基线为 CI 可移植性修复 `b8525b9` 与 Windows CI #17。下一候选批次是 `CUR1C`：目标确认、一个隔离 provisional KB 与 `raw/` 映射。只有项目所有者再次精确授权才开始 `CUR1C`；在此之前仍不创建知识库、不写 `raw/`/`wiki/`、不调用模型或外部网络。
 
