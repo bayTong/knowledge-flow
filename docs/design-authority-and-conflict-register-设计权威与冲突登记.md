@@ -137,7 +137,7 @@
 | MVP-0 编码批次、执行停点和授权形成过程 | [2026 MVP-0 实施历史归档](../archive/2026-implementation-history/README.md) | Historical | C0–C8 已闭合；归档只保存当时的批次和授权证据，不授权新的实现或生产操作 |
 | MVP-0 C8 本地证据、平台限制和状态建议 | [C8 本地总验收报告](../archive/2026-implementation-history/mvp-0-capture-c8-acceptance-report-C8总验收报告.md) | Acceptance Evidence | 本地证据与后续远端门禁共同支持限定范围的 `Implemented`；报告本身不授权生产初始化 |
 | P0 低敏感度 Pilot 与 dogfood 的设计、授权和验收证据 | [2026 P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md) | Historical Execution Evidence | P0B/P0C 稳定行为已由上面两份长期契约承接；归档只追溯精确提交、远端门禁及 P0D/P0V 人工证据，不再决定当前运行语义或下一门禁 |
-| 首轮 Evidence-first 实验的材料快照、任务/问题、测量、隔离与停止条件 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | Proposed Experiment Protocol，已由 `37a03e6` 版本化但不构成实现授权 | 当前活动范围只承接深入策展和必要机械证据；既有低摩擦/多来源检索材料登记保留但后置。`CUR-MVP-1` 仍须单独规划和授权；C-K 独立核查、人工基线和语义处理器授权必须在语义地图子步骤前闭合，协议不授权正式持久化 schema、Pilot Store 写入或可信写入 |
+| 首轮 Evidence-first 实验的材料快照、任务/问题、测量、隔离与停止条件 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | Proposed Experiment Protocol，已由 `37a03e6` 版本化但不构成实现授权 | 当前活动范围只承接深入策展和必要机械证据；既有低摩擦/多来源检索材料登记保留但后置。`CUR-MVP-1` 仍须单独规划和授权；C-K 独立核查、限时初始理解对照和语义处理器授权必须在语义地图子步骤前闭合，协议不授权正式持久化 schema、Pilot Store 写入或可信写入 |
 | `CUR-MVP-1` 活动批次、代码拆分、停点和验收顺序 | [CUR-MVP-1 实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | Approved Implementation Plan；分批授权与实现中 | 把已确认方向和契约压缩为 `CUR1A–CUR1V`；每批仍须独立授权，精确完成点与下一门禁只见项目状态，模型、外部传输和可信写入不会因机械批次自动生效 |
 | 深入策展入口、目标判断、两级保存、地图终点、临时命名与首个垂直切片 | 本文件 D-017–D-022 + [深入策展审查理由](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | Approved Direction | 审查文档只解释原因；可执行候选由捕获/路由、`00` 总览和 SOP-10/20/30 承接 |
 | C3 后评估、建议顺序和待裁决清单 | [已归档的 C3 后综合评估与实施方案](../archive/2026-design-history/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | Historical | 阶段建议和执行事实已由现行契约、项目状态、本文件及变更记录承接；归档文本只保留决策过程，不再参与当前排期 |
@@ -254,6 +254,8 @@ Capture 只解决来源可靠保存，不代表已经完成知识管理。最低
 
 用户可以在地图、来源绑定、处理范围、缺口和未决项保存后成功结束本次任务，日后再选择目标或继续策展。地图仍处于 T1/T2，不因任务完成而晋升 T3。项目要宣称深入策展的完整产品链已实现，仍须另行验收至少一次精确批准后的可信写入、验证与恢复；用户任务终点和项目能力验收不能混为一谈。
 
+策展地图是针对一次任务、一份或一批精确材料的写入前治理工件；这里的“写入前”指 T3 可信知识写入前，不禁止已确认目标的来源先以 T0 身份进入 `raw/`。知识库启用后遇到重要新材料、冲突或结构变化时，可以针对新的精确范围建立地图或新版本，但不要求把历史地图维护成全库首页或永久全文导读。知识库长期入口、导航、来源目录、Ontology、知识图谱和检索各自按实际需求承担不同职责。
+
 ### D-020：目标归属、深度处理与可信写入是三个权限
 
 “放进某个库”只授权目标归属、必要建库和 `raw/` 机械归档；“允许深度处理”只授权在明确来源与范围上生成 T1/T2 工件；“批准写入可信知识”必须绑定目标前置状态、方案版本和精确 diff。前一权限不蕴含后一权限，单次授权也不得扩成永久后台处理规则。
@@ -270,7 +272,7 @@ Capture 只解决来源可靠保存，不代表已经完成知识管理。最低
 
 以下假设用于组织实验，不得作为已实现能力或自动执行授权：
 
-1. `full-map`、`hierarchical-map`、`retrieval-first` 是三类处理策略的当前工作名称；它们的默认适用范围和切换规则仍待真实材料验证。
+1. `bounded-high-coverage`、`hierarchical-map`、`retrieval-first` 是三类处理策略的当前工作名称；旧工作名 `full-map` 已停止使用，以免暗示语义零遗漏或全库永久地图。它们的默认适用范围和切换规则仍待真实材料验证。
 2. Source Segment 和 Source Ledger 可用于机械表达处理边界；具体分段稳定性、事件格式、投影布局和迁移规则尚未冻结。
 3. Source Ledger 的确定性清单和状态投影可以重建；人工审核、批准、拒绝和延期必须另有不可变审计事件或等价规范记录，不能只保存在可覆盖状态中。
 4. 本地全文/BM25/向量/层次索引、Evidence Bundle、候选图谱、自动路由阈值和质量门槛均须经过实验与各自功能门禁。

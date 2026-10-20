@@ -77,7 +77,7 @@ C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P
 | [深入策展路径：已有 SOP 逐项审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | `Approved Direction / Design Rationale` | 解释为何形成 `00` 总览与 SOP-10/20/30；不再承担执行契约职责 |
 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | 已版本化的 `Proposed Experiment Protocol`，不构成实现授权 | 保存代表材料、来源身份、测量与隔离方法；活动范围以对应获批修订为准，不代替深入策展 SOP、`CUR-MVP-1` 实施授权或可信写入批准 |
 
-`full-map`、`hierarchical-map`、`retrieval-first`、Source Ledger、RAG 和候选图谱的具体实现仍需实验和独立授权，不能仅凭方法文档开始编码。
+`bounded-high-coverage`、`hierarchical-map`、`retrieval-first`、Source Ledger、RAG 和候选图谱的具体实现仍需实验和独立授权，不能仅凭方法文档开始编码。旧工作名 `full-map` 已停止使用，避免把有界高覆盖误读为语义完整或全库永久地图。
 
 ## 06 — 维护工具、提示词和样例
 
