@@ -1,19 +1,19 @@
 # KnowledgeFlow 项目状态与当前门禁
 
-<!-- knowledgeflow-doc-status tests=380 capture_tests=323 curation_tests=42 script_tests=15 next_gate=CUR1C-REVIEW -->
+<!-- knowledgeflow-doc-status tests=380 capture_tests=323 curation_tests=42 script_tests=15 next_gate=CUR1D-PREFLIGHT -->
 
 > 状态：Current Project Status<br>
-> 状态日期：2026-10-19<br>
+> 状态日期：2026-10-20<br>
 > 作用：唯一维护当前阶段、最近完成点、下一门禁、已知问题和验证证据；不建立产品需求、技术契约或实现授权
 
 ## 1. 当前快照
 
 | 项目 | 当前事实 |
 |---|---|
-| 当前阶段 | `CUR-MVP-1 in progress`；`CUR1A`、`CUR1B` 已版本化且 `CUR1B` 的精确远端 Windows 门禁通过。项目所有者已精确授权 `CUR1C`，目标确认、实验 provisional KB 与 `raw/` 映射已在本地实现和测试，但仍在独立复核/版本化前的工作树中。产品里程碑本身仍未完成 |
-| 最近完成 | `CUR1C` 已把 Agent 建议与用户决定分离；实现受允许根限制的新库命名、父级锁、流程自有 staging、受控离线 `managed-local` Git、Capture Payload 同字节 `raw/text/` 映射、来源旁车、Route Record、限定路径检查点、回执与恢复。无目标分支只写实验工作根，不创建 KB、Git、`raw/` 或 Route Record |
-| 本批工作 | 新增 3 份 CUR1C golden 和 13 项测试，使策展测试为 42 项、项目测试锚点为 380；本地已通过 42 项策展测试及 70 项受影响 Capture 回归。所有写入只发生在测试临时根；未读取真实 `E0-C`、未调用模型/网络，`wiki/` 除结构用零字节 `.gitkeep` 外没有正文，且未激活 KB、触碰 Pilot、生产 Store 或已有 KB |
-| 下一门禁 | 对当前 CUR1C 工作树完成差异复核、文档护栏和独立本地提交；是否 push 及观察远端 Windows CI 仍由项目所有者决定。`CUR1D` 的真实处理器、地图生成与用户修改尚未授权，不能因 CUR1C 本地通过而提前开始 |
+| 当前阶段 | `CUR-MVP-1 in progress`；`CUR1A`、`CUR1B`、`CUR1C` 均已独立版本化，`CUR1B` 与 `CUR1C` 的精确远端 Windows 门禁均通过。目标确认、实验 provisional KB 与 `raw/` 映射已经闭合，但产品里程碑仍缺真实处理器、可修改策展地图和总验收，因此尚未完成 |
+| 最近完成 | `CUR1C` 实现提交 `68b9c77` 已推送；[Windows CI #18](https://github.com/bayTong/knowledge-flow/actions/runs/39259048417) 在该精确提交上通过安装、普通与严格 `ResourceWarning` 两轮全量测试、源码编译、依赖检查和文档一致性检查。功能把 Agent 建议与用户决定分离，实现受允许根限制的新库命名、父级锁、流程自有 staging、受控离线 `managed-local` Git、Capture Payload 同字节 `raw/text/` 映射、来源旁车、Route Record、限定路径检查点、回执与恢复；无目标分支不创建 KB、Git、`raw/` 或 Route Record |
+| 本批工作 | 新增 3 份 CUR1C golden 和 13 项测试，使策展测试为 42 项、项目测试锚点为 380；本地通过 42 项策展测试及 70 项受影响 Capture 回归，远端普通与严格两轮全量门禁通过。所有写入只发生在测试临时根；未读取真实 `E0-C`、未调用模型/网络，`wiki/` 除结构用零字节 `.gitkeep` 外没有正文，且未激活 KB、触碰 Pilot、生产 Store 或已有 KB |
+| 下一门禁 | `CUR1D-PREFLIGHT`：先完成 `C-K1`–`C-K8` 独立人工确认、用户实际阅读基线，以及真实处理器、数据发送范围、模型/版本、网络、调用次数、token、费用上限与预算停点的精确裁决；再由项目所有者单独授权 `CUR1D`。在此前不得运行语义处理器、生成真实策展地图或写入 `wiki/` |
 | 后续纵向链 | `CUR-MVP-1` 先交付“本地文件精确 Capture → 目标判断/一个新 KB → `raw/` 映射 → 最小来源证据 → 可查看、可回证、可修改且可在地图处结束”；`CUR-MVP-2` 再交付精确方案/批准/首批可信写入；`CUR-MVP-V` 验收两个用户终点。已有 active KB、多 KB、低摩擦和独立检索继续后置 |
 | 整体状态 | MVP-0 捕获内核和 P0B/P0C 各自已测范围为 `Implemented`；项目整体仍非 `Effective` 或生产就绪 |
 
@@ -26,7 +26,7 @@
 5. P0B/P0C 的长期稳定行为已分别进入管理/备份恢复契约与最小收件箱产品规范；历史 P0 方案只保留执行与验收证据。
 6. P0C-UX0 已核对现有四操作足以支持历史只读浏览和“恢复为新版本”，并冻结两项摩擦的交互与验收边界；这只是 `Approved Design`，不证明界面已经实现。
 7. `CUR1A` 已版本化最小策展契约；`CUR1B` 已由 `79f6167` 版本化，并通过 29 项策展测试及真实临时机械验收：`E0-F` 17,327 bytes 分为 2 段，`E0-C` 1,184,815 bytes 分为 76 段，抽样 Evidence 回读与删除派生物后的有序范围/摘要重建一致，且两次重建复用原 Capture。隔离拟提交索引下的普通与严格 `ResourceWarning` 全量测试均为 367/367，源码编译、依赖检查、文档一致性和差异检查通过；策展 fixture LF 修复 `b8525b9` 后，[Windows CI #17](https://github.com/bayTong/knowledge-flow/actions/runs/39223596557) 在精确提交上再次完成安装、两轮 367 项测试及全部静态门禁。这不表示地图、新库或知识工作价值已完成。
-8. `CUR1C` 本地实现已在测试临时根证明：自定义/日期序号命名、同日双进程分配、未完成事务名称保留、幂等冲突、未知事务拒绝、路径边界、嵌套 Git 工作树拒绝、缺失 Git、宿主 Git 配置隔离、无 remote、staging/发布/checkpoint/回执故障恢复、Payload/记录篡改、受管 ref 漂移、用户既有暂存/未暂存改动隔离和无目标零 KB 副作用均失败关闭或正确恢复。42 项策展测试和 70 项受影响 Capture 回归通过；尚未形成独立提交或远端门禁，也没有用真实材料证明用户价值。
+8. `CUR1C` 已由提交 `68b9c77` 独立版本化并推送；本地临时根证明自定义/日期序号命名、同日双进程分配、未完成事务名称保留、幂等冲突、未知事务拒绝、路径边界、嵌套 Git 工作树拒绝、缺失 Git、宿主 Git 配置隔离、无 remote、staging/发布/checkpoint/回执故障恢复、Payload/记录篡改、受管 ref 漂移、用户既有暂存/未暂存改动隔离和无目标零 KB 副作用均失败关闭或正确恢复。[Windows CI #18](https://github.com/bayTong/knowledge-flow/actions/runs/39259048417) 在该提交上完成两轮全量测试及全部静态门禁；这些证据仍没有用真实材料证明用户价值。
 
 主要证据入口：
 
@@ -35,7 +35,7 @@
 - [最小本地收件箱产品规范](capture/local-inbox-product-spec-本地收件箱产品规范.md)
 - [P0 低敏感度 Pilot 实施历史归档](../archive/2026-p0-low-sensitivity-pilot/README.md)
 - [变更记录](../CHANGELOG.md)
-- 远端已验证基线：提交 `b8525b9`，[Windows CI #17（运行 `39223596557`）](https://github.com/bayTong/knowledge-flow/actions/runs/39223596557)
+- 远端已验证基线：提交 `68b9c77`，[Windows CI #18（运行 `39259048417`）](https://github.com/bayTong/knowledge-flow/actions/runs/39259048417)
 
 ## 3. 已知问题和未证明边界
 
@@ -46,7 +46,7 @@
 | 长期使用 | 尚未形成持续使用、SLA 或大规模数据证据 | 后续 dogfood 与价值切片按实际需要验证 |
 | 数据保护 | 未证明异盘灾备、正式私人/高敏内容环境、产品级删除或安全擦除 | 只在相应内容、发布或保护声明进入范围时另设门禁 |
 | 知识工作价值 | 尚未证明共同证据底座、深入策展、低摩擦批量整理或多来源检索的实际价值 | [实验协议候选](evidence-first-experiment-protocol-Evidence优先实验协议.md)已登记来源；[深入策展 SOP 审查](deep-curation-sop-review-深入策展SOP审查与实施建议.md)提出当前主线，设计建议不等同于实现或价值已验收 |
-| 深入策展联合契约 | `CUR-MVP-1` 所需入口、SOP-10/20 子集和实施方案已获准分批实施；SOP-30 仍是 Review Candidate。`CUR1A/CUR1B` 已版本化，`CUR1C` 已授权并完成本地实现，尚待独立提交与可选远端门禁 | 下一次功能授权决定是 `CUR1D`，但在此之前先闭合 CUR1C 版本化。E0-C 独立人工核查、人工基线、处理器和数据边界在 CUR1D 语义地图前闭合；内部机械批次不单独升级产品里程碑 |
+| 深入策展联合契约 | `CUR-MVP-1` 所需入口、SOP-10/20 子集和实施方案已获准分批实施；SOP-30 仍是 Review Candidate。`CUR1A–CUR1C` 已版本化，且 CUR1C 精确远端门禁通过 | 下一次功能授权决定是 `CUR1D`；此前先闭合 E0-C 独立人工核查、人工阅读基线、处理器以及数据/网络/预算边界。内部机械批次不单独升级产品里程碑 |
 
 ## 4. 当前边界
 
