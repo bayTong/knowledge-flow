@@ -2,7 +2,7 @@
 
 > 文档编号：`KF-PRD`<br>
 > 产品需求状态：`Approved Design`<br>
-> 当前修订日期：2026-10-18<br>
+> 当前修订日期：2026-10-20<br>
 > 适用范围：KnowledgeFlow 长期产品与各阶段产品需求<br>
 > 权威：本文是唯一顶层产品需求入口；主题规范只能细化本文，不能改变本文的产品目标、范围和治理边界。
 
@@ -24,6 +24,7 @@
 | 2026-10-13 | 深入策展追踪同步 | 只把入口/路由与编号化的 `00` 总览、SOP-10/20/30 Review Candidate 接入需求追踪；历史 SOP-000B 已并入 SOP-30 内部门禁。不新增产品义务，不表示契约已批准或实现 | 实施助手 |
 | 2026-10-15 | 本地版本管理边界 | 区分本地 Git 版本引擎与 GitHub/远端协作：Capture 与未绑定知识库的地图终点不依赖 Git；已绑定目标知识库的地图和可信 Wiki 写入进入该库的本地版本历史；不自动配置远端、联网或 push | 项目所有者 |
 | 2026-10-18 | 概念边界防误读 | 明确工件类型与治理状态是两条不同轴；策展地图既可用于首次建库，也可作为后续维护的变更入口；Ontology/知识图谱按实际复用、约束、查询和维护需求引入，不按用户熟悉度强制升级 | 项目所有者 |
+| 2026-10-20 | 文档职责纠正 | 从需求追踪中移除会随编码批次漂移的深入策展实现状态，保留稳定需求与契约成熟度并统一指向项目状态；不改变产品义务 | 项目所有者 |
 
 ### 本文负责什么
 
@@ -536,7 +537,7 @@ MVP-0 的产品要求是可靠保存和证明事实，不是自动分类、路�
 | 需求组 | 主要细化文档 | 当前需求成熟度 |
 |---|---|---|
 | `FR-CAP-*` / `FR-READ-*` / `FR-VER-*` / `FR-OPS-*` / `FR-CLI-*` | Capture Envelope、MVP-0 操作契约、Capture Store 管理/备份恢复契约、实现与测试证据 | MVP-0 与 P0B-min 已测范围 `Implemented`；扩展范围仍需细化 |
-| `FR-INBOX-*` / `FR-ROUTE-*` / `FR-KB-*` | 最小本地收件箱产品规范、捕获与路由规范、深入策展 `00` 总览及 SOP-10/20/30 | `FR-INBOX-001` 当前 P0C 基线范围 `Implemented`；`FR-INBOX-002` 已由 P0C-UX0 细化为 Approved Design / Ready 但尚未实现；深入策展入口、路由、初始化、地图、首次启用门禁和可信写入 Review Candidate 已由 `37a03e6` 版本化，但尚未实现，进入 `CUR-MVP-1/2` 仍须各自单独授权 |
+| `FR-INBOX-*` / `FR-ROUTE-*` / `FR-KB-*` | 最小本地收件箱产品规范、捕获与路由规范、深入策展 `00` 总览及 SOP-10/20/30 | `FR-INBOX-001` 的 P0C 基线范围 `Implemented`；`FR-INBOX-002` 已由 P0C-UX0 细化为 Approved Design / Ready。深入策展的顶层边界为 Approved Design；SOP-10/20 是限 `CUR-MVP-1` 的 Approved Implementation Contract，SOP-30 仍为 Review Candidate。当前实现范围、下一门禁和授权只见[项目状态](project-status-项目状态与当前门禁.md) |
 | `FR-TASK-*` / `FR-WORK-*` / `FR-ASSIST-*` / `FR-INTERACT-*` / `FR-NOTE-*` | 未来任务、工作知识、研究和交互 PRD | Approved Design / Needs Detail |
 | `FR-ORG-*` / `FR-GRAPH-*` / `FR-STRUCT-*` | 未来组织、图谱和结构治理 PRD | Approved Design / Needs Detail |
 | `FR-PROC-*` / `FR-EVID-*` | 渐进式知识提炼规范、未来 Evidence 契约 | 治理已确认；方法 Draft |

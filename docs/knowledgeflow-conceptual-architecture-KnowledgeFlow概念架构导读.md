@@ -1,7 +1,7 @@
 # KnowledgeFlow 概念架构导读
 
 > 状态：`Explanatory Guide`（非规范性）<br>
-> 最近修订：2026-10-18<br>
+> 最近修订：2026-10-20<br>
 > 作用：用一条主线解释 KnowledgeFlow 的核心概念、信任层和典型使用方式。<br>
 > 非作用：本文不建立第二份产品需求，不冻结机器 schema、处理策略或实施顺序，也不记录当前开发进度。
 
@@ -316,10 +316,10 @@ Wiki 页面之间形成链接网络，只说明存在链接图；只有节点、
 | 想解决的问题 | 权威入口 |
 |---|---|
 | 产品为什么存在、必须具备什么、怎样验收 | [主产品需求文档](requirements-and-governance-baseline-需求与治理基线.md) |
-| 哪份文档优先、当前功能门禁是什么 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| 哪份文档优先、发生冲突时如何裁决 | [设计权威与冲突登记](design-authority-and-conflict-register-设计权威与冲突登记.md) |
 | Capture 身份、版本、哈希和事务 | [Capture Envelope v1](capture/capture-envelope-v1-捕获信封数据契约与原子保存事务.md) |
 | 捕获意图、人工路由和新建 KB | [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md)、[深入策展流程总览](curation/00-deep-curation-workflow-深入策展流程总览.md)与[SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md) |
-| 深入策展地图与获批可信写入 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)与[SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md)；新知识库首次启用是 SOP-30 的内部条件，当前均为 Review Candidate，尚未实现 |
+| 深入策展地图与获批可信写入 | [SOP-20 材料深度理解与策展地图](curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)与[SOP-30 批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md)；新知识库首次启用是 SOP-30 的内部条件，文档成熟度由 [docs/README](README.md) 导航，当前实现范围与下一授权只见[项目状态](project-status-项目状态与当前门禁.md) |
 | Segment、Ledger、Profile、Evidence 和 RAG 方法假设 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) |
 | 当前已经实现什么、下一步是什么 | [项目状态文档](project-status-项目状态与当前门禁.md)；验收证据和历史实施材料由 [docs/README](README.md) 导航 |
 

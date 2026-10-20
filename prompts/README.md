@@ -1,6 +1,6 @@
 # Prompt 模板使用说明
 
-> **状态说明（2026-10-13）**：[`SOP-20 材料深度理解与策展地图候选契约`](../docs/curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)已经统一来源、授权、范围、证据、版本和地图终点；本目录沿用历史编号的 SOP-001 系列仍只是可替换实验处理器，旧 Mode A/B/C 阈值、固定调用次数和十节形式不是产品契约，也不构成语义完整性保证。[`SOP-30 批准后写入可信知识候选契约`](../docs/curation/30-sop-trusted-write-批准后写入可信知识.md)已经定义 Prepare/批准/Apply 边界，但尚未实现；`sop-002-curator.md` 继续暂停，不能用于真实 KB 写入。主题级权威见 [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)。
+> **职责说明（2026-10-20）**：[`SOP-20 材料深度理解与策展地图`](../docs/curation/20-sop-deep-curation-map-材料深度理解与策展地图.md)是 `CUR-MVP-1` 范围内的现行实施契约；本目录沿用历史编号的 SOP-001 系列仍只是可替换实验处理器，只有在对应处理器批次明确授权后才可按精确范围选用。旧 Mode A/B/C 阈值、固定调用次数和十节形式不是产品契约，也不构成语义完整性保证。[`SOP-30 批准后写入可信知识`](../docs/curation/30-sop-trusted-write-批准后写入可信知识.md)仍是 Review Candidate；`sop-002-curator.md` 继续暂停，不能用于真实 KB 写入。主题级权威见[设计权威与冲突登记](../docs/design-authority-and-conflict-register-设计权威与冲突登记.md)，当前实现范围与下一授权只见[项目状态](../docs/project-status-项目状态与当前门禁.md)。
 
 本文档说明 `prompts/` 目录下的 LLM-agnostic 提示词模板的使用方式、提取模式选择、覆盖报告机制、以及如何接入不同的 LLM 工具。
 
