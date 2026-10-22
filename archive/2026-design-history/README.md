@@ -17,6 +17,8 @@
 | `docs/curation-paradox.md` | [策展悖论](curation-paradox.md) | 核心问题已被 L0 需求基线吸收 | [需求与治理基线](../../docs/requirements-and-governance-baseline-需求与治理基线.md)中的问题、信任与治理边界 |
 | `docs/gbrain-integration-plan.md` | [GBrain 集成方案](gbrain-integration-plan.md) | 远期集成研究，不是 MVP-0 主线或当前接入指令 | 设计权威登记中的 GBrain POC 边界；重新提案后方可实施 |
 | `docs/improvement-action-plan.md` | [评估整改清单](improvement-action-plan.md) | 旧审计任务大多已完成、延期或被新的追踪体系吸收 | 当前冲突登记、需求追踪矩阵和变更记录 |
+| `docs/design-authority-and-conflict-register-设计权威与冲突登记.md` 顶部历史流水 | [设计权威历史里程碑流水](design-authority-milestone-ledger-设计权威里程碑流水.md) | 里程碑流水属于历史事实，继续放在现行冲突登记顶部会复制动态状态并增加默认上下文 | 当前权威与冲突仍见原文；当前执行位置只见项目状态 |
+| `docs/deep-curation-sop-review-深入策展SOP审查与实施建议.md` | [深入策展 SOP 审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | 逐项审查结论已由现行深入策展 `00` 总览与 SOP-10/20/30 承接，不再承担执行契约职责 | [深入策展流程总览](../../docs/curation/00-deep-curation-workflow-深入策展流程总览.md)与对应 SOP；本文件只追溯方向形成理由 |
 | `docs/post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md` | [C3 后综合评估与实施方案](post-c3-integrated-assessment-and-implementation-plan-C3后综合评估与实施方案.md) | 阶段建议和执行事实已进入当前编码计划及权威登记 | 当前编码执行方案；保留为 C3 后决策过程记录 |
 | `docs/qq-qa-bot-plan.md` | [QQ 问答机器人方案](qq-qa-bot-plan.md) | 可选入口及外部依赖研究，不属于当前产品主线 | 未来渠道功能需重新核验平台能力、成本和网络条件 |
 | `docs/second-brain-vision.md` | [第二大脑愿景](second-brain-vision.md) | 愿景已被 L0 产品目标和分层路线吸收 | 需求与治理基线；仅保留理念演进背景 |

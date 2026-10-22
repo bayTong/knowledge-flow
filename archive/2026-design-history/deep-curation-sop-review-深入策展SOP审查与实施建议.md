@@ -1,6 +1,6 @@
 # 深入策展路径：已有 SOP 逐项审查与实施建议
 
-> 状态：Approved Direction / Design Rationale；2026-10-13 已形成编号化的 `00` 流程总览与 SOP-10/20/30 Review Candidate，本文件不再承担执行契约职责，也不批准编码<br>
+> 状态：Historical Design Rationale；2026-10-22 归档；现行流程与契约由 `docs/curation/00/10/20/30` 承接，本文件不再承担执行契约职责，也不批准编码<br>
 > 日期：2026-10-13<br>
 > 本地版本边界同步日期：2026-10-15（执行细节仍以 SOP-10/20/30 候选为准）<br>
 > 核对基准：提交 `11b4722` 与当前工作树的现行规范、提示词和代码<br>
@@ -53,15 +53,15 @@
 
 | 资产 | 当前事实 | 本轮怎样使用 |
 |---|---|---|
-| [主 PRD](requirements-and-governance-baseline-需求与治理基线.md) | 来源复用、结构非前置、工作知识与精确可信批准已有设计 | 保留产品目标和权限边界 |
-| [捕获与路由规范](capture/capture-and-routing-spec-捕获与路由规范.md) | 捕获与深层处理授权分开，路由不等于知识晋升 | 替代旧 SOP 的直接捕获和自动归属步骤 |
-| [SOP-10 新建知识库骨架](curation/10-sop-new-kb-bootstrap-新建知识库骨架.md)（历史 SOP-000A） | 已批准临时容器方向；当前执行契约仍是 Review Candidate，尚未实现；明确禁止临时态可信写入 | 用户需要新 KB 时实现最小骨架；已有 KB 不重复初始化 |
-| [旧 SOP-001/002/003/004/005](../archive/2026-design-history/sop-v2-full.md) | 有详细业务步骤；旧版已归档；部分语义写入规则被现行治理取代 | 逐项复用，不直接恢复整份旧 SOP 的执行权威 |
-| [SOP 提示词目录](../prompts/README.md)及[提取接口](../prompts/extraction-interface.md) | 地图和分轮提取可作实验资产；正文仍有旧硬阈值与过强表述 | 统一修订共享规则，保留可比较的提取方法 |
-| [SOP-002 提示词](../prompts/sop-002-curator.md) | 明确暂停真实 KB 执行；缺少精确批准、事务和回滚闭环 | 在原步骤上拆开方案准备与受限执行 |
-| [渐进式提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | 证据、无静默缺口与信任边界已确认；具体算法仍为 Draft | 采用治理边界，算法用本轮材料验证 |
-| [当前 Capture 四操作](../src/knowledgeflow_capture/operations.py) | 已有可靠捕获、版本追加、列表和精确版本回读 | 直接复用；不重做 Capture，也不修改 v1 枚举以容纳新流程 |
-| [维护脚本](../scripts/README.md) | 已有旧 Markdown KB 的 lint、链接检查和索引生成参考实现 | 在所选 KB 格式下适配与测试，不等同于可信写入执行器 |
+| [主 PRD](../../docs/requirements-and-governance-baseline-需求与治理基线.md) | 来源复用、结构非前置、工作知识与精确可信批准已有设计 | 保留产品目标和权限边界 |
+| [捕获与路由规范](../../docs/capture/capture-and-routing-spec-捕获与路由规范.md) | 捕获与深层处理授权分开，路由不等于知识晋升 | 替代旧 SOP 的直接捕获和自动归属步骤 |
+| [SOP-10 新建知识库骨架](../../docs/curation/10-sop-new-kb-bootstrap-新建知识库骨架.md)（历史 SOP-000A） | 已批准临时容器方向；当前执行契约仍是 Review Candidate，尚未实现；明确禁止临时态可信写入 | 用户需要新 KB 时实现最小骨架；已有 KB 不重复初始化 |
+| [旧 SOP-001/002/003/004/005](sop-v2-full.md) | 有详细业务步骤；旧版已归档；部分语义写入规则被现行治理取代 | 逐项复用，不直接恢复整份旧 SOP 的执行权威 |
+| [SOP 提示词目录](../../prompts/README.md)及[提取接口](../../prompts/extraction-interface.md) | 地图和分轮提取可作实验资产；正文仍有旧硬阈值与过强表述 | 统一修订共享规则，保留可比较的提取方法 |
+| [SOP-002 提示词](../../prompts/sop-002-curator.md) | 明确暂停真实 KB 执行；缺少精确批准、事务和回滚闭环 | 在原步骤上拆开方案准备与受限执行 |
+| [渐进式提炼规范](../../docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | 证据、无静默缺口与信任边界已确认；具体算法仍为 Draft | 采用治理边界，算法用本轮材料验证 |
+| [当前 Capture 四操作](../../src/knowledgeflow_capture/operations.py) | 已有可靠捕获、版本追加、列表和精确版本回读 | 直接复用；不重做 Capture，也不修改 v1 枚举以容纳新流程 |
+| [维护脚本](../../scripts/README.md) | 已有旧 Markdown KB 的 lint、链接检查和索引生成参考实现 | 在所选 KB 格式下适配与测试，不等同于可信写入执行器 |
 
 ## 3. 历史 SOP-001：逐步审查（现由 SOP-20 承接）
 
@@ -216,7 +216,7 @@ SOP-10 本身已有清晰职责和步骤，需要细化其机器执行契约，�
 
 ## 9. 用现有材料怎样验证
 
-深入材料沿用用户已指定文件：`E:\AutoSysFiles\Downloads\大模型应用开发核心解决的是什么问题.md`，1,184,815 bytes、24,525 行，来源身份与哈希见[已登记协议](evidence-first-experiment-protocol-Evidence优先实验协议.md)。原件已独立保留且用户明确无需脱敏，本轮不重复收集或要求填写熟悉程度/目标表单。
+深入材料沿用用户已指定文件：`E:\AutoSysFiles\Downloads\大模型应用开发核心解决的是什么问题.md`，1,184,815 bytes、24,525 行，来源身份与哈希见[已登记协议](../../docs/evidence-first-experiment-protocol-Evidence优先实验协议.md)。原件已独立保留且用户明确无需脱敏，本轮不重复收集或要求填写熟悉程度/目标表单。
 
 验证分为两种：
 

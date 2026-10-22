@@ -74,7 +74,6 @@ C0–C8 与 P0D/P0V 均已完成并形成证据。MVP-0 捕获内核以及 P0B/P
 | [SOP-30：批准后写入可信知识](curation/30-sop-trusted-write-批准后写入可信知识.md) | `Review Candidate`，尚未实现 | Prepare、批准失效、无模型 Apply、本地版本检查点、回执重建、事务恢复及内部新库首次启用门禁 |
 | [CUR-MVP-1：首个可用策展地图纵向切片实施方案](curation/40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md) | `Approved Implementation Plan`；逐批实施 | 把精确 Capture、目标确认、一个隔离新库/`raw/`、范围/证据和可修改地图拆成 `CUR1A–CUR1V`；精确完成点与下一授权只见[项目状态](project-status-项目状态与当前门禁.md) |
 | [渐进式知识提炼规范](progressive-knowledge-refinement-spec-渐进式知识提炼规范.md) | 治理红线已确认；具体方法仍为 `Draft` | 定义不承诺语义零遗漏、证据绑定、处理缺口可见和分层处理候选 |
-| [深入策展路径：已有 SOP 逐项审查与实施建议](deep-curation-sop-review-深入策展SOP审查与实施建议.md) | `Approved Direction / Design Rationale` | 解释为何形成 `00` 总览与 SOP-10/20/30；不再承担执行契约职责 |
 | [EVIDENCE-0：Evidence-first 首轮实验协议](evidence-first-experiment-protocol-Evidence优先实验协议.md) | 已版本化的 `Proposed Experiment Protocol`，不构成实现授权 | 保存代表材料、来源身份、测量与隔离方法；活动范围以对应获批修订为准，不代替深入策展 SOP、`CUR-MVP-1` 实施授权或可信写入批准 |
 
 `bounded-high-coverage`、`hierarchical-map`、`retrieval-first`、Source Ledger、RAG 和候选图谱的具体实现仍需实验和独立授权，不能仅凭方法文档开始编码。旧工作名 `full-map` 已停止使用，避免把有界高覆盖误读为语义完整或全库永久地图。
