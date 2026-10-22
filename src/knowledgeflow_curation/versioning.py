@@ -572,6 +572,113 @@ class ManagedGit:
         )
         return ManagedCheckpoint(candidate_commit, tree, base_commit)
 
+    def paths_have_changes(
+        self,
+        repository: Path,
+        paths: Sequence[str],
+    ) -> bool:
+        """Return whether any exact managed path is staged, dirty, or untracked."""
+
+        normalized = tuple(sorted({_relative_path(path) for path in paths}))
+        if not normalized:
+            raise ValueError("managed paths must not be empty")
+        self._require_repository_identity(repository)
+        completed = self._run(
+            repository,
+            (
+                "status",
+                "--porcelain=v1",
+                "-z",
+                "--untracked-files=all",
+                "--",
+                *normalized,
+            ),
+        )
+        return bool(completed.stdout)
+
+    def verify_reachable_checkpoint(
+        self,
+        repository: Path,
+        expected_files: Mapping[str, bytes],
+        *,
+        base_commit: str,
+        candidate_commit: str,
+    ) -> ManagedCheckpoint:
+        """Verify one completed checkpoint at or below the current managed ref."""
+
+        expected = _normalized_paths(expected_files)
+        self.verify(
+            repository,
+            candidate_commit,
+            expected,
+            expected_parent=base_commit,
+            exact_tree=False,
+            require_current=False,
+        )
+        if self.changed_paths(repository, base_commit, candidate_commit) != frozenset(
+            expected
+        ):
+            raise ManagedGitIntegrityError("checkpoint changed paths outside its batch")
+        current = self.current_commit(repository)
+        if current != candidate_commit and not self.is_ancestor(
+            repository,
+            candidate_commit,
+            current,
+        ):
+            raise ManagedGitConflict("managed ref is not descended from the checkpoint")
+        tree = self._verify_commit_files(
+            repository,
+            candidate_commit,
+            expected,
+            exact_tree=False,
+        )
+        return ManagedCheckpoint(candidate_commit, tree, base_commit)
+
+    def find_unique_checkpoint(
+        self,
+        repository: Path,
+        expected_files: Mapping[str, bytes],
+        *,
+        base_commit: str,
+    ) -> ManagedCheckpoint:
+        """Rebuild an ignored receipt only from one unique reachable checkpoint."""
+
+        expected = _normalized_paths(expected_files)
+        self._require_repository_identity(repository)
+        output = self._run(
+            repository,
+            ("rev-list", MANAGED_REF, "--", *sorted(expected)),
+        ).stdout
+        try:
+            commits = tuple(
+                line.decode("ascii", errors="strict")
+                for line in output.splitlines()
+                if line
+            )
+        except UnicodeDecodeError as exc:
+            raise ManagedGitIntegrityError("managed history is not ASCII") from exc
+        matches: list[ManagedCheckpoint] = []
+        for commit in commits:
+            if len(commit) != 40 or any(
+                character not in "0123456789abcdef" for character in commit
+            ):
+                raise ManagedGitIntegrityError("managed history contains an invalid commit")
+            try:
+                checkpoint = self.verify_reachable_checkpoint(
+                    repository,
+                    expected,
+                    base_commit=base_commit,
+                    candidate_commit=commit,
+                )
+            except (ManagedGitConflict, ManagedGitIntegrityError):
+                continue
+            matches.append(checkpoint)
+        if len(matches) != 1:
+            raise ManagedGitIntegrityError(
+                "transaction checkpoint is missing or not unique"
+            )
+        return matches[0]
+
     def verify(
         self,
         repository: Path,
@@ -623,6 +730,26 @@ class ManagedGit:
         except UnicodeDecodeError as exc:
             raise ManagedGitIntegrityError("checkpoint paths are not UTF-8") from exc
         return frozenset(values)
+
+    def is_ancestor(
+        self,
+        repository: Path,
+        ancestor_commit: str,
+        descendant_commit: str,
+    ) -> bool:
+        """Return whether both commits form the expected managed history chain."""
+
+        self._require_repository_identity(repository)
+        completed = self._run(
+            repository,
+            ("merge-base", "--is-ancestor", ancestor_commit, descendant_commit),
+            check=False,
+        )
+        if completed.returncode == 0:
+            return True
+        if completed.returncode == 1:
+            return False
+        raise ManagedGitIntegrityError("managed commit ancestry cannot be verified")
 
 
 __all__ = [

@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from knowledgeflow_capture.hashing import hash_bytes
 from knowledgeflow_capture.paths import PathPolicy
@@ -59,8 +60,24 @@ class _FailKbPublishDurability(DurabilityBackend):
 
 
 class _FailCheckpointGit(ManagedGit):
+    def require_standalone_parent(self, parent: Path) -> None:
+        self.check_available(parent)
+
     def checkpoint(self, *args, **kwargs):
         raise ManagedGitError("injected checkpoint failure")
+
+
+class _TargetTestManagedGit(ManagedGit):
+    """Allow valid target tests inside a repository-owned test sandbox."""
+
+    def require_standalone_parent(self, parent: Path) -> None:
+        self.check_available(parent)
+
+
+def _target_test_git(parent: Path) -> ManagedGit:
+    if any((candidate / ".git").exists() for candidate in (parent, *parent.parents)):
+        return _TargetTestManagedGit()
+    return ManagedGit()
 
 
 def _concurrent_target_worker(
@@ -88,6 +105,7 @@ def _concurrent_target_worker(
         experiment_root=Path(experiment_root),
         path_policy=policy,
         root_policy=root_policy,
+        git=_target_test_git(Path(kb_parent)),
         now=lambda: datetime(
             2026,
             10,
@@ -156,6 +174,7 @@ class TargetingTest(unittest.TestCase):
         return TargetDecideRequest(**values)
 
     def _decide(self, request: TargetDecideRequest | None = None, **kwargs: object):
+        kwargs.setdefault("git", _target_test_git(self.kb_parent))
         return target_decide(
             request or self._request(),
             experiment_root=self.experiment_root,
@@ -352,7 +371,7 @@ class TargetingTest(unittest.TestCase):
                 decision_request_id="missing-git",
                 storage_name="missing-git-reserved",
             ),
-            git=ManagedGit(binary="definitely-missing-git-executable"),
+            git=_TargetTestManagedGit(binary="definitely-missing-git-executable"),
         )
         self.assertIsInstance(unavailable, CurationFailure)
         self.assertEqual(
@@ -447,28 +466,39 @@ class TargetingTest(unittest.TestCase):
 
     def test_cur1c_07_cli_target_decide_is_json_only_and_root_bounded(self) -> None:
         output = io.BytesIO()
-        code = _run_cli(
-            (
-                "--experiment-root",
-                str(self.experiment_root),
-                "target",
-                "decide",
-                "--decision-request-id",
-                "cli-target",
-                "--source-request-id",
-                "source-01",
-                "--choice",
-                "new-kb",
-                "--decided-by",
-                "local-user",
-                "--kb-parent",
-                str(self.kb_parent),
-                "--storage-name",
-                "cli-kb",
-            ),
-            stdout=output,
-            path_policy=self.path_policy,
-        )
+        def target_decide_for_cli(request, **kwargs):
+            return target_decide(
+                request,
+                git=_target_test_git(self.kb_parent),
+                **kwargs,
+            )
+
+        with patch(
+            "knowledgeflow_curation.cli.target_decide",
+            side_effect=target_decide_for_cli,
+        ):
+            code = _run_cli(
+                (
+                    "--experiment-root",
+                    str(self.experiment_root),
+                    "target",
+                    "decide",
+                    "--decision-request-id",
+                    "cli-target",
+                    "--source-request-id",
+                    "source-01",
+                    "--choice",
+                    "new-kb",
+                    "--decided-by",
+                    "local-user",
+                    "--kb-parent",
+                    str(self.kb_parent),
+                    "--storage-name",
+                    "cli-kb",
+                ),
+                stdout=output,
+                path_policy=self.path_policy,
+            )
         self.assertEqual(code, 0)
         self.assertEqual(output.getvalue().count(b"\n"), 1)
         receipt = json.loads(output.getvalue())

@@ -183,9 +183,9 @@ knowledge-flow/
 │   │   ├── recovery.py               C6B 显式派生状态重建操作
 │   │   └── migration.py              C6C 显式复制—验证—切换 Store 迁移
 │   └── knowledgeflow_curation/
-│       ├── __init__.py               CUR1A–CUR1C 策展契约与操作公开入口
-│       ├── contracts.py              CUR1A–CUR1C 来源、权限、范围、目标、路由、地图与 KB 值契约
-│       ├── codec.py                  CUR1A/CUR1C 规范 YAML、同事实 Markdown 与工件摘要
+│       ├── __init__.py               CUR1A–CUR1D 策展契约与操作公开入口
+│       ├── contracts.py              CUR1A–CUR1D 来源、权限、范围、目标、路由、地图与 KB 值契约
+│       ├── codec.py                  CUR1A/CUR1C/CUR1D 规范 YAML、同事实 Markdown 与工件摘要
 │       ├── errors.py                 CUR1A 稳定错误码、诊断字段与提交状态
 │       ├── ids.py                    CUR1B/CUR1C 策展对象 UUIDv7 身份生成
 │       ├── locking.py                CUR1C 有界跨进程文件锁
@@ -193,7 +193,9 @@ knowledge-flow/
 │       ├── operations.py             CUR1B 精确来源准备、检查与 Evidence 回读
 │       ├── targeting.py              CUR1C 目标决定、provisional KB 初始化与 raw 映射
 │       ├── versioning.py             CUR1C 受控离线 managed-local Git 适配器
-│       └── cli.py                    CUR1B/CUR1C 四个受限命令与单一 JSON 回执
+│       ├── processing.py             CUR1D 处理端口、DeepSeek 适配、tokenizer 与预算执行
+│       ├── map_operations.py         CUR1D 目标建议、策展地图、决定、恢复与发布编排
+│       └── cli.py                    CUR1B–CUR1D 受限命令与单一 JSON 回执
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
@@ -201,10 +203,13 @@ knowledge-flow/
 │   │   ├── integration/              C2B–P0C 事务、读取、CLI、管理、收件箱、真实边界与并发测试
 │   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 323 项）
 │   ├── curation/
+│   │   ├── evaluation-gold/          仅供评估器使用的盲测来源忠实度答案；禁止进入处理器上下文
 │   │   ├── fixtures/                 CUR1A/CUR1C 的 10 份契约/呈现 golden，另含 1 份来源正文夹具
 │   │   ├── test_contracts.py         CUR1A/CUR1C 契约与错误语义测试（16 项）
 │   │   ├── test_operations.py        CUR1B 分段、来源事务、回读与 CLI 测试（14 项）
-│   │   └── test_targeting.py         CUR1C 目标、本地 Git、并发、恢复与隔离测试（12 项；策展共 42 项）
+│   │   ├── test_targeting.py         CUR1C 目标、本地 Git、并发、恢复与隔离测试（12 项）
+│   │   ├── test_processing.py        CUR1D 处理器、预算、tokenizer 与窗口测试（18 项）
+│   │   └── test_map_operations.py    CUR1D 地图操作、故障、重放与 CLI 测试（33 项；策展共 93 项）
 │   └── scripts/
 │       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
 │       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）

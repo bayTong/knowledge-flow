@@ -7,13 +7,14 @@ import io
 import json
 import os
 from pathlib import Path
+import stat
 import sys
 from typing import Sequence
 
 from knowledgeflow_capture.paths import PathPolicy
 from knowledgeflow_capture.runtime import production_path_policy
 
-from .contracts import ByteRange
+from .contracts import ByteRange, CandidateDecision
 from .errors import CurationCommitState, CurationError, CurationErrorCode, CurationFailure
 from .operations import (
     EvidenceShowRequest,
@@ -22,6 +23,26 @@ from .operations import (
     inspect_source,
     prepare_source,
     show_evidence,
+)
+from .map_operations import (
+    MapBuildRequest,
+    MapDecideRequest,
+    TargetSuggestRequest,
+    build_map,
+    close_map,
+    decide_map,
+    suggest_target,
+)
+from .processing import (
+    DEEPSEEK_DEFAULT_KEY_REFERENCE,
+    DEEPSEEK_DEFAULT_MODEL,
+    DEEPSEEK_PROVIDER_PROFILE,
+    DeepSeekV41TokenizerCounter,
+    DeepSeekChatProcessor,
+    DeterministicTestProcessor,
+    RemoteProcessingAuthorization,
+    StandardLibraryHttpTransport,
+    Utf8ByteUpperBoundTokenCounter,
 )
 from .targeting import (
     KnowledgeBaseRootPolicy,
@@ -35,6 +56,7 @@ _NEXT_ACTIONS = {
     "source_not_found": "verify_source_path_or_request_id_and_retry",
     "source_identity_mismatch": "verify_expected_source_identity_before_retry",
     "source_integrity_failed": "stop_and_restore_the_exact_source_or_capture",
+    "authorization_required": "record_exact_processing_authorization_before_retry",
     "authorization_scope_mismatch": "correct_authorized_utf8_byte_range_and_retry",
     "unsupported_source": "provide_nonempty_strict_utf8_text_and_retry",
     "locator_invalid": "run_source_inspect_and_select_a_returned_locator",
@@ -45,6 +67,8 @@ _NEXT_ACTIONS = {
     "target_not_confirmed": "confirm_new_kb_or_no_target_before_retry",
     "target_conflict": "stop_and_inspect_the_target_kb_before_retry",
     "version_control_unavailable": "install_or_restore_local_git_then_retry",
+    "processor_output_invalid": "inspect_processor_result_and_do_not_publish",
+    "budget_exhausted": "stop_and_review_processing_scope_and_budget",
 }
 
 
@@ -90,6 +114,12 @@ def _parser() -> _Parser:
 
     target = groups.add_parser("target", add_help=False)
     target_commands = target.add_subparsers(dest="action", required=True)
+    suggest = target_commands.add_parser("suggest", add_help=False)
+    suggest.add_argument("--request-id", required=True)
+    suggest.add_argument("--source-request-id", required=True)
+    suggest.add_argument("--suggested-by", required=True)
+    _add_processor_arguments(suggest)
+
     decide = target_commands.add_parser("decide", add_help=False)
     decide.add_argument("--decision-request-id", required=True)
     decide.add_argument("--source-request-id", required=True)
@@ -107,7 +137,57 @@ def _parser() -> _Parser:
     decide.add_argument("--suggestion-rationale")
     decide.add_argument("--suggested-by")
     decide.add_argument("--naming-timezone", default="+08:00")
+
+    map_group = groups.add_parser("map", add_help=False)
+    map_commands = map_group.add_subparsers(dest="action", required=True)
+    build = map_commands.add_parser("build", add_help=False)
+    build.add_argument("--request-id", required=True)
+    build.add_argument("--source-request-id", required=True)
+    build.add_argument("--target-decision-request-id", required=True)
+    build.add_argument("--target-suggestion-request-id")
+    build.add_argument("--kb-parent")
+    _add_processor_arguments(build)
+
+    for action in ("decide", "close"):
+        command = map_commands.add_parser(action, add_help=False)
+        command.add_argument("--request-id", required=True)
+        command.add_argument("--source-request-id", required=True)
+        command.add_argument("--target-decision-request-id", required=True)
+        command.add_argument("--map-id", required=True)
+        command.add_argument("--map-version", required=True, type=int)
+        command.add_argument("--decided-by", required=True)
+        command.add_argument("--decisions-file", required=True)
+        command.add_argument("--kb-parent")
+        if action == "decide":
+            command.add_argument(
+                "--outcome",
+                required=True,
+                choices=("revision-requested", "change-requested", "deferred"),
+            )
     return parser
+
+
+def _add_processor_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--processor",
+        required=True,
+        choices=("deterministic-test", "deepseek"),
+    )
+    parser.add_argument("--model-id", default=DEEPSEEK_DEFAULT_MODEL)
+    parser.add_argument("--key-reference", default=DEEPSEEK_DEFAULT_KEY_REFERENCE)
+    parser.add_argument("--allow-network", action="store_true")
+    parser.add_argument("--remote-authorization-id")
+    parser.add_argument("--remote-authorized-by")
+    parser.add_argument("--remote-authorized-at")
+    parser.add_argument("--remote-payload-sha256")
+    parser.add_argument("--remote-start-byte", type=int)
+    parser.add_argument("--remote-end-byte", type=int)
+    parser.add_argument(
+        "--tokenizer-profile",
+        choices=("deepseek-v41-official", "conservative-utf8"),
+    )
+    parser.add_argument("--tokenizer-asset")
+    parser.add_argument("--tokenizer-asset-sha256")
 
 
 def _optional_range(
@@ -120,6 +200,133 @@ def _optional_range(
     if start is None or end is None:
         raise _ArgumentError(f"{label} requires both start and end")
     return ByteRange(start, end)
+
+
+def _processor(arguments: argparse.Namespace):
+    if arguments.processor == "deterministic-test":
+        if arguments.allow_network:
+            raise _ArgumentError("deterministic-test does not accept --allow-network")
+        return DeterministicTestProcessor()
+    if not arguments.allow_network:
+        raise _ArgumentError("deepseek requires explicit --allow-network")
+    return DeepSeekChatProcessor(
+        transport=StandardLibraryHttpTransport(),
+        model_id=arguments.model_id,
+        key_reference=arguments.key_reference,
+    )
+
+
+def _token_counter(arguments: argparse.Namespace):
+    tokenizer_values = (
+        arguments.tokenizer_profile,
+        arguments.tokenizer_asset,
+        arguments.tokenizer_asset_sha256,
+    )
+    if arguments.processor == "deterministic-test":
+        if any(value is not None for value in tokenizer_values):
+            raise _ArgumentError(
+                "deterministic-test does not accept tokenizer arguments"
+            )
+        return Utf8ByteUpperBoundTokenCounter()
+    if arguments.tokenizer_profile is None:
+        raise _ArgumentError(
+            "deepseek requires an explicit --tokenizer-profile"
+        )
+    if arguments.tokenizer_profile == "conservative-utf8":
+        if (
+            arguments.tokenizer_asset is not None
+            or arguments.tokenizer_asset_sha256 is not None
+        ):
+            raise _ArgumentError(
+                "conservative-utf8 does not accept tokenizer asset arguments"
+            )
+        return Utf8ByteUpperBoundTokenCounter(model_id=arguments.model_id)
+    if (
+        arguments.tokenizer_asset is None
+        or arguments.tokenizer_asset_sha256 is None
+    ):
+        raise _ArgumentError(
+            "deepseek-v41-official requires an asset path and SHA-256"
+        )
+    asset_path = Path(arguments.tokenizer_asset)
+    if not asset_path.is_absolute():
+        raise _ArgumentError("tokenizer asset path must be absolute")
+    try:
+        return DeepSeekV41TokenizerCounter(
+            asset_path=asset_path,
+            expected_sha256=arguments.tokenizer_asset_sha256,
+            model_id=arguments.model_id,
+        )
+    except (OSError, RuntimeError, TypeError, ValueError, UnicodeError) as exc:
+        raise _ArgumentError(
+            "verified official tokenizer is unavailable or invalid"
+        ) from exc
+
+
+def _remote_authorization(
+    arguments: argparse.Namespace,
+) -> RemoteProcessingAuthorization | None:
+    values = (
+        arguments.remote_authorization_id,
+        arguments.remote_authorized_by,
+        arguments.remote_authorized_at,
+        arguments.remote_payload_sha256,
+        arguments.remote_start_byte,
+        arguments.remote_end_byte,
+    )
+    if arguments.processor == "deterministic-test":
+        if any(value is not None for value in values):
+            raise _ArgumentError(
+                "deterministic-test does not accept remote authorization fields"
+            )
+        return None
+    if not all(value is not None for value in values):
+        raise _ArgumentError(
+            "deepseek requires one exact remote-processing authorization package"
+        )
+    return RemoteProcessingAuthorization(
+        authorization_id=arguments.remote_authorization_id,
+        source_request_id=arguments.source_request_id,
+        payload_sha256=arguments.remote_payload_sha256,
+        allowed_range=ByteRange(
+            arguments.remote_start_byte,
+            arguments.remote_end_byte,
+        ),
+        provider_profile=DEEPSEEK_PROVIDER_PROFILE,
+        model_id=arguments.model_id,
+        authorized_by=arguments.remote_authorized_by,
+        authorized_at=arguments.remote_authorized_at,
+    )
+
+
+def _optional_absolute_path(value: str | None, label: str) -> Path | None:
+    if value is None:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        raise _ArgumentError(f"{label} must be absolute")
+    return path
+
+
+def _load_candidate_decisions(path_value: str) -> tuple[CandidateDecision, ...]:
+    path = Path(path_value)
+    if not path.is_absolute():
+        raise _ArgumentError("decisions file path must be absolute")
+    try:
+        status = path.lstat()
+        if not stat.S_ISREG(status.st_mode) or path.is_symlink():
+            raise _ArgumentError("decisions file must be a plain file")
+        if status.st_size > 1024 * 1024:
+            raise _ArgumentError("decisions file exceeds one MiB")
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise _ArgumentError("decisions file is not valid UTF-8 JSON") from exc
+    if not isinstance(value, list) or not value:
+        raise _ArgumentError("decisions file must contain a non-empty JSON array")
+    try:
+        return tuple(CandidateDecision.from_mapping(item) for item in value)
+    except (TypeError, ValueError) as exc:
+        raise _ArgumentError("decisions file does not match the v1 contract") from exc
 
 
 def _failure(*, write: bool, stage: str) -> CurationFailure:
@@ -208,8 +415,8 @@ def _write_output_new(path_value: str, body: bytes) -> None:
 
 def _recognized_write(argv: Sequence[str]) -> bool:
     return ("source" in argv and "prepare" in argv) or (
-        "target" in argv and "decide" in argv
-    )
+        "target" in argv and any(action in argv for action in ("suggest", "decide"))
+    ) or ("map" in argv and any(action in argv for action in ("build", "decide", "close")))
 
 
 def _run_cli(
@@ -278,6 +485,22 @@ def _run_cli(
                 _write_output_new(arguments.output, body.getvalue())
             return _emit(stdout, _cli_mapping(result))
 
+        if arguments.group == "target" and arguments.action == "suggest":
+            processor = _processor(arguments)
+            result = suggest_target(
+                TargetSuggestRequest(
+                    request_id=arguments.request_id,
+                    source_request_id=arguments.source_request_id,
+                    suggested_by=arguments.suggested_by,
+                ),
+                experiment_root=experiment_root,
+                path_policy=path_policy,
+                processor=processor,
+                remote_authorization=_remote_authorization(arguments),
+                token_counter=_token_counter(arguments),
+            )
+            return _emit(stdout, _cli_mapping(result))
+
         if arguments.group == "target" and arguments.action == "decide":
             root_policy = None
             selected_parent = None
@@ -321,6 +544,45 @@ def _run_cli(
                 path_policy=path_policy,
                 root_policy=root_policy,
             )
+            return _emit(stdout, _cli_mapping(result))
+
+        if arguments.group == "map" and arguments.action == "build":
+            processor = _processor(arguments)
+            result = build_map(
+                MapBuildRequest(
+                    request_id=arguments.request_id,
+                    source_request_id=arguments.source_request_id,
+                    target_decision_request_id=arguments.target_decision_request_id,
+                    kb_parent=_optional_absolute_path(arguments.kb_parent, "KB parent"),
+                    target_suggestion_request_id=(
+                        arguments.target_suggestion_request_id
+                    ),
+                ),
+                experiment_root=experiment_root,
+                path_policy=path_policy,
+                processor=processor,
+                remote_authorization=_remote_authorization(arguments),
+                token_counter=_token_counter(arguments),
+            )
+            return _emit(stdout, _cli_mapping(result))
+
+        if arguments.group == "map" and arguments.action in {"decide", "close"}:
+            outcome = (
+                "map-closed" if arguments.action == "close" else arguments.outcome
+            )
+            request = MapDecideRequest(
+                request_id=arguments.request_id,
+                source_request_id=arguments.source_request_id,
+                target_decision_request_id=arguments.target_decision_request_id,
+                map_id=arguments.map_id,
+                map_version=arguments.map_version,
+                outcome=outcome,
+                decided_by=arguments.decided_by,
+                decisions=_load_candidate_decisions(arguments.decisions_file),
+                kb_parent=_optional_absolute_path(arguments.kb_parent, "KB parent"),
+            )
+            operation = close_map if arguments.action == "close" else decide_map
+            result = operation(request, experiment_root=experiment_root)
             return _emit(stdout, _cli_mapping(result))
         raise _ArgumentError("unsupported operation")
     except (_ArgumentError, TypeError, ValueError):

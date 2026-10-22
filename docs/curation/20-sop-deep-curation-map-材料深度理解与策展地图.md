@@ -131,6 +131,7 @@ authorized -> processing -> map_ready
 
 用户决定：
   <对应 map_id>/decisions/<decision_set_id>/v0001.yaml
+  <对应 map_id>/decisions/<decision_set_id>/v0001.run.json
 ```
 
 `map.yaml` 至少固定格式版本、`map_id`、单调递增的 `map_version`、运行与来源绑定、声明范围、范围账、处理器/成本，以及候选清单。每个候选至少有 `candidate_id`、类型、简述、Evidence locator 引用、来源主张/系统推断属性、不确定性和对应 `map.md` 锚点。`map.md` 是由同一事实生成、可直接阅读的呈现，不得包含机器清单中不存在的“额外已确认结论”。
@@ -139,6 +140,8 @@ authorized -> processing -> map_ready
 
 用户或 Agent 修改地图内容时创建新版本，不覆盖旧版；未改变语义的候选保留 `candidate_id`，改变含义的候选使用新 ID 并记录 `supersedes`。接受、拒绝、延期和用户改写写入不可变决定记录，至少包含 `decision_set_id + version`、精确 `map_sha256`、逐候选决定、用户提供的替代文本、操作者和时间。决定 YAML 使用受限、规范 UTF-8 发射且不保存自身摘要；回执和下游以该文件精确 bytes 的 SHA-256 作为 `decision_sha256`。只改变决定时不伪装成地图内容被重写；决定变化产生新决定版本。旧版决定和后续方案继续指向原哈希。
 
+决定 schema v1 保持上述业务事实不变；每个决定版本另有不可变的同版本 `vNNNN.run.json` 运行旁车。旁车保存 `transaction_id`、决定相对路径、`decision_sha256`、精确地图绑定、目标绑定或 `null`、基础受管 commit（无目标时为 `null`）及发布状态，但不复制逐候选业务决定，也不把结果 commit 写入受版本控制的自引用内容。目标 KB 的结果 commit 仍只写入被忽略的本机回执；干净 checkout 依据旁车中的非自引用事务身份和唯一匹配 commit 重建回执。决定 YAML 与其旁车必须作为同一事务一起发布，任一缺失、哈希不符或身份不唯一都不能发布决定状态。
+
 有目标 KB 的首个切片只有在地图、运行记录、既有 `raw/` 映射和 Route Record 已形成一次目标 KB `managed-local` 仓库中的限定路径 Git 检查点后，才发布 `map_ready`；该检查点只在本地完成，不访问 remote，也不是业务批准。无目标地图不伪造 KB 或 Git 提交，必须以同目录临时文件和原子发布写入工作根，再回读验证正文与回执哈希。
 
 ### 7.1 有目标地图与决定的发布事务
@@ -146,12 +149,12 @@ authorized -> processing -> map_ready
 有目标地图的本地检查点不是一句“顺便 commit”。地图版本和之后的决定记录分别使用一次可恢复的工作工件发布事务：
 
 1. 获取目标 KB 的统一写锁和版本锁；验证 `HEAD` 符号指向 `refs/heads/knowledgeflow`、没有未解决的初始化/路由/地图/方案/批准/Apply 事务，并绑定受管 ref 的基础 commit、manifest、`raw/`/Route Record 身份及全部待发布路径不存在证明。目标路径已有未知对象或出现未绑定的 staged/unstaged/工作树变化时停止。
-2. 在 `.knowledgeflow/transactions/` 的流程自有 staging 中生成完整 `map.yaml + map.md + 运行记录` 或单个决定版本，保存稳定 `transaction_id`，验证范围账、引用、路径、哈希和不可变版本号后再发布；不得覆盖旧地图或决定。
+2. 在 `.knowledgeflow/transactions/` 的流程自有 staging 中生成完整 `map.yaml + map.md + 运行记录`，或同一决定版本的 `vNNNN.yaml + vNNNN.run.json`，保存稳定 `transaction_id`，验证范围账、引用、路径、哈希和不可变版本号后再发布；不得覆盖旧地图或决定。
 3. 回读最终字节后，使用总览第 4.1 节的受控版本适配器，以隔离索引和基础 commit 比较后更新受管 ref，再只对齐本批路径在默认索引中的条目。commit 只包含本次地图/运行记录或决定记录；blob 必须等于回读字节，目标外用户 index 与工作树改动不得被提交、清空、改写或改变 staged/unstaged 含义。
 4. 结果 commit 写入被忽略的本机回执；受版本控制的运行/决定记录只保存非自引用事务身份。Git 已提交但回执尚未闭合时保持未完成，后续地图决定、Prepare 和 Apply 均被阻塞。
 5. 只有事务、原始或重建回执、结果 commit、文件和来源绑定全部匹配时才发布 `map_ready`、`map_closed` 或 `change_requested`。中断后只能依据本事务证据继续、精确恢复前态或进入 `recovery_required`，不能仅因文件存在就推断成功。
 
-干净 checkout、换机或本机回执缺失时，只能从版本化运行/决定记录中的事务身份、唯一带相同身份的可达 commit、地图/决定摘要、来源/`raw/` 绑定和当前字节确定性重建回执；链条不唯一、受管 ref 漂移或目标路径被未知后续 commit 修改时失败关闭。
+干净 checkout、换机或本机回执缺失时，只能从地图运行记录或决定运行旁车中的事务身份、唯一带相同身份的可达 commit、地图/决定摘要、来源/`raw/` 绑定和当前字节确定性重建回执；链条不唯一、受管 ref 漂移或目标路径被未知后续 commit 修改时失败关闭。
 
 无目标地图和决定使用同样的稳定身份、不可变目录、流程自有事务与原子发布规则，但不创建 Git 仓库。它们的本机回执绑定工作根中的最终路径与哈希；以后复制到目标 KB 时再按有目标发布事务建立独立检查点，不把原工作根回执冒充 KB 提交。
 

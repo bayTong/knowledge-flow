@@ -442,6 +442,7 @@ class TargetDecideResult:
 
 
 TargetDecideOperationResult = TargetDecideResult | CurationFailure
+TargetInspectOperationResult = TargetDecideResult | CurationFailure
 
 
 @dataclass(frozen=True, slots=True)
@@ -1167,7 +1168,6 @@ def _load_verified_target_bundle(
             or route.base_commit != binding.base_commit
             or route.version_policy_id != binding.version_policy_id
             or route.version_policy_revision != binding.version_policy_revision
-            or result_commit != git.current_commit(repository)
         ):
             raise _TargetCorrupt
         initial_files = _initial_files(manifest)
@@ -1187,12 +1187,20 @@ def _load_verified_target_bundle(
         }
         if git.changed_paths(repository, base_commit, result_commit) != frozenset(expected):
             raise _TargetCorrupt
+        current_commit = git.current_commit(repository)
+        if current_commit != result_commit and not git.is_ancestor(
+            repository,
+            result_commit,
+            current_commit,
+        ):
+            raise _TargetCorrupt
         git.verify(
             repository,
             result_commit,
             expected,
             expected_parent=base_commit,
             exact_tree=False,
+            require_current=False,
         )
         receipt = _load_canonical_json(
             _read_bounded(
@@ -1591,10 +1599,83 @@ def target_decide(
         return _failure(CurationErrorCode.INVALID_INPUT, stage="validate")
 
 
+def inspect_target_decision(
+    decision_request_id: str,
+    *,
+    experiment_root: str | os.PathLike[str],
+    kb_parent: str | os.PathLike[str] | None = None,
+    git: ManagedGit | None = None,
+) -> TargetInspectOperationResult:
+    """Read and fully verify one recorded target result without changing it."""
+
+    try:
+        if (
+            type(decision_request_id) is not str
+            or _SAFE_TOKEN.fullmatch(decision_request_id) is None
+        ):
+            raise ValueError("decision_request_id must be a safe lowercase token")
+        selected_git = git or ManagedGit()
+        if not isinstance(selected_git, ManagedGit):
+            raise TypeError("git must be ManagedGit")
+        layout = _layout(experiment_root)
+        for path in (layout.root, layout.work_root, layout.targets_root):
+            _plain_directory(path)
+        directory = layout.targets_root / decision_request_id
+        _plain_directory(directory)
+        record = _decode_internal(
+            load_target_decision_record,
+            _read_bounded(directory / "target-decision.yaml"),
+        )
+        assert isinstance(record, TargetDecisionRecord)
+        parent: Path | None = None
+        if record.decision.choice == "new-kb":
+            if kb_parent is None:
+                return _failure(
+                    CurationErrorCode.TARGET_NOT_CONFIRMED,
+                    stage="target-parent",
+                )
+            parent = _absolute(kb_parent).resolve(strict=True)
+            _plain_directory(parent)
+        elif kb_parent is not None:
+            raise ValueError("no-target result does not accept kb_parent")
+        return _load_verified_target_bundle(
+            directory,
+            request_bytes=_read_bounded(directory / "request.json"),
+            parent=parent,
+            git=selected_git,
+        )
+    except FileNotFoundError:
+        return _failure(CurationErrorCode.SOURCE_NOT_FOUND, stage="target-readback")
+    except (ManagedGitConflict, ManagedGitIntegrityError):
+        return _failure(CurationErrorCode.TARGET_CONFLICT, stage="managed-ref")
+    except ManagedGitUnavailable:
+        return _failure(
+            CurationErrorCode.VERSION_CONTROL_UNAVAILABLE,
+            stage="version-control",
+        )
+    except ManagedGitError:
+        return _failure(
+            CurationErrorCode.VERSION_CONTROL_UNAVAILABLE,
+            retryable=True,
+            stage="version-control",
+        )
+    except (_TargetCorrupt, OSError):
+        return _failure(
+            CurationErrorCode.RECOVERY_REQUIRED,
+            state=CurationCommitState.UNKNOWN,
+            retryable=True,
+            stage="target-readback",
+        )
+    except (TypeError, ValueError):
+        return _failure(CurationErrorCode.INVALID_INPUT, stage="validate")
+
+
 __all__ = [
     "KnowledgeBaseRootPolicy",
     "TargetDecideOperationResult",
     "TargetDecideRequest",
     "TargetDecideResult",
+    "TargetInspectOperationResult",
+    "inspect_target_decision",
     "target_decide",
 ]

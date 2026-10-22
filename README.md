@@ -186,9 +186,9 @@ knowledge-flow/
 │   │   ├── recovery.py               C6B explicit derived-state rebuild operation
 │   │   └── migration.py              C6C explicit copy-verify-switch Store migration
 │   └── knowledgeflow_curation/
-│       ├── __init__.py               CUR1A–CUR1C public curation contracts and operations
-│       ├── contracts.py              CUR1A–CUR1C source, permission, range, target, route, map, and KB values
-│       ├── codec.py                  CUR1A/CUR1C canonical YAML, same-fact Markdown, and artifact digests
+│       ├── __init__.py               CUR1A–CUR1D public curation contracts and operations
+│       ├── contracts.py              CUR1A–CUR1D source, permission, range, target, route, map, and KB values
+│       ├── codec.py                  CUR1A/CUR1C/CUR1D canonical YAML, same-fact Markdown, and artifact digests
 │       ├── errors.py                 CUR1A stable errors, safe diagnostics, and commit states
 │       ├── ids.py                    CUR1B/CUR1C curation-object UUIDv7 generation
 │       ├── locking.py                CUR1C bounded cross-process file locks
@@ -196,7 +196,9 @@ knowledge-flow/
 │       ├── operations.py             CUR1B exact-source prepare, inspect, and Evidence readback
 │       ├── targeting.py              CUR1C target decision, provisional KB bootstrap, and raw mapping
 │       ├── versioning.py             CUR1C controlled offline managed-local Git adapter
-│       └── cli.py                    CUR1B/CUR1C four restricted commands and single JSON receipts
+│       ├── processing.py             CUR1D processor port, DeepSeek adapter, tokenizer, and budget execution
+│       ├── map_operations.py         CUR1D target suggestion, map, decision, recovery, and publish orchestration
+│       └── cli.py                    CUR1B–CUR1D restricted commands and single JSON receipts
 ├── tests/
 │   ├── capture/
 │   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
@@ -204,10 +206,13 @@ knowledge-flow/
 │   │   ├── integration/              C2B–P0C transaction, read, CLI, management, inbox, boundary, and concurrency tests
 │   │   └── fault/                    C2B/C6A process-crash recovery tests (323 capture tests total)
 │   ├── curation/
+│   │   ├── evaluation-gold/          Evaluator-only blind source-fidelity answers; excluded from processor context
 │   │   ├── fixtures/                 Ten CUR1A/CUR1C contract/presentation goldens plus one source-body fixture
 │   │   ├── test_contracts.py         CUR1A/CUR1C contracts and error-semantics tests (16 tests)
 │   │   ├── test_operations.py        CUR1B segmentation, source transaction, readback, and CLI tests (14 tests)
-│   │   └── test_targeting.py         CUR1C target, local Git, concurrency, recovery, and isolation tests (12; 42 curation tests total)
+│   │   ├── test_targeting.py         CUR1C target, local Git, concurrency, recovery, and isolation tests (12 tests)
+│   │   ├── test_processing.py        CUR1D processor, budget, tokenizer, and window tests (18 tests)
+│   │   └── test_map_operations.py    CUR1D map-operation, fault, replay, and CLI tests (33; 93 curation tests total)
 │   └── scripts/
 │       ├── test_doc_check.py          8 deterministic document-guard regressions
 │       └── test_maintenance_scripts.py  7 maintenance-script regressions

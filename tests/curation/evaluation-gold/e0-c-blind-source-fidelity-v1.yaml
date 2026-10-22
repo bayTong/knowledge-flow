@@ -1,0 +1,105 @@
+format: "knowledgeflow.evaluation-gold-record"
+format_version: 1
+status: "evaluator-only"
+not_a_product_schema: true
+formed_at: "2026-10-20"
+purpose: >-
+  Freeze two non-C-K source-fidelity checks before any real semantic processor
+  output exists. This record must never be provided to the processor under test.
+
+source:
+  name: "大模型应用开发核心解决的是什么问题.md"
+  byte_size: 1184815
+  sha256: "32a640a72483a513885e8c035da76d3c84b0796c30cd087dc84fbc4992179f66"
+  encoding: "utf-8"
+  newline: "lf"
+  line_count: 24525
+
+selection_method:
+  decided_before_processor_output: true
+  rules:
+    - "B-K1 uses the complete user-assistant exchange containing line 12000; if no exchange contains it, use the next complete exchange."
+    - "B-K2 uses the complete user-assistant exchange containing line 19000; if no exchange contains it, use the next complete exchange."
+    - "An exchange starts at a user marker and ends immediately before the next user marker."
+    - "If an exchange exceeds 300 lines, keep the first 300 lines from the user marker and mark it truncated."
+    - "If a selected range overlaps a C-K range, use the next complete exchange and record the fallback."
+  content_based_reselection_allowed: false
+  c_k_overlap_found: false
+
+blind_checks:
+  - id: "B-K1"
+    anchor_line: 12000
+    full_exchange:
+      start_line: 11601
+      end_line: 12412
+    frozen_range:
+      start_line: 11601
+      end_line: 11900
+    truncated: true
+    truncation_note: >-
+      The exchange has 812 lines. The fixed 300-line range ends inside an ARES
+      example, so no conclusion may be claimed for lines 11901-12412.
+    user_question: "如何评测模型输出的幻觉率和准确率。"
+    source_finding: >-
+      The assistant answers mainly in a RAG evaluation context. It separates
+      factual accuracy, completeness, consistency and safety; distinguishes
+      generation-quality measures from retrieval precision/recall; and presents
+      automatic checks, LLM-as-judge ideas, frameworks, formulas, thresholds and
+      example code as proposed methods or examples.
+    fidelity_risks:
+      - "Do not broaden this RAG-focused answer into a complete universal standard for every model task."
+      - "Do not merge hallucination or answer accuracy with retrieval precision and recall."
+      - "Do not report example code, thresholds, framework behavior or sample scores as executed or externally verified."
+      - "Do not claim the truncated blind range covers the exchange's final conclusions."
+    pass_if_mentioned:
+      - "Keeps the user's evaluation question and the assistant's multi-dimensional proposal distinct."
+      - "Separates generation-quality and retrieval-quality measures."
+      - "Attributes formulas, tools, thresholds and code to the assistant as examples or claims."
+    fail_if_mentioned:
+      - "Presents examples as tested implementation or verified industry facts."
+      - "Collapses all metrics into one accuracy measure."
+      - "Claims complete coverage of the 812-line exchange."
+
+  - id: "B-K2"
+    anchor_line: 19000
+    full_exchange:
+      start_line: 18899
+      end_line: 19108
+    frozen_range:
+      start_line: 18899
+      end_line: 19108
+    truncated: false
+    user_question: >-
+      Agent Skill 文件夹应包含哪些内容，这些内容是否就是此前意图识别和知识图谱中的具体决策。
+    source_finding: >-
+      The assistant proposes separating skill interface and implementation from
+      higher-level intent, business-rule and workflow decisions. Its example
+      skill package includes registry metadata, implementation code, config,
+      tests, dependencies and shared utilities; it also includes permission
+      metadata, authentication, validation and error handling inside the skill
+      boundary. These are the assistant's architecture claims, not verified norms.
+    fidelity_risks:
+      - "Do not reduce a Skill folder to documentation only."
+      - "Do not claim a Skill contains no permissions, validation or technical constraints."
+      - "Do not merge intent recognition and knowledge-graph roles into one role."
+      - "Do not present the example tree or code as the user's implemented system or an externally mandatory standard."
+    pass_if_mentioned:
+      - "Preserves the user's overlap question and the proposed separation of responsibilities."
+      - "Keeps representative metadata, implementation, configuration and testing components visible."
+      - "Attributes the architecture to the assistant rather than to an external standard."
+    fail_if_mentioned:
+      - "Moves every business and workflow decision into the Skill package."
+      - "Calls a Skill only a prose document or says it may contain no permission or validation data."
+      - "Claims the example files already exist or are universally required."
+
+omission_rule: >-
+  A map does not fail merely because it omits a blind topic. Omission is a
+  failure only when the map's declared scope or depth says the range was
+  covered, while the result neither represents it nor exposes it as deferred,
+  failed, excluded or deliberately low-priority.
+
+limitations:
+  - "This is an isolated AI source-fidelity review, not human domain-expert validation."
+  - "No external facts, tools, code, products or architecture claims were verified."
+  - "Two mechanically selected exchanges do not estimate full-document semantic recall."
+  - "B-K1 is intentionally truncated and cannot judge the rest of its exchange."

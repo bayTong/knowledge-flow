@@ -65,8 +65,21 @@ _UNCERTAINTY_VALUES = frozenset({"none", "low", "medium", "high", "unknown"})
 _SCOPE_STATUSES = frozenset(
     {"processed", "deferred", "failed", "excluded-by-user"}
 )
-_PROCESSOR_KINDS = frozenset({"mechanical", "test-fixture", "file-exchange"})
-_RUN_STATES = frozenset({"authorized", "processing", "failed", "cancelled"})
+_PROCESSOR_KINDS = frozenset(
+    {"mechanical", "test-fixture", "file-exchange", "remote-api"}
+)
+_RUN_STATES = frozenset(
+    {
+        "authorized",
+        "processing",
+        "map-ready",
+        "map-closed",
+        "change-requested",
+        "deferred",
+        "failed",
+        "cancelled",
+    }
+)
 _DECISION_ACTIONS = frozenset({"accept", "reject", "defer", "modify"})
 _DECISION_OUTCOMES = frozenset(
     {"map-closed", "revision-requested", "change-requested", "deferred"}
@@ -77,6 +90,7 @@ class CurationOperation(StrEnum):
     SOURCE_PREPARE = "source.prepare"
     SOURCE_INSPECT = "source.inspect"
     EVIDENCE_SHOW = "evidence.show"
+    TARGET_SUGGEST = "target.suggest"
     TARGET_DECIDE = "target.decide"
     MAP_BUILD = "map.build"
     MAP_DECIDE = "map.decide"
@@ -546,6 +560,10 @@ class ProcessorProfile:
             self.model_id is not None or self.network_allowed
         ):
             raise ValueError("mechanical and test processors must be offline and model-free")
+        if self.kind == "remote-api" and (
+            self.model_id is None or not self.network_allowed
+        ):
+            raise ValueError("remote API processors require a model and network")
 
     def as_mapping(self) -> dict[str, object]:
         return {

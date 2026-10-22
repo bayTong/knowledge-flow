@@ -214,6 +214,7 @@ class CurationContractTest(unittest.TestCase):
                 "source.prepare",
                 "source.inspect",
                 "evidence.show",
+                "target.suggest",
                 "target.decide",
                 "map.build",
                 "map.decide",
