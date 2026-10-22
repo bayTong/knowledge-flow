@@ -7,6 +7,7 @@
 > CUR1B 远端门禁闭合日期：2026-10-19（CI 可移植性修复 `b8525b9`；Windows CI #17 成功）<br>
 > CUR1C 授权、实现与远端门禁闭合日期：2026-10-19（实现提交 `68b9c77`；Windows CI #18 成功）<br>
 > CUR1D-PREFLIGHT 闭合日期：2026-10-21（数值/网络预算与两段授权包已形成；不授权编码或真实外传）<br>
+> CUR1D-CODE 本地版本化日期：2026-10-22（实现提交 `16ddc77`；尚未 push 或完成该提交的远端 Windows 门禁）<br>
 > 产品里程碑：一份精确本地材料形成可查看、可回证、可修改、可在地图处结束的策展地图<br>
 > 上位约束：[主产品需求文档](../requirements-and-governance-baseline-需求与治理基线.md)、[设计权威与冲突登记](../design-authority-and-conflict-register-设计权威与冲突登记.md)、[EVIDENCE-0 实验协议](../evidence-first-experiment-protocol-Evidence优先实验协议.md)<br>
 > 执行契约候选：[捕获与路由规范](../capture/capture-and-routing-spec-捕获与路由规范.md)、[SOP-10 新建知识库骨架](10-sop-new-kb-bootstrap-新建知识库骨架.md)、[SOP-20 材料深度理解与策展地图](20-sop-deep-curation-map-材料深度理解与策展地图.md)
@@ -529,5 +530,5 @@ R1V 新增 6 项恢复、处理前阻断、预算共享与篡改拒绝回归，�
 
 ## 9. 批次顺序与授权边界
 
-`CUR1A` 已由提交 `9b33acc` 版本化；`CUR1B` 已完成实现、真实机械验收、版本化及精确远端 Windows 门禁，远端实现基线为 `b8525b9` 与 Windows CI #17；`CUR1C` 已由提交 `68b9c77` 版本化，并由 Windows CI #18 闭合精确远端门禁。`CUR1D-PREFLIGHT` 已闭合并形成不含 gold 的两段授权包；`CUR1D-CODE-R1A–R1V` 已形成通过本地全量门禁但尚未版本化的候选。下一步只决定是否独立提交；push、远端 Windows CI 和一次 `CUR1D-RUN` 仍分别需要后续决定。此前不得调用真实 API、发送 `E0-C` 正文或运行真实语义处理器，任何 `wiki/` 写入仍须等待 `CUR-MVP-2`。当前精确门禁始终以[项目状态文档](../project-status-项目状态与当前门禁.md)为准。
+`CUR1A` 已由提交 `9b33acc` 版本化；`CUR1B` 已完成实现、真实机械验收、版本化及精确远端 Windows 门禁，远端实现基线为 `b8525b9` 与 Windows CI #17；`CUR1C` 已由提交 `68b9c77` 版本化，并由 Windows CI #18 闭合精确远端门禁。`CUR1D-PREFLIGHT` 已闭合并形成不含 gold 的两段授权包；`CUR1D-CODE-R1A–R1V` 已通过本地全量门禁并由提交 `16ddc77` 版本化。下一步只决定是否 push 并观察远端 Windows CI；一次 `CUR1D-RUN` 仍需后续独立决定。此前不得调用真实 API、发送 `E0-C` 正文或运行真实语义处理器，任何 `wiki/` 写入仍须等待 `CUR-MVP-2`。当前精确门禁始终以[项目状态文档](../project-status-项目状态与当前门禁.md)为准。
 
