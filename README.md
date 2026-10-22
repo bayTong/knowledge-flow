@@ -1,338 +1,248 @@
-[English](README.md) · [中文文档](README-zh.md)
-
 # KnowledgeFlow
 
-> A general-purpose, adaptive, governance-first personal knowledge-work system: start from
-> material, a question, or a vague intent; let the system do most knowledge labor while evidence,
-> trust layers, and reversible approval control high-impact changes.
+> A governance-first, local-first system for personal knowledge work and knowledge management.
 
-> **Delivery summary:** the single-machine, single-user MVP-0 text capture kernel and the tested P0B-min/P0C scopes are `Implemented`. The low-sensitivity Pilot completed an initial real-use and recovery loop, but the overall project is still neither `Effective` nor production-ready. The exact current phase, next gate, known issues, and verification evidence are maintained only in the [project status document](docs/project-status-项目状态与当前门禁.md).
+[简体中文](README-zh.md)
+
+KnowledgeFlow helps an individual begin with an idea, source, question, research topic, or existing knowledge base: preserve source facts reliably, make material findable, browsable, retrievable, and understandable, then gradually promote only the parts worth stabilizing into trusted knowledge through evidence, human decisions, and constrained execution.
+
+It is not a tool that asks a model to generate a seemingly complete knowledge base, and it does not require a complete taxonomy, schema, ontology, or knowledge graph before work can begin. Models, RAG, wikis, graphs, and local Git are composable tools. The product itself is the governable lifecycle from source facts through working knowledge and proposals to trusted knowledge.
+
+The repository is under active development. The tested capture kernel and selected local administration and inbox scopes are implemented, while the first evidence-linked deep-curation vertical slice is still being formed. The overall product is not production-ready and has not yet proved long-term knowledge-work effectiveness. See the [project status](docs/project-status-项目状态与当前门禁.md) for the exact boundary.
+
+## Why KnowledgeFlow exists
+
+Personal knowledge work often oscillates between two failure modes:
+
+```text
+Understand, classify, and model everything before saving it
+→ the up-front cost is too high, so ideas and sources are lost before curation
+
+Let a model extract everything and write directly into a knowledge base
+→ fast, but opaque source selection and semantic decisions are hard to trust,
+  maintain, or roll back
+```
+
+KnowledgeFlow does not promise to eliminate understanding and curation with one model call. It turns them into a process that can pause, be reviewed, and continue later:
+
+### The knowledge-curation paradox
+
+High-quality curation requires understanding the material, the user's goals, and the domain context well enough to judge what matters, which claims conflict, and which organization will retain value. Yet people often need a knowledge tool precisely because the material is unfamiliar, too large, or too costly to understand completely up front.
+
+Models can read, compare, and generate candidates at scale, but they do not know what ultimately matters to this user and may omit, compress, misunderstand, or hallucinate. Users own the goal and final judgment, but should not have to perform every mechanical reading, classification, and maintenance step. The problem is therefore not a binary choice between human and model curation; it is how to assign each responsibility to the right actor.
+
+The most dangerous failure is not an extra noisy candidate that is easy to remove. It is a silent omission hidden behind a fluent, apparently complete result. KnowledgeFlow does not promise to eliminate semantic omission. It requires source preservation, visible processing boundaries, evidence for important candidates, and human control of high-impact decisions.
+
+### Resolution: redistribute responsibility
+
+| Actor | Primary responsibility |
+|---|---|
+| System and models | Perform delegable preservation, segmentation, retrieval, comparison, overview, candidate discovery, evidence organization, conflict checks, and exact change preparation |
+| User | Decide the current goal, processing scope, importance, trust, and high-impact structural changes without bearing all mechanical organization work |
+| Constrained executor | Deterministically apply, verify, and record precisely approved objects without making new semantic decisions after approval |
+
+This produces a process that may pause, be reviewed, and continue later: first prove what the user submitted; then create useful working knowledge without presenting it as trusted conclusions; expose structures, relationships, and changes as evidence-linked candidates; apply only precisely approved changes; and continue governing additions, conflicts, obsolescence, reorganization, and rollback.
+
+## Core lifecycle
+
+```text
+idea / source / question / research topic / existing knowledge base
+                              │
+               preserve new  │ reuse an existing source
+                              ▼
+                    T0 source facts
+          exact content, stable identity, versions, hashes, intent
+                              │
+                              ▼
+                   T1 working knowledge
+       state, indexes, summaries, answers, temporary organization,
+                     and candidate relationships
+                              │
+                              ▼
+                   T2 candidates and proposals
+          curation maps, evidence, scope, impact, and exact changes
+                              │
+                  ┌───────────┴───────────┐
+                  ▼                       ▼
+           save and finish         prepare exact changes
+                                            │
+                                    explicit human approval
+                                            │
+                                  constrained apply and verify
+                                            │
+                                            ▼
+                                    T3 trusted knowledge
+                                wiki, stable structures, trusted
+                                 relations, checkpoints, rollback
+                                            │
+                                            └──→ ongoing governance
+```
+
+This is not a mandatory pipeline that every task must complete. Preserving a source, answering one evidence-linked question, keeping a curation map, or choosing not to create a knowledge base can all be valid endpoints. A task about an existing source reuses its identity rather than creating another Capture merely to satisfy the diagram.
+
+## Four representative tasks
+
+These are representative user journeys, not four mutually exclusive modules or fixed processing modes. The shared capabilities are reliable capture, working knowledge, evidence binding, candidates and proposals, trusted writing, and ongoing governance.
+
+| User task | What the system should primarily do | Reasonable first result |
+|---|---|---|
+| Low-friction daily knowledge management | Preserve ideas and short notes, establish minimum source state, and only summarize or group them under a task or a visible, revocable rule | Findable raw material and unobtrusive working knowledge |
+| Deep curation of valuable medium or long material | Produce an overall view, chapter or topic structure, claims, disputes, limitations, gaps, and precise evidence locations | A viewable, evidence-linked, editable curation map that may be the endpoint |
+| Maintenance of an existing knowledge base | Compare new sources with trusted content, identify additions, duplication, conflicts, staleness, and structural drift, then prepare exact changes | A maintenance proposal that lets the user focus on important differences |
+| Large or continuously growing corpora | Preserve sources and processing state, build rebuildable indexes, retrieve evidence by question, and produce local answers | Traceable access that exposes query bias and unprocessed scope |
+
+These are not four unrelated products. A short note may grow into a research topic, research may become a knowledge base, and an existing knowledge base may re-enter the understanding and governance loop as new sources arrive. The paths share invariants such as exact source versions, declared processing scope, evidence location, and source replay, but they need not share the same algorithm, cost, or review depth.
+
+## Two axes that must remain separate
+
+The most common conceptual mistake in KnowledgeFlow is to merge “what kind of artifact is this?” with “how may this particular version be trusted and used?” They are different axes:
+
+| Axis | Question | Examples |
+|---|---|---|
+| Artifact type | What work does this object perform? | raw material, summary, curation map, wiki page, `SCHEMA.md`, ontology, knowledge graph |
+| Governance state | What process has this version passed, and how may it be used? | source fact, working result, pending proposal, approved and verified trusted result, historical version |
+
+The same artifact type may appear in different governance states. A model-generated wiki draft is still working knowledge. A byte-exact wiki change waiting for approval is a proposal. Only after approval, deterministic application, and read-back verification does the page become trusted knowledge. Conversely, accepting a curation map as the result of a task does not turn it into a wiki, ontology, or knowledge graph.
+
+The four trust layers provide the shared boundary:
+
+| Layer | Typical contents | Must not be mistaken for |
+|---|---|---|
+| T0 source facts | exact content, versions, hashes, provenance, explicit intent | content that is correct, understood, or classified |
+| T1 working knowledge | indexes, summaries, outlines, answers, temporary collections, candidate graphs | user-approved knowledge conclusions |
+| T2 candidates and proposals | curation maps, Evidence Bundles, routing, structure, and exact change proposals | already executed trusted changes |
+| T3 trusted knowledge and governance | approved pages, stable structures, trusted relations, approvals, checkpoints, rollback history | a cache that models, RAG, or mirrors may overwrite |
+
+## How the main artifacts and technologies cooperate
+
+| Artifact or capability | Primary role | Boundary |
+|---|---|---|
+| Capture / raw | Preserve an exact version of what the user submitted | Proves source facts, not semantic correctness or understanding |
+| Curation map | Show what a bounded source set says, where evidence lives, and what disputes, gaps, and organization candidates exist | May be the endpoint; it is not trusted wiki content or a permanent map of an entire corpus |
+| Wiki | Explain and maintain topics as durable human-readable pages | Drafts, proposals, and trusted pages remain distinct |
+| RAG | Retrieve evidence from an allowed source or knowledge scope and support the current answer | Organizes access and evidence; it does not grant trusted identity |
+| KB `SCHEMA.md` | Define valid page, source-reference, link, and navigation conventions | May be minimal and is not automatically a complete domain ontology |
+| Ontology | Define concepts, relationships, and constraints that must be reused consistently across content | Introduced for demonstrated reuse or validation value, not as a prerequisite |
+| Knowledge graph | Represent, browse, and query concrete entity relationships | May be candidate or trusted; an ordinary link graph is not automatically a knowledge graph |
+| SOP | Define who performs which steps, when to pause, approve, verify, and recover | Controls execution; it does not replace product requirements or user decisions |
+| Local Git | Provide transparent offline checkpoints for managed knowledge bases | A technical commit is not business approval, backup, or a dependency on GitHub |
+
+Structure matures through real use. A knowledge base may remain a Markdown wiki with ordinary links and search indefinitely. Controlled vocabularies, taxonomies, ontologies, or formal knowledge graphs become worthwhile only when naming consistency, relationship queries, validation, or interoperability create enough benefit to justify their ongoing governance cost.
+
+## Authority, automation, offline use, and accounts
+
+Three permissions remain separate:
+
+1. assign a source to a knowledge base;
+2. allow deep semantic processing of the source;
+3. approve exact changes to trusted knowledge.
+
+Saving a source does not automatically authorize model summaries, relationship discovery, or indefinite background processing. Deep-processing permission does not authorize changes to the trusted layer. Models may assist reading, comparison, explanation, organization proposals, and diff preparation, but they must not silently change user goals, knowledge-base boundaries, trusted pages, stable structures, deletion scope, or publication state.
+
+Normal Capture Store use does not require GitHub, a GitHub account, or continuous network access. GitHub Actions is only a remote development check. In the first version, once a map is bound to a managed knowledge base, its managed maps, decisions, and later trusted wiki content enter that knowledge base's local Git history. This still requires no remote, account, network, or push.
+
+Semantic features that call an external provider require separate authorization and can be disabled. Without a model key or network, existing Capture data, version history, recovery operations, deterministic evidence, and saved artifacts remain local and usable. External and local models are replaceable semantic adapters, not normative sources for preservation or ordinary local reading.
+
+## Current repository scope
+
+The repository currently contains:
+
+- a single-machine, single-user local text Capture Store;
+- four public text operations: create, read, list, and append a new immutable version;
+- explicit Store initialization, verification, operational-copy backup, and new-target restore;
+- a minimal Tk local inbox using those public operations;
+- contracts, mechanical capabilities, and active implementation for an evidence-linked deep-curation vertical slice;
+- deterministic tests for identity, integrity, concurrency, crash recovery, migration, and bounded curation transactions.
+
+The project does not yet claim production deployment, high-sensitivity data protection, trusted-wiki writing, general RAG, a formal knowledge graph, multi-device collaboration, or long-term user-value validation. Exact maturity, current completion, and the next authorization belong only in the [project status document](docs/project-status-项目状态与当前门禁.md).
+
+## Quick start for development
+
+KnowledgeFlow currently targets Python 3.13.
+
+```powershell
+py -3.13 -m venv .venv
+.venv\Scripts\python -m pip install -e .
+```
+
+Open the local inbox after configuring or initializing a test/local Capture Store:
+
+```powershell
+.venv\Scripts\knowledgeflow-inbox.exe
+```
+
+Run repository checks:
+
+```powershell
+.venv\Scripts\python -m unittest discover -s tests -p "test_*.py"
+.venv\Scripts\python scripts/doc-check.py
+```
+
+The machine-facing Capture CLI intentionally uses a framed stdin/stdout protocol rather than an interactive help surface. Use the [operation contract](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md) before integrating it. Real data, production paths, external model calls, and trusted writes require the precise authorization described by the current project gate.
+
+## How the documents divide responsibility
+
+- Root README: lets a first-time reader understand the product; it does not maintain current commits or detailed contracts.
+- [Master PRD](docs/requirements-and-governance-baseline-需求与治理基线.md): defines the problem, required product outcomes, scope, requirements, and acceptance conditions.
+- [Conceptual architecture guide](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md): explains in detail how T0–T3, schema, SOPs, curation maps, RAG, ontologies, and knowledge graphs fit together.
+- [Design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md): identifies the responsible current document when cross-document claims conflict and records a small set of stable cross-topic rulings.
+- [Progressive knowledge-refinement specification](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md): investigates how deeply to process material of different scale and intent, how to account for scope, measure coverage, and choose methods; concrete methods still require evidence.
+- [Project status and current gate](docs/project-status-项目状态与当前门禁.md): is the only record of where work stands, what evidence exists, and what may be authorized next.
+
+The full reading order and historical entry points are in `docs/README.md`:
 
 | Looking for | Jump to |
-|------------|---------|
-| The core problem this project solves | [The Curation Paradox](#the-curation-paradox) |
-| Full pipeline walkthrough | [The Pipeline](#the-pipeline) |
-| Why it's designed this way — hard constraints, two-stage, three-layer defense | [Key Design Decisions](#key-design-decisions) |
-| What files are in this repo | [Project Structure](#project-structure) |
-| How to get started | [Quick Start](#quick-start) |
-| Real-world usage data | [In Practice](#in-practice) |
-| Design philosophy | [Philosophy](#philosophy) |
-| Documentation hub and numbered reading order | [`docs/README.md`](docs/README.md) |
-| Current project status and next gate | [`docs/project-status-项目状态与当前门禁.md`](docs/project-status-项目状态与当前门禁.md) |
-| Master product requirements document (sole L0 PRD) | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
-| Current design authority and conflicts | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
-| Cross-topic conceptual architecture guide | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
-| Capture Store administration, backup, and restore contract | [`docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
-| Minimal local inbox product specification | [`docs/capture/local-inbox-product-spec-本地收件箱产品规范.md`](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) |
-| Completed MVP-0 implementation history | [`archive/2026-implementation-history/README.md`](archive/2026-implementation-history/README.md) |
-| Completed P0 low-sensitivity pilot and minimal inbox history | [`archive/2026-p0-low-sensitivity-pilot/README.md`](archive/2026-p0-low-sensitivity-pilot/README.md) |
-| Version and stage changelog | [`CHANGELOG.md`](CHANGELOG.md) |
+|---|---|
+| Documentation map and reading order | [docs/README.md](docs/README.md) |
+| Current phase, next gate, and evidence | [project status](docs/project-status-项目状态与当前门禁.md) |
+| Product goals and requirements | [Master PRD](docs/requirements-and-governance-baseline-需求与治理基线.md) |
+| Topic authority and conflict rulings | [design authority](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| Cross-topic concepts | [conceptual architecture guide](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
+| Store initialization, backup, and restore | [administration contract](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
+| Minimal local inbox | [inbox product specification](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) |
+| Completed Capture implementation evidence | [MVP-0 history](archive/2026-implementation-history/README.md) |
+| Completed low-sensitivity pilot evidence | [P0 pilot history](archive/2026-p0-low-sensitivity-pilot/README.md) |
+| Historical changes | [CHANGELOG.md](CHANGELOG.md) |
 
----
+Read the project by selecting documents for the task rather than recursively loading every Markdown file. Research inputs, archived designs, legacy prompts, examples, and evaluation gold are deliberately outside the default implementation context.
 
-## The Curation Paradox
+## Repository layout
 
-Two premises, each reasonable on its own, but together they form a paradox:
+The tree below shows responsibilities, not every file:
 
-**Premise 1**: High-quality knowledge curation demands domain judgment. You need to distinguish core concepts from minor details, recognize when two different-sounding ideas refer to the same thing, identify which entities in a source are worth extracting as domain-relevant versus peripheral or low-relevance, and determine which pieces of knowledge should be linked — and how. These judgments can only be made by someone who actually understands the domain.
-
-**Premise 2**: People adopt knowledge management tools precisely because they don't yet know the domain. The goal is to learn faster, more intuitively, and more easily from unfamiliar material — building structured knowledge or enabling a range of interactive capabilities. This process depends heavily on AI for analysis and reasoning.
-
-The paradox: **the responsibility for curation lies with the human (only you know your goals and context), yet the human lacks the domain knowledge required to curate; meanwhile, the entity with knowledge-processing capability (the LLM) lacks the context to judge what matters to you, and its risks — extraction omissions, hallucinations — cannot be ignored.** Two independently valid premises point to a contradiction — who should curate?
-
-Most AI knowledge tools resolve this by **ignoring Premise 2** — they let the LLM curate directly. The LLM reads the source, decides what's worth a page, writes summaries, assigns tags, builds links. This is fast and frictionless, but it has an unfixable defect: **LLM omissions are far harder to repair than LLM noise.** If the LLM over-extracts (noise), you delete the extra pages in seconds. If the LLM misses a critical concept, you never know it was skipped — because there's no curation map, no intermediate artifact between the raw source and the finished wiki. The reasoning is entirely inside the LLM's black box.
-
-KnowledgeFlow takes a different position — **redistribute responsibility and make the limits explicit, rather than assume semantic completeness**:
-
-- **The system performs most knowledge labor** — it may assist research, summarize, cluster, discover entities and relationships, organize evidence, compare structures, and prepare exact diffs; formal candidates stay source-bound, uncertainty is explicit, and suggestions remain isolated from facts
-- **You control intent and high-impact judgment** — low-risk mechanical work may run automatically; reversible derived results may be generated within the current task or a visible, scoped, revocable rule; ordinary trusted changes may be reviewed as bounded batches, and high-impact scope or structure changes require exact approval; a ledger keeps processed, deferred, and failed boundaries visible
-- **A restricted writer performs the target-state write** — the SOP-30 “Approved trusted write” contract candidate accepts only precisely approved final bytes and applies them without a model under schema, transaction, and recovery constraints. It is not implemented; the legacy SOP-002 write prompt must not be run
-
-The trusted-promotion pipeline aims to **reduce manual work while preserving auditability, evidence binding, and controlled promotion**. The system does not promise one-pass semantic zero omission; it promises preserved sources, visible processing state, traceable candidates, and approved objects before trusted writes. Q&A, learning, or temporary research may remain clearly labeled derived/candidate output instead of being forced into a wiki.
-
----
-
-## The Core Problem
-
-Following from the paradox above, the specific failures of existing tools can be precisely located:
-
-**The issue is not only LLM capability — it is a mismatch between role and verification boundary.** LLMs are useful for large-scale candidate generation, structured extraction, and evidence organization, but can still omit, compress, or misread long material. Putting them directly in the trusted curator's seat amplifies two failure modes:
-
-- **Omissions**: The LLM decides a concept isn't important enough and skips it. Without reading the original source, you'll never know what was left out
-- **Over-simplification**: The LLM produces a wiki page that reads well, but you can't tell whether it represents everything the source contained or just the subset the LLM chose to include. You lose a sense of control — the output looks reasonable, but you have no measure of the gap between source and product
-
-KnowledgeFlow's design goal is therefore not "a better curation algorithm" or a zero-omission promise — it's **pulling trusted judgment back to the human side, reducing silent omission through deterministic segmentation, processing ledgers, evidence binding, and layered paths, then measuring semantic recall with gold-set experiments.**
-
----
-
-## The Pipeline
-
-This diagram describes promotion from source material into trusted knowledge; it is not mandatory for every knowledge task. Unrouted capture, question-first work, and research exploration may produce useful derived/candidate results before any target KB exists.
-
-```
-Raw Source
-    │
-    ▼
-┌──────────────────────────────────┐
-│  Phase 1: Profile-based processing │
-│                                    │
-│  · Captures raw material + SHA256 │
-│  · Deterministic segmentation +   │
-│    Source Ledger                  │
-│  · `full-map` / `hierarchical-map`│
-│    / `retrieval-first`            │
-│  · Summaries, candidates, and     │
-│    Evidence Bundles               │
-│  · Zero wiki pages created        │  ← Hard constraint
-│                                    │
-│  Output: Ledger, overview/map,    │
-│  Evidence Bundles, and candidates │
-└──────────────────┬───────────────┘
-                   │
-                   ▼
-         ═══ RISK-TIERED REVIEW ═══
-         · Batch: approve / edit / return / defer
-         · Precisely approve high-impact scope or structure changes
-         · Request more sources or adjust organization proposals
-                   │
-                   ▼
-┌──────────────────────────────────┐
-│  Phase 2: Trusted write           │
-│  (contract candidate; not built)   │
-│                                    │
-│  · Only processes human-confirmed │
-│    entries from the curation map  │
-│  · Deduplication against existing │
-│    wiki pages (full-text search)  │
-│  · Decision tree: create / append │
-│    / mark contradiction / skip    │
-│  · Writes wiki pages constrained  │
-│    by SCHEMA + 8 universal rules  │
-│  · Self-verification (8 checks)   │
-│                                    │
-│  Output: wiki pages + updated     │
-│  index + log + change report      │
-└──────────────────────────────────┘
-```
-
----
-
-## Key Design Decisions
-
-### 1. Hard Constraints, Not Guidelines
-
-The rough reader operates under 7 hard constraints (C1–C7), five of which are prohibitions marked ☒:
-
-| Constraint | Type | Why |
-|------|:---:|------|
-| C1: Never create wiki pages | ☒ | The rough reader produces curation maps, not finished artifacts |
-| C2: Every extraction must cite its source location | ☒ | Traceability = verifiability = correctability |
-| C3: Uncertainty must be explicitly marked | ☒ | The core value of the rough reader over direct curation |
-| C4: Agent suggestions must be structurally separated from facts | ☒ | Prevents suggestion contamination of the factual layer |
-| C5: Never silently discard; defer or layer only with an explicit state | ☒ | Processing gaps must not look complete |
-| C6: Deterministically segment long sources and keep a processing ledger | ☑ | Make processed, deferred, and failed boundaries visible |
-| C7: Implicit relationships can be extracted but must be flagged as "speculative" + confidence ≤ medium | ☑ | Speculation must never masquerade as certainty |
-
-The mechanically auditable guarantees are preservation, segmentation, status, and evidence binding. Semantic recall still requires gold-set comparison and controlled experiments; item counts or coverage reports alone cannot prove it.
-
-### 2. Trusted Promotion with a Risk-Tiered Audit Surface
-
-Derived processing and trusted writing are **separate stages** with a review checkpoint proportionate to risk. A curation map, Evidence Bundle, or exact diff can be the audit surface. The system first performs bulk reading, evidence binding, and change preparation; the user then reviews a bounded batch or the high-impact differences instead of manually curating every item.
-
-This separation mitigates the curation paradox: even without prior domain knowledge, the user can first receive sourced explanations and candidate structures. Only when results are about to change trusted knowledge does the flow pause for review of key evidence and impact; the user may continue researching, return the whole batch, or defer it without designing the complete structure up front.
-
-### 3. Three-Layer Defense System
-
-| Layer | SOP | Scope | Trigger |
-|------|-----|------|------|
-| Target-state increment check | SOP-30 Approved trusted write (contract candidate; not built) | Format and transaction correctness of approved changes | Every trusted write |
-| Cumulative scan | SOP-003 full lint (9 items) | Structural health of entire KB | Weekly or manual |
-| Ripple-effect check | SOP-004 SCHEMA consistency | Impact of SCHEMA changes on all pages | After any SCHEMA modification |
-
-The layers don't overlap — each checks what the others don't, and they form a safety net where missed errors at one layer are caught at the next.
-
----
-
-## Project Structure
-
-```
+```text
 knowledge-flow/
-├── README.md                         English README
-├── README-zh.md                      Chinese README（中文文档）
-├── CHANGELOG.md                      Version history
-├── LICENSE                           MIT
-├── pyproject.toml                    Capture kernel, curation slice, and pinned runtime dependency
+├── AGENTS.md
+├── README.md
+├── README-zh.md
+├── pyproject.toml
+├── docs/
+│   ├── README.md
+│   ├── project-status-项目状态与当前门禁.md
+│   ├── requirements-and-governance-baseline-需求与治理基线.md
+│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md
+│   ├── capture/
+│   │   └── mvp-0-capture-operations-本地文本捕获操作契约.md
+│   └── curation/
+│       └── 00-deep-curation-workflow-深入策展流程总览.md
 ├── src/
 │   ├── knowledgeflow_capture/
-│   │   ├── __init__.py               C0/C3/C4C package identity and public capture/read surface
-│   │   ├── errors.py                 C1/C3A/C4A public errors and write/read results
-│   │   ├── models.py                 C1/C3A/C4A hash and write/read request values
-│   │   ├── ids.py                    C1 UUIDv7 and typed prefixes
-│   │   ├── hashing.py                C1/C3A four-hash and idempotency-digest primitives
-│   │   ├── codec.py                  C1/C3A/C4A restricted YAML and Envelope/Event/Projection schemas
-│   │   ├── config.py                 C2A local-config contract and canonical emission
-│   │   ├── paths.py                  C2A Windows path-safety policy
-│   │   ├── manifest.py               C2A Capture Store identity contract
-│   │   ├── locking.py                C2B/C3B Windows initialization and Store write locks
-│   │   ├── durability.py             C2B/C3B durable commit and bounded UTF-8 streaming
-│   │   ├── store.py                  C2B–C6B recovery, staging, and version-chain primitives
-│   │   ├── operations.py             C3–C6C four governed text operations and migration binding checks
-│   │   ├── cli.py                    C7A/C7B restricted CLI framing, spools, production dispatch, and entry
-│   │   ├── management.py             P0B-min explicit init, verify, backup bundle, and new-target restore
-│   │   ├── management_cli.py         P0B-min path-safe installed administration entry
-│   │   ├── runtime.py                Shared trusted production path-policy construction
-│   │   ├── inbox.py                  P0C public-operation adapter and process-local retry state
-│   │   ├── inbox_app.py              P0C Tk desktop inbox and installed interactive entry
-│   │   ├── recovery.py               C6B explicit derived-state rebuild operation
-│   │   └── migration.py              C6C explicit copy-verify-switch Store migration
+│   │   └── __init__.py
 │   └── knowledgeflow_curation/
-│       ├── __init__.py               CUR1A–CUR1D public curation contracts and operations
-│       ├── contracts.py              CUR1A–CUR1D source, permission, range, target, route, map, and KB values
-│       ├── codec.py                  CUR1A/CUR1C/CUR1D canonical YAML, same-fact Markdown, and artifact digests
-│       ├── errors.py                 CUR1A stable errors, safe diagnostics, and commit states
-│       ├── ids.py                    CUR1B/CUR1C curation-object UUIDv7 generation
-│       ├── locking.py                CUR1C bounded cross-process file locks
-│       ├── segmentation.py           CUR1B offline deterministic Markdown segmentation and locators
-│       ├── operations.py             CUR1B exact-source prepare, inspect, and Evidence readback
-│       ├── targeting.py              CUR1C target decision, provisional KB bootstrap, and raw mapping
-│       ├── versioning.py             CUR1C controlled offline managed-local Git adapter
-│       ├── processing.py             CUR1D processor port, DeepSeek adapter, tokenizer, and budget execution
-│       ├── map_operations.py         CUR1D target suggestion, map, decision, recovery, and publish orchestration
-│       └── cli.py                    CUR1B–CUR1D restricted commands and single JSON receipts
+│       └── __init__.py
 ├── tests/
-│   ├── capture/
-│   │   ├── fixtures/                 Ten C1–C4A JSON/YAML/body golden files
-│   │   ├── unit/                     C0–P0C unit and platform tests
-│   │   ├── integration/              C2B–P0C transaction, read, CLI, management, inbox, boundary, and concurrency tests
-│   │   └── fault/                    C2B/C6A process-crash recovery tests (323 capture tests total)
-│   ├── curation/
-│   │   ├── evaluation-gold/          Evaluator-only blind source-fidelity answers; excluded from processor context
-│   │   ├── fixtures/                 Ten CUR1A/CUR1C contract/presentation goldens plus one source-body fixture
-│   │   ├── test_contracts.py         CUR1A/CUR1C contracts and error-semantics tests (16 tests)
-│   │   ├── test_operations.py        CUR1B segmentation, source transaction, readback, and CLI tests (14 tests)
-│   │   ├── test_targeting.py         CUR1C target, local Git, concurrency, recovery, and isolation tests (12 tests)
-│   │   ├── test_processing.py        CUR1D processor, budget, tokenizer, and window tests (18 tests)
-│   │   └── test_map_operations.py    CUR1D map-operation, fault, replay, and CLI tests (33; 93 curation tests total)
-│   └── scripts/
-│       ├── test_doc_check.py          8 deterministic document-guard regressions
-│       └── test_maintenance_scripts.py  7 maintenance-script regressions
-├── docs/
-│   ├── README.md                    Sole documentation hub and numbered reading order
-│   ├── project-status-项目状态与当前门禁.md                         Sole dynamic project-status source
-│   ├── requirements-and-governance-baseline-需求与治理基线.md      Master product requirements document (sole L0 PRD)
-│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  Current topic authority and conflict rulings
-│   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  Non-normative cross-topic concept map
-│   ├── capture/
-│   │   ├── capture-and-routing-spec-捕获与路由规范.md                  Capture and manual-routing design
-│   │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      Capture identity and transaction contract
-│   │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           Four text-operation contract
-│   │   ├── capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md  Store management and Backup Bundle v1 contract
-│   │   └── local-inbox-product-spec-本地收件箱产品规范.md              Current minimal local-inbox product contract
-│   ├── curation/
-│   │   ├── 00-deep-curation-workflow-深入策展流程总览.md            Deep-curation order, branches, and valid endpoints
-│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 CUR-MVP-1 new-KB implementation contract
-│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 CUR-MVP-1 map implementation contract
-│   │   ├── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 trusted-write and first-activation candidate
-│   │   └── 40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md  Approved CUR1A–CUR1V implementation plan
-│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  Approved governance red lines + Draft methods
-│   └── research/
-│       └── README.md                Non-authoritative research-input index
-├── prompts/                          LLM-agnostic prompt templates（提示词模板）
-│   ├── README.md                    Template usage guide
-│   ├── sop-001-modeA.md             Default: single-pass extraction (sections 1-9)
-│   ├── sop-001-modeA-auditor.md     Default: independent coverage auditor (section 10)
-│   ├── sop-001-modeA-fast.md        Optional fast path (self-check coverage)
-│   ├── sop-001-modeB-pass1-entities-claims.md  Mode B Pass 1: entities + claims
-│   ├── sop-001-modeBC-pass2-relationships.md   Shared B/C: relationships
-│   ├── sop-001-modeBC-assembler.md             Shared B/C: assembler + coverage report
-│   ├── sop-001-modeC-pass1-entities.md         Mode C Pass 1: entities only
-│   ├── sop-001-modeC-pass3-claims.md           Mode C Pass 3: claims only
-│   ├── sop-002-curator.md           Legacy SOP-002 write prompt (suspended)
-│   ├── sop-003-lint.md              SOP-003 health scan
-│   └── extraction-interface.md      Extraction interface + coverage report spec
-├── scripts/                          Reference implementation (Python, zero deps)
-│   ├── README.md                    Usage, Windows notes, SOP-003 mapping
-│   ├── doc-check.py                 Git-aware deterministic document guard
-│   ├── lint.py                      SOP-003 lint scanner
-│   ├── link-validator.py            Wikilink validator
-│   └── index-generator.py           index.md generator
-├── templates/
-│   └── SCHEMA-template.md           Reusable knowledge base constitution template
+│   └── __init__.py
+├── scripts/
+│   └── doc-check.py
+├── prompts/
+│   └── README.md
 ├── examples/
-│   ├── curation-map-example.md      Historical 25K-line curation-map example (raw source absent)
-│   └── wiki-page-example.md         Resulting wiki page after curation
+│   └── curation-map-example.md
 └── archive/
-    ├── 2026-design-history/
-    │   └── README.md                  Index for nine archived plans, vision, and SOP files
-    ├── 2026-implementation-history/
-    │   └── README.md                  MVP-0 C3-0 and C0–C8 implementation-history index
-    ├── 2026-p0-low-sensitivity-pilot/
-    │   └── README.md                  P0A–P0V pilot and recovery-history index
-    └── v1.0/
-        ├── README.md                  v1.0 limitations overview
-        └── sop-v1-original.md        v1.0 original SOP
+    └── 2026-design-history/
+        └── README.md
 ```
-
----
-
-## Quick Start
-
-The single-machine, single-user MVP-0 text capture kernel passed local C8 acceptance and exact-commit remote CI, and its limited scope is `Implemented`. The low-sensitivity Pilot Store has now exercised real four-operation use, short offline dogfood, same-disk operational copies, and a new-target restore, but this does not establish sustained use, cross-disk disaster recovery, a private-data-ready environment, or overall production readiness. The next order is:
-
-1. Check the [project status document](docs/project-status-项目状态与当前门禁.md) for the current checkpoint, next gate, known issues, and evidence; use the [design authority and conflict register](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) only for topic authority and conflict rulings.
-2. Use the [four-operation contract](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md), [Store administration/backup contract](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md), and [minimal local-inbox specification](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) for current stable behavior; completed plans and acceptance reports are evidence, not current specifications.
-3. The direction governance red lines are approved, but the three Processing Profiles, Source Ledger, Evidence Bundles, automatic routing, and semantic-recall evaluation methods remain Draft; they do not authorize RAG or candidate-graph implementation.
-4. The [P0 low-sensitivity Pilot history](archive/2026-p0-low-sensitivity-pilot/README.md) records the completed P0D/P0V checkpoints, limited conclusion, two important UX frictions, and unproved boundaries; it is evidence, not a current plan.
-5. Do not infer the current checkpoint from this README, a stable contract, or a completed plan. Only the project status document owns that fact, and every new implementation batch still requires its stated review and authorization boundary.
-6. The approved strategic direction after the capture/Pilot foundation is to validate representative materials and an Evidence-first local value slice before freezing broad Task/Ledger/Profile state or adding RAG, graphs, GBrain, or trusted writes. See [design authority and conflict register §12](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-批准的方向与阶段顺序).
-
-The existing `prompts/sop-001-*` files remain useful as `full-map` or layered-processing experiment material; outputs belong under `proposals/curation-maps/` or another explicitly unreviewed derived layer, and the workflow stops after human review. Do not run the legacy [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) against a real knowledge base. The SOP-003 lint tools remain usable for existing Markdown KBs.
-
-### Installed capture CLI
-
-`knowledgeflow-capture` is a **machine-protocol entry point** for local adapters, not an interactive shell command. The installed package exposes exactly four commands:
-
-```text
-knowledgeflow-capture capture_text [--config <absolute local Windows path>]
-knowledgeflow-capture append_capture_version [--config <absolute local Windows path>]
-knowledgeflow-capture get_capture [--config <absolute local Windows path>]
-knowledgeflow-capture list_captures [--config <absolute local Windows path>]
-```
-
-stdin must contain one single-line UTF-8 JSON header, LF or CRLF, exactly `body_length_bytes` raw body bytes, and EOF. Read/list requests require a zero-length body. With exit 0 or 2, stdout uses the same single-line header + LF + exact body + EOF framing; exit 70 means stdout may be incomplete and must be discarded in full. The entry point deliberately has no `--help`, `--version`, Store initialization, recovery, migration, routing, or test-policy switch, and invoking it never auto-creates a production configuration or Store. See [four-operation contract §7A](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射) for the exact fields, frames, exit codes, and safety boundaries.
-
-### P0B administration entry (limited `Implemented`; first Pilot operational copy verified)
-
-`knowledgeflow-capture-admin` is separate from the daily four-operation protocol and exposes only `init`, `verify`, `backup`, and `restore`. It emits one path-free JSON line on public success/failure and never switches configuration during restore. Backup/restore targets must not exist; partial failed targets are preserved and never auto-resumed. The complete command, Backup Bundle v1, inclusion, exit-code, and safety behavior is maintained by the [Capture Store administration, backup, and restore contract](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md). P0D/P0V completed Pilot initialization, user Captures, two same-disk `operational-copy` bundles, and one new-target restore rehearsal without switching the active configuration. Cross-disk disaster protection remains untested.
-
-### P0C minimal local inbox (limited `Implemented`; low-sensitivity Pilot exercised)
-
-`knowledgeflow-inbox` opens a Windows-first Tk desktop inbox using only the Python standard library plus the existing package dependency. It calls `capture_text`, `list_captures`, `get_capture`, and `append_capture_version` directly through their public boundaries; it does not parse Store files, open a network port, or put body text in process arguments, stdout/stderr, logs, or disk spools. The default form reads the normal local configuration, and an explicit configuration may be selected for controlled use:
-
-```text
-knowledgeflow-inbox
-knowledgeflow-inbox --config <absolute local Windows path>
-knowledgeflow-inbox --help
-```
-
-Missing configuration produces guidance and no initialization. “Unassigned / pending review” maps only to existing `unassigned` / `unreviewed-capture` state. Write identity and body are retained only in the live process for exact retry; after a process crash the app never auto-resends and the user must refresh and check first. The [minimal local-inbox product specification](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) owns the current behavior and records the missing history entry and unclear correction message as important, still-unapproved UX work. Commit `d149036` fixed the installed help's locale-dependent output and passed exact remote CI run `37185470445`; P0D/P0V supplied the limited real-use evidence.
-
----
-
-## In Practice
-
-> The methodology was informed by work across four cross-domain knowledge bases. Repository-verifiable evidence currently consists of one historical 25K-line curation-map example and one derived wiki-page example in [`examples/`](examples/); the raw source is not included, so these files are illustrative rather than reproducible validation evidence.
-
----
-
-## Philosophy
-
-Knowledge bases degrade in two ways: **drift** (pages become outdated) and **fragmentation** (the same concept gets scattered across multiple pages). Most tools address drift with periodic cleanup; few address fragmentation at all.
-
-KnowledgeFlow addresses both through **constitutional constraints** (SCHEMA.md as the single source of truth for structure rules) and **defense-in-depth** (format checks at write time, structural scans at lint time, ripple-effect checks on SCHEMA changes). The system is designed so that the most dangerous failure modes — duplicate pages, broken links, orphaned entities, SCHEMA-page inconsistency — are caught automatically, not by human vigilance.
-
----
 
 ## License
 
-MIT
+[MIT](LICENSE)

@@ -1,351 +1,246 @@
-[中文文档](README-zh.md) · [English](README.md)
-
 # KnowledgeFlow
 
-> 通用、适应性、治理优先的个人知识工作系统——用户可以从材料、问题或模糊意图开始，
-> 由系统承担大部分研究、理解、组织和维护劳动，并以证据、分层信任和可回滚批准控制高影响变化。
+> 治理优先、本地优先的个人知识工作与知识管理系统。
 
-> **交付摘要**：MVP-0 单机单用户文本捕获内核以及 P0B-min/P0C 各自已测范围为 `Implemented`。低敏感度 Pilot 已完成初步真实使用与恢复闭环，但项目整体仍非 `Effective` 或生产就绪。准确的当前阶段、下一门禁、已知问题和验证证据只在[项目状态文档](docs/project-status-项目状态与当前门禁.md)维护。
+[English](README.md)
+
+KnowledgeFlow 帮助个人从想法、材料、问题、研究主题或已有知识库开始工作：先可靠保存来源，让内容尽快变得可找回、可浏览、可检索和可理解，再把真正值得长期稳定的部分，通过证据、人工决定和受限执行逐步晋升为可信知识。
+
+它不是“让模型自动生成一个看起来完整的知识库”，也不要求用户在开始前先设计完整的分类体系、Schema、Ontology 或知识图谱。模型、RAG、Wiki、知识图谱和本地 Git 都是可以按任务组合的工具；产品本体是从来源事实到工作知识、提案和可信知识的可持续治理过程。
+
+项目仍在开发中。已测范围内的捕获内核以及部分本地管理和收件箱能力已经实现，首条有证据的深入策展纵向链正在形成；整个产品尚未达到生产就绪，也尚未证明长期知识工作的实际有效性。精确边界只见[项目状态文档](docs/project-status-项目状态与当前门禁.md)。
+
+## 为什么需要 KnowledgeFlow
+
+个人知识工作经常在两个失败方向之间摇摆：
+
+```text
+先完整理解、分类和建模再保存
+→ 前置成本过高，想法和材料容易在整理前流失
+
+让模型自动提取并直接写入知识库
+→ 速度很快，但来源、选择和语义判断不透明，难以信任、维护和回滚
+```
+
+KnowledgeFlow 不承诺用一次模型调用消除理解和策展的劳动。它把这项工作拆成可以暂停、复核、以后继续的过程：
+
+### 知识策展悖论
+
+高质量策展需要理解材料、用户目标和领域语境，才能判断什么重要、哪些说法相互冲突、怎样组织才有长期价值；但用户需要知识工具，往往正是因为材料陌生、数量太多，或者没有时间先完成全部理解。
+
+模型能够大规模阅读、比较和生成候选，却不知道什么对这个用户真正重要，也可能遗漏、压缩、误解或幻觉。用户拥有最终目标和取舍权，却不应该被迫逐段阅读、逐条分类、逐页维护。问题因此不是简单选择“人做”还是“模型做”，而是怎样让双方承担各自适合的责任。
+
+其中最危险的失败不是多生成一条容易删除的噪声，而是系统静默漏掉重要内容，却用流畅、完整的成品掩盖处理范围和缺口。KnowledgeFlow 不承诺消灭语义遗漏；它要求来源不丢失、处理边界可见、重要候选能够回到证据，并让高影响决定仍由用户控制。
+
+### 解决方式：重新分配责任
+
+| 角色 | 主要责任 |
+|---|---|
+| 系统与模型 | 承担保存、分段、检索、比较、概览、候选发现、证据整理、冲突检查和精确变更准备等可委托劳动 |
+| 用户 | 决定当前目标、处理范围、重要性取舍、可信判断和高影响结构变化；不承担全部机械整理劳动 |
+| 受限执行器 | 对已经明确批准的精确对象确定性执行、验证和记录；不在批准后重新作语义决定 |
+
+由此形成一条可以暂停、复核、以后继续的过程：先证明用户提交过什么；再形成可以立即使用、但不会冒充可信结论的工作知识；将结构、关系和变更作为有证据的候选交给用户判断；只对明确批准的精确对象执行可信写入；并在知识库后续使用中继续处理新增、冲突、过时、重组和回滚。
+
+## 核心生命周期
+
+```text
+想法 / 材料 / 问题 / 研究主题 / 已有知识库
+                         │
+             新来源保存 │ 复用已有来源
+                         ▼
+              T0 来源事实
+        原文、稳定身份、版本、哈希和意图
+                         │
+                         ▼
+              T1 工作知识
+      状态、索引、摘要、问答、临时组织和候选关系
+                         │
+                         ▼
+              T2 候选与提案
+       策展地图、证据、范围、影响和精确变更候选
+                         │
+             ┌───────────┴───────────┐
+             ▼                       ▼
+      保存工作成果并结束        准备精确变更方案
+                                     │
+                               人工明确批准
+                                     │
+                               受限执行与验证
+                                     │
+                                     ▼
+                              T3 可信知识
+                         Wiki、稳定结构、可信关系、
+                           检查点与回滚历史
+                                     │
+                                     └──→ 后续持续治理
+```
+
+这不是每项任务都必须走到底的固定流水线。只保存来源、完成一次有证据问答、保留一份策展地图，或者暂不建立知识库，都可以是正确终点。只针对已有知识提问时，系统应复用已有来源，不为满足流程图而重复创建 Capture。
+
+## 四类代表任务
+
+下面四类是代表性用户旅程，不是四个互斥模块或固定处理模式。贯穿它们的核心能力是可靠捕获、工作知识、证据绑定、候选与提案、可信写入和持续治理。
+
+| 用户任务 | 系统优先承担 | 合理的第一成果 |
+|---|---|---|
+| 低摩擦日常管理 | 保存想法和短笔记，建立最低来源状态；在任务或可见规则授权后再汇总、发现相似项和提出整理建议 | 可找回的原料和不过度打扰的工作知识 |
+| 中长篇高价值材料的深入策展 | 形成整体概览、章节或主题结构、主张、争议、限制、缺口和精确证据位置 | 可查看、可回证、可修改并可独立结束的策展地图 |
+| 已有知识库维护 | 比较新来源与已有可信内容，发现新增、重复、冲突、过时和结构漂移，准备精确变更 | 用户只需聚焦关键差异的维护提案 |
+| 大型或持续增长语料 | 保存来源清单和处理状态，建立可重建索引，按问题检索证据并形成局部回答 | 明确查询偏置和未处理范围的可溯源访问 |
+
+这些不是四套互不相干的产品。短笔记可以逐渐形成研究主题，研究可以沉淀为知识库，已有知识库也会因新材料和新问题重新进入理解与治理循环。不同任务共享来源版本、处理范围、证据定位和原文回读等不变量，但不强求相同算法、成本或审核深度。
+
+## 两条必须分开的轴
+
+KnowledgeFlow 中最容易混淆的是“这个东西是什么”和“这个具体版本现在可以怎样信任”。二者必须分开：
+
+| 轴 | 回答的问题 | 示例 |
+|---|---|---|
+| 工件类型 | 它承担什么工作 | 原始材料、摘要、策展地图、Wiki 页面、`SCHEMA.md`、Ontology、知识图谱 |
+| 治理状态 | 它经历了什么流程，可以怎样使用 | 来源事实、工作结果、待审核提案、已批准并验证的可信结果、历史版本 |
+
+同一种工件可以处于不同治理状态。模型生成的 Wiki 草稿仍是工作知识；绑定精确字节、等待批准的 Wiki 变更是提案；经批准、确定性写入并回读验证后的页面才是可信知识。反过来，策展地图即使被用户接受为本次任务成果，也仍然是理解与治理工件，不会自动变成 Wiki、Ontology 或知识图谱。
+
+四层信任模型提供统一边界：
+
+| 层 | 典型内容 | 不能被误解为什么 |
+|---|---|---|
+| T0 来源事实 | 原文、版本、哈希、来源和用户明确意图 | 内容已经正确、已理解或已分类 |
+| T1 工作知识 | 索引、摘要、提纲、问答、临时集合和候选图谱 | 用户已经批准的知识结论 |
+| T2 候选与提案 | 策展地图、Evidence Bundle、路由、结构和精确变更提案 | 已经执行的可信变化 |
+| T3 可信知识与治理 | 获批页面、稳定结构、可信关系、批准、检查点和回滚历史 | 可以被模型、RAG 或镜像自动覆盖的缓存 |
+
+## 主要工件和技术怎样协作
+
+| 工件或能力 | 主要作用 | 边界 |
+|---|---|---|
+| Capture / raw | 保存用户提交的精确来源版本 | 证明来源事实，不证明语义正确或已理解 |
+| 策展地图 | 展示一批材料讲了什么、证据在哪里、有哪些争议、缺口和组织候选 | 可以独立结束；不是可信 Wiki，也不是全文永久地图 |
+| Wiki | 以人类可读页面长期解释和维护主题 | 草稿、提案和可信页面必须区分 |
+| RAG | 从允许查询的来源或知识范围中检索证据并辅助当前回答 | 解决访问和证据组织，不决定可信身份 |
+| KB `SCHEMA.md` | 规定页面、来源引用、链接和导航怎样表示才合法 | 可以很小，不等于完整领域 Ontology |
+| Ontology | 定义需要跨内容稳定复用的概念、关系和约束 | 按真实复用和校验价值引入，不是开始工作的前置 |
+| 知识图谱 | 表达、浏览和查询具体对象关系 | 可以先是候选，也可以在批准后成为可信关系；链接图不自动等于知识图谱 |
+| SOP | 规定谁在什么条件下执行什么，在哪里暂停、批准、验证和恢复 | 控制过程，不代替产品需求或用户决定 |
+| 本地 Git | 为受管知识库提供透明、离线的版本检查点 | 技术 commit 不等于业务批准，也不等于备份或依赖 GitHub |
+
+结构会随真实使用渐进成熟。一个知识库可以长期只使用 Markdown Wiki、普通链接和搜索；只有同义词、稳定关系查询、一致性校验或系统互操作产生了足够收益，才需要受控词表、Taxonomy、Ontology 或更正式的知识图谱。
+
+## 权限、自动化与离线边界
+
+三项权限必须分别确认：
+
+1. 把来源归入某个知识库；
+2. 允许对来源进行深度语义处理；
+3. 批准精确变更进入可信知识。
+
+来源已保存不自动授权模型摘要、关系发现或长期后台处理；允许深度处理也不等于允许改变可信层。模型可以协助阅读、比较、解释、提出结构和准备差异，但不得静默改变用户目标、KB 边界、可信页面、稳定结构、删除范围或发布状态。
+
+Capture Store 的日常使用不依赖 GitHub、GitHub 账号或持续网络。GitHub Actions 只是开发阶段的远端检查。首版中，地图一旦绑定受管知识库，其受管地图、决定和后续可信 Wiki 就进入该库无 remote 的本地 Git 版本历史；这仍不要求账号、网络或 push。
+
+调用外部服务商的语义能力必须单独授权，并且可以关闭。没有模型密钥或网络时，既有 Capture 数据、版本历史、恢复操作、确定性证据和已经保存的工件仍可在本地使用。外部或本地模型都是可替换的语义适配器，不是来源保存和普通本地读取的规范真源。
+
+## 当前仓库范围
+
+仓库目前包含：
+
+- 单机、单用户的本地文本 Capture Store；
+- 新建、读取、列表和追加不可变新版本四个公共文本操作；
+- 显式 Store 初始化、校验、操作副本备份和新目标恢复；
+- 只调用公共操作的最小 Tk 本地收件箱；
+- 有证据深入策展纵向切片的契约、机械能力和活动实现；
+- 对身份、完整性、并发、崩溃恢复、迁移和有界策展事务的确定性测试。
+
+目前不宣称已经完成生产部署、高敏数据保护、可信 Wiki 写入、通用 RAG、正式知识图谱、多设备协作或长期用户价值验证。准确成熟度、当前完成点和下一授权只由[项目状态文档](docs/project-status-项目状态与当前门禁.md)维护。
+
+## 开发环境快速开始
+
+KnowledgeFlow 当前使用 Python 3.13。
+
+```powershell
+py -3.13 -m venv .venv
+.venv\Scripts\python -m pip install -e .
+```
+
+配置或初始化测试/本地 Capture Store 后打开收件箱：
+
+```powershell
+.venv\Scripts\knowledgeflow-inbox.exe
+```
+
+运行仓库检查：
+
+```powershell
+.venv\Scripts\python -m unittest discover -s tests -p "test_*.py"
+.venv\Scripts\python scripts/doc-check.py
+```
+
+面向机器的 Capture CLI 使用严格 stdin/stdout 帧协议，而不是交互式帮助界面；集成前请阅读[操作契约](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md)。真实数据、生产路径、外部模型调用和可信写入都必须遵守当前项目门禁的精确授权。
+
+## 文档怎样分工
+
+- 根 README：让第一次接触的人理解产品，不维护当前提交或详细契约。
+- [主产品需求文档](docs/requirements-and-governance-baseline-需求与治理基线.md)：规定产品必须解决什么、范围、需求和验收条件。
+- [概念架构导读](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md)：详细解释 T0–T3、Schema、SOP、策展地图、RAG、Ontology、知识图谱等概念怎样组合。
+- [设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)：发生跨文档冲突时指出哪份现行文档负责，并保存少量跨主题稳定裁决。
+- [渐进式知识提炼规范](docs/progressive-knowledge-refinement-spec-渐进式知识提炼规范.md)：研究不同规模和任务的材料应处理多深、怎样记账、衡量覆盖并选择方法；具体方法仍需实验。
+- [项目状态与当前门禁](docs/project-status-项目状态与当前门禁.md)：唯一记录现在做到哪里、证据是什么、下一步获准做什么。
+
+完整阅读顺序和历史入口见 `docs/README.md`：
 
 | 想看什么 | 跳转 |
-|---------|------|
-| 这个项目解决的根本问题 | [知识策展悖论](#知识策展悖论) |
-| 方法论全貌——管线怎么跑 | [核心管线](#核心管线) |
-| 为什么这样设计——硬约束、两阶段、三层防御 | [核心设计决策](#核心设计决策) |
-| 文件在哪、每个文件是什么 | [项目结构](#项目结构) |
-| 怎么上手——最短路径 | [快速开始](#快速开始) |
-| 粗读器如何处理不确定性 | [不确定性处理](#不确定性处理) |
-| 真实使用数据 | [实践数据](#实践数据) |
-| 设计背后的思维方式 | [设计哲学](#设计哲学) |
-| 文档总入口与编号阅读顺序 | [`docs/README.md`](docs/README.md) |
-| 当前项目状态与下一门禁 | [`docs/project-status-项目状态与当前门禁.md`](docs/project-status-项目状态与当前门禁.md) |
-| 主产品需求文档（唯一 L0 PRD） | [`docs/requirements-and-governance-baseline-需求与治理基线.md`](docs/requirements-and-governance-baseline-需求与治理基线.md) |
-| 当前设计权威与冲突 | [`docs/design-authority-and-conflict-register-设计权威与冲突登记.md`](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
-| 跨主题概念架构导读 | [`docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md`](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
-| Capture Store 管理、备份与恢复契约 | [`docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md`](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
-| 最小本地收件箱产品规范 | [`docs/capture/local-inbox-product-spec-本地收件箱产品规范.md`](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) |
-| 已完成的 MVP-0 实施历史 | [`archive/2026-implementation-history/README.md`](archive/2026-implementation-history/README.md) |
-| 已完成的 P0 低敏感度 Pilot 与最小收件箱历史 | [`archive/2026-p0-low-sensitivity-pilot/README.md`](archive/2026-p0-low-sensitivity-pilot/README.md) |
-| 版本与阶段变更记录 | [`CHANGELOG.md`](CHANGELOG.md) |
+|---|---|
+| 文档地图与阅读顺序 | [docs/README.md](docs/README.md) |
+| 当前阶段、下一门禁和证据 | [项目状态](docs/project-status-项目状态与当前门禁.md) |
+| 产品目标和完整需求 | [主产品需求文档](docs/requirements-and-governance-baseline-需求与治理基线.md) |
+| 主题权威和冲突裁决 | [设计权威](docs/design-authority-and-conflict-register-设计权威与冲突登记.md) |
+| 跨主题概念关系 | [概念架构导读](docs/knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md) |
+| Store 初始化、备份与恢复 | [管理契约](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md) |
+| 最小本地收件箱 | [收件箱产品规范](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md) |
+| 已完成的捕获实现证据 | [MVP-0 实施历史](archive/2026-implementation-history/README.md) |
+| 已完成的低敏感度试用证据 | [P0 Pilot 历史](archive/2026-p0-low-sensitivity-pilot/README.md) |
+| 历史变更 | [CHANGELOG.md](CHANGELOG.md) |
 
----
+阅读项目时应按任务选择文档，不要递归载入全部 Markdown。研究输入、历史归档、旧提示词、样例和评估 gold 已明确排除在默认实现上下文之外。
 
-## 知识策展悖论
+## 仓库结构
 
-两个前提，各自合理，合在一起是一个悖论：
+下图只展示职责，不枚举全部文件：
 
-**前提一**：高质量知识策展需要领域判断力。你能区分核心概念和次要细节，能识别两个看似不同的说法实质上指向同一个概念，能从一个语料中识别到哪些是应该提取成领域相关的重点实体、哪些内容是无关的或者相关性低的知识库不需要重点关注的、哪些知识之间应该做关联、做怎样的关联——这些判断只有真正理解领域的人才能做好。
-
-**前提二**：用户之所以需要知识管理工具，往往恰恰因为不熟悉领域。希望通过知识管理来更快速、更直观、更容易从陌生语料中获取和熟悉知识，做好知识管理，或者实现一系列可交互的扩展功能——这个过程需要大量借助 AI 帮我们做分析推理。
-
-悖论在此：**策展的责任人在人类这边（因为只有人类知道自己的目标和语境），但策展的责任人缺乏策展所需的知识；而拥有知识处理能力的实体（LLM）又缺乏判断「什么对用户重要」的语境，且 AI 本身可能出现的信息提取遗漏、大模型幻觉等问题不容忽视**。两条各自成立的前提指向了一个矛盾——究竟由谁来做策展？
-
-大多数 AI 知识管理工具的解法是**无视前提二**——让 LLM 直接做策展。LLM 读了原料，判断哪些值得建页面，写摘要、打标签、建链接。这个方案快、无摩擦，但有一个不可修复的缺陷：**LLM 的遗漏比噪音更难修复**。LLM 如果过度提取（噪音），你删掉多余的页面只需要几秒钟。LLM 如果漏掉了一个关键概念，你根本不知道它没提取——因为从原料到成品的推理过程完全在 LLM 黑箱里，没有任何中间工件可以审查。
-
-KnowledgeFlow 的解法是**重新分配责任并显式记录边界**，而非假设 LLM 能保证语义完整：
-
-- **系统负责大部分知识劳动**——可进行研究辅助、概要、聚类、实体/关系发现、证据整理、组织方案和精确 diff 准备；每条正式候选锚定到来源，不确定性显式标记，建议严格隔离在事实之外
-- **人类控制目标与高影响判断**——低风险机械操作可自动；可逆派生结果只在当前任务，或用户可见、范围明确且可撤销的规则授权内生成；普通可信变更可以按边界清晰的批次审核，高影响范围或结构变化精确批准；处理台账说明哪些区段已处理、延迟或失败
-- **目标态由受限写入器执行写入**——新的 SOP-30“批准后写入可信知识”候选契约只处理经过精确批准的最终字节，在 SCHEMA、事务和恢复约束下无模型执行；契约尚未实现，当前仍不得运行历史 SOP-002 写入提示词
-
-可信晋升管线的核心是**降低人工负担，同时保留可审查性、证据绑定和受控提升**。系统不承诺一次性提取全部语义；它承诺原料不丢失、处理状态可见、候选可回溯，且只有获批对象才能进入可信知识层。问答、学习或临时研究可以停在明确标识的派生/候选层，不必每次都写入 Wiki。
-
----
-
-## 解决什么问题
-
-承接上面的悖论框架，现有工具的具体问题可以精确定位：
-
-**问题不只在 LLM 的能力，也在角色和验证边界的错配。** LLM 适合大规模候选生成、结构化提取和证据整理，但在长文中仍可能遗漏、压缩或误解；把它直接放在可信策展人的位置上会放大两种失败模式：
-
-- **遗漏**：LLM 觉得一个概念不够重要，跳过了。你不看原料原文就永远不知道它漏了什么
-- **过度简化**：LLM 写了一页 wiki 页面，但你无法判断「这页信息是原料中仅有的，还是 LLM 自己挑出来的子集」。你失去了控制感——成品看起来合理，但你不知道它和原料之间的差距有多大
-
-因此 KnowledgeFlow 的设计目标不是「更好的策展算法」或不现实的零遗漏承诺，而是**把可信判断拉回人类这边，通过确定性分段、处理台账、证据绑定和分层路径降低静默遗漏风险，并用 gold set 实验评估语义召回。**
-
----
-
-## 核心管线
-
-下图只描述“原始材料准备进入可信知识”的晋升路径，不是所有知识任务的强制流程。无目标 KB 的捕获、先问答后组织和研究主题探索可以在派生/候选层先产生可用结果。
-
-```
-原料（URL / 论文 / 对话记录 / 粘贴文本）
-    │
-    ▼
-┌──────────────────────────────────┐
-│  第一阶段：按 Profile 的处理层       │
-│                                    │
-│  · 捕获原料 + SHA256 溯源指纹     │
-│  · 确定性分段 + Source Ledger      │
-│  · `full-map` / `hierarchical-map` │
-│    / `retrieval-first`             │
-│  · 概要、候选提取和 Evidence Bundle│
-│  · 5 种不确定原因分类              │
-│  · 候选关系与 SCHEMA 建议隔离       │
-│  · ☒ 不得创建任何 wiki 页面       │
-│                                    │
-│  产出：处理台账、概要/地图、证据包及候选 │
-└──────────────────┬───────────────┘
-                   │
-                   ▼
-         ═════ 风险分层审核 ═════
-         批量决定：[确认 / 修改 / 退回 / 延期]
-         高影响范围与结构变化单独精确批准
-         可请求更多来源或调整组织建议
-                   │
-                   ▼
-┌──────────────────────────────────┐
-│  第二阶段：可信写入（SOP-30）     │
-│  状态：契约候选，尚未实现         │
-│                                    │
-│  · 仅处理你确认过的条目            │
-│  · 全文搜索查重——防止重复建页面   │
-│  · 领域门禁（三级出口）            │
-│  · 决策树：创建 / 追加 /           │
-│    标记矛盾 / 跳过                 │
-│  · 按 4 套模板 + 8 条通用约束写入  │
-│  · 自检（8 项）→ 报告             │
-│                                    │
-│  产出：wiki 页面 + 更新 index      │
-│        + log + 变更报告            │
-└──────────────────────────────────┘
-```
-
----
-
-## 核心设计决策
-
-### 1. 用硬约束代替软指引
-
-粗读器定义了 7 条硬约束（C1–C7），其中 5 条是以 ☒ 标记的禁止项：
-
-| 编号 | 约束 | 类型 | 为什么 |
-|------|------|:---:|------|
-| C1 | 不得创建任何 wiki 页面 | ☒ | 粗读器只产策展地图，不建库 |
-| C2 | 每条提取必须有原文引用 | ☒ | 可追溯 = 可验证 = 可修正 |
-| C3 | 不确定必须显式标记，不得假装确定 | ☒ | 这是粗读器区别于直接策展的核心价值 |
-| C4 | Agent 建议必须和事实节严格分离 | ☒ | 防止建议污染事实层 |
-| C5 | 不得静默丢弃；允许延迟、分层和按需处理，但必须记录状态 | ☒ | 处理缺口不能伪装成已完成 |
-| C6 | 超长原料必须确定性分段并建立处理台账 | ☑ | 你能看到处理、延迟和失败边界 |
-| C7 | 隐式关系可提取但须标推测 + 置信度 ≤ 中 | ☑ | 不让推测冒充确定 |
-
-系统真正可机械审计的是保存、分段、状态和证据绑定；语义召回仍需通过人工 gold set 和对照实验估计，不能由条目数量或覆盖报告单独证明。
-
-### 2. 可信晋升管线 + 风险分层审查断点
-
-派生处理和可信写入是两个**独立的阶段**，中间有与风险相称的审查断点。策展地图、Evidence Bundle 或精确 diff 都可以成为审查面；系统先完成批量阅读、证据绑定和变更准备，用户再审核边界清晰的批次或高影响差异，而不是逐条承担全部整理工作。
-
-这个分离缓解了「策展悖论」：用户即使不了解领域，也能先获得有来源的解释和候选结构；当结果准备改变可信知识时，再在写入前暂停、复核关键证据和影响。用户可以选择继续研究、整体退回或延期，而不必一次性完成全部结构设计。
-
-### 3. 三层防御体系
-
-| 层次 | SOP | 检查范围 | 触发时机 |
-|------|-----|------|------|
-| 目标态增量自检 | SOP-30 批准后写入可信知识（契约候选，尚未实现） | 本次获批变更的格式与事务正确性 | 每次可信写入 |
-| 全量扫描 | SOP-003 健康检查（9 项） | 整个知识库的结构健康 | 每周定时 / 手动 |
-| 连锁检查 | SOP-004 SCHEMA 一致性（5 项） | SCHEMA 修改对全库的连锁影响 | SCHEMA 变更后立即 |
-
-三层之间不重叠——各自检查对方不查的维度，形成互补兜底。单次操作遗漏的腐化在定期扫描时捕获。
-
----
-
-## 项目结构
-
-```
+```text
 knowledge-flow/
-├── README.md                         英文 README
-├── README-zh.md                      中文 README（本文档）
-├── CHANGELOG.md                      变更记录
-├── LICENSE                           MIT
-├── pyproject.toml                    捕获内核、策展切片包与精确锁定的运行时依赖
+├── AGENTS.md
+├── README.md
+├── README-zh.md
+├── pyproject.toml
+├── docs/
+│   ├── README.md
+│   ├── project-status-项目状态与当前门禁.md
+│   ├── requirements-and-governance-baseline-需求与治理基线.md
+│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md
+│   ├── capture/
+│   │   └── mvp-0-capture-operations-本地文本捕获操作契约.md
+│   └── curation/
+│       └── 00-deep-curation-workflow-深入策展流程总览.md
 ├── src/
 │   ├── knowledgeflow_capture/
-│   │   ├── __init__.py               C0/C3/C4C 包身份与公开捕获/读取接口
-│   │   ├── errors.py                 C1/C3A/C4A 公共错误、写入回执与读取结果模型
-│   │   ├── models.py                 C1/C3A/C4A 哈希、写入及读取请求值对象
-│   │   ├── ids.py                    C1 UUIDv7 与类型前缀
-│   │   ├── hashing.py                C1/C3A 四类哈希与幂等摘要原语
-│   │   ├── codec.py                  C1/C3A/C4A 受限 YAML 与 Envelope/Event/Projection schema
-│   │   ├── config.py                 C2A 本地配置契约与规范发射
-│   │   ├── paths.py                  C2A Windows 路径安全策略
-│   │   ├── manifest.py               C2A Capture Store 身份契约
-│   │   ├── locking.py                C2B/C3B Windows 初始化锁与 Store 写锁
-│   │   ├── durability.py             C2B/C3B 耐久提交与有界 UTF-8 流式写入
-│   │   ├── store.py                  C2B–C6B 初始化恢复、staging 与版本链纯原语
-│   │   ├── operations.py             C3–C6C 四个受治理文本操作与迁移绑定复核
-│   │   ├── cli.py                    C7A/C7B 受限 CLI 帧、spool、生产分派与安装入口
-│   │   ├── management.py             P0B-min 显式初始化、校验、Backup Bundle 与新目标恢复
-│   │   ├── management_cli.py         P0B-min 路径脱敏安装态管理入口
-│   │   ├── runtime.py                受信生产路径策略的共享构造入口
-│   │   ├── inbox.py                  P0C 公共操作适配与进程内重试状态
-│   │   ├── inbox_app.py              P0C Tk 桌面收件箱与交互式安装入口
-│   │   ├── recovery.py               C6B 显式派生状态重建操作
-│   │   └── migration.py              C6C 显式复制—验证—切换 Store 迁移
+│   │   └── __init__.py
 │   └── knowledgeflow_curation/
-│       ├── __init__.py               CUR1A–CUR1D 策展契约与操作公开入口
-│       ├── contracts.py              CUR1A–CUR1D 来源、权限、范围、目标、路由、地图与 KB 值契约
-│       ├── codec.py                  CUR1A/CUR1C/CUR1D 规范 YAML、同事实 Markdown 与工件摘要
-│       ├── errors.py                 CUR1A 稳定错误码、诊断字段与提交状态
-│       ├── ids.py                    CUR1B/CUR1C 策展对象 UUIDv7 身份生成
-│       ├── locking.py                CUR1C 有界跨进程文件锁
-│       ├── segmentation.py           CUR1B 离线确定性 Markdown 分段与 locator 构造
-│       ├── operations.py             CUR1B 精确来源准备、检查与 Evidence 回读
-│       ├── targeting.py              CUR1C 目标决定、provisional KB 初始化与 raw 映射
-│       ├── versioning.py             CUR1C 受控离线 managed-local Git 适配器
-│       ├── processing.py             CUR1D 处理端口、DeepSeek 适配、tokenizer 与预算执行
-│       ├── map_operations.py         CUR1D 目标建议、策展地图、决定、恢复与发布编排
-│       └── cli.py                    CUR1B–CUR1D 受限命令与单一 JSON 回执
+│       └── __init__.py
 ├── tests/
-│   ├── capture/
-│   │   ├── fixtures/                 C1–C4A 的 10 份 JSON/YAML/正文 golden 文件
-│   │   ├── unit/                     C0–P0C 单元与平台测试
-│   │   ├── integration/              C2B–P0C 事务、读取、CLI、管理、收件箱、真实边界与并发测试
-│   │   └── fault/                    C2B/C6A 进程崩溃恢复测试（捕获测试共 323 项）
-│   ├── curation/
-│   │   ├── evaluation-gold/          仅供评估器使用的盲测来源忠实度答案；禁止进入处理器上下文
-│   │   ├── fixtures/                 CUR1A/CUR1C 的 10 份契约/呈现 golden，另含 1 份来源正文夹具
-│   │   ├── test_contracts.py         CUR1A/CUR1C 契约与错误语义测试（16 项）
-│   │   ├── test_operations.py        CUR1B 分段、来源事务、回读与 CLI 测试（14 项）
-│   │   ├── test_targeting.py         CUR1C 目标、本地 Git、并发、恢复与隔离测试（12 项）
-│   │   ├── test_processing.py        CUR1D 处理器、预算、tokenizer 与窗口测试（18 项）
-│   │   └── test_map_operations.py    CUR1D 地图操作、故障、重放与 CLI 测试（33 项；策展共 93 项）
-│   └── scripts/
-│       ├── test_doc_check.py          确定性文档护栏回归测试（8 项）
-│       └── test_maintenance_scripts.py  维护脚本回归测试（7 项）
-├── docs/
-│   ├── README.md                    唯一文档阅读地图与编号顺序
-│   ├── project-status-项目状态与当前门禁.md                         唯一动态项目状态入口
-│   ├── requirements-and-governance-baseline-需求与治理基线.md      主产品需求文档（唯一 L0 PRD）
-│   ├── design-authority-and-conflict-register-设计权威与冲突登记.md  当前主题权威与冲突裁决
-│   ├── knowledgeflow-conceptual-architecture-KnowledgeFlow概念架构导读.md  非规范性跨主题概念地图
-│   ├── capture/
-│   │   ├── capture-and-routing-spec-捕获与路由规范.md                  捕获与人工路由设计
-│   │   ├── capture-envelope-v1-捕获信封数据契约与原子保存事务.md      捕获身份与事务契约
-│   │   ├── mvp-0-capture-operations-本地文本捕获操作契约.md           四个文本操作契约
-│   │   ├── capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md  Store 管理与 Backup Bundle v1 契约
-│   │   └── local-inbox-product-spec-本地收件箱产品规范.md              当前最小本地收件箱产品契约
-│   ├── curation/
-│   │   ├── 00-deep-curation-workflow-深入策展流程总览.md            深入策展顺序、分支与合法终点
-│   │   ├── 10-sop-new-kb-bootstrap-新建知识库骨架.md                SOP-10 CUR-MVP-1 新库实施契约
-│   │   ├── 20-sop-deep-curation-map-材料深度理解与策展地图.md       SOP-20 CUR-MVP-1 地图实施契约
-│   │   ├── 30-sop-trusted-write-批准后写入可信知识.md               SOP-30 写入及新库首次启用候选契约
-│   │   └── 40-cur-mvp-1-execution-plan-首个可用策展地图纵向切片实施方案.md  CUR1A–CUR1V 获批实施计划
-│   ├── progressive-knowledge-refinement-spec-渐进式知识提炼规范.md  已确认治理红线 + Draft 方法假设
-│   └── research/
-│       └── README.md                非权威研究输入索引
-├── prompts/                          LLM-agnostic 提示词模板
-│   ├── README.md                    模板使用说明
-│   ├── sop-001-modeA.md             默认：单次提取（第 1-9 节）
-│   ├── sop-001-modeA-auditor.md     默认：独立覆盖审计员（第 10 节）
-│   ├── sop-001-modeA-fast.md        可选快速路径（含自检覆盖）
-│   ├── sop-001-modeB-pass1-entities-claims.md  模式 B Pass 1：实体+论点
-│   ├── sop-001-modeBC-pass2-relationships.md   B/C 共享：关系提取
-│   ├── sop-001-modeBC-assembler.md             B/C 共享：组装器 + 覆盖报告
-│   ├── sop-001-modeC-pass1-entities.md         模式 C Pass 1：实体
-│   ├── sop-001-modeC-pass3-claims.md           模式 C Pass 3：论点
-│   ├── sop-002-curator.md                   旧 SOP-002 写入模板（暂停执行）
-│   ├── sop-003-lint.md                      SOP-003 健康扫描
-│   └── extraction-interface.md      提取接口技术规范
-├── scripts/                         参考实现脚本（纯 Python 标准库）
-│   ├── README.md                    用法、Windows 注意事项、SOP-003 映射
-│   ├── doc-check.py                 Git 感知的确定性文档护栏
-│   ├── lint.py                      SOP-003 Lint 扫描器
-│   ├── link-validator.py            Wikilink 验证器
-│   └── index-generator.py           index.md 生成器
-├── templates/
-│   └── SCHEMA-template.md           可复用知识库宪法模板（7 章起步）
+│   └── __init__.py
+├── scripts/
+│   └── doc-check.py
+├── prompts/
+│   └── README.md
 ├── examples/
-│   ├── curation-map-example.md      历史策展地图样例（25K 行；原始材料未收录）
-│   └── wiki-page-example.md         wiki 页面样例（策展入库产出）
+│   └── curation-map-example.md
 └── archive/
-    ├── 2026-design-history/
-    │   └── README.md                  九份旧方案、愿景与 SOP 的归档索引
-    ├── 2026-implementation-history/
-    │   └── README.md                  MVP-0 C3-0 与 C0–C8 实施历史索引
-    ├── 2026-p0-low-sensitivity-pilot/
-    │   └── README.md                  P0A–P0V Pilot 与恢复历史索引
-    └── v1.0/
-        ├── README.md                  v1.0 局限性说明
-        └── sop-v1-original.md        v1.0 原始 SOP
+    └── 2026-design-history/
+        └── README.md
 ```
-
----
-
-## 快速开始
-
-MVP-0 单机单用户文本捕获内核已通过 C8 本地与精确提交远端验收，限定范围状态为 `Implemented`。低敏感度 Pilot Store 已完成真实四操作、短周期离线 dogfood、同盘操作副本和全新目标恢复演练，但仍不代表长期使用、异盘灾备、正式私人内容环境或整个产品已经生产就绪。后续顺序是：
-
-1. 从[项目状态文档](docs/project-status-项目状态与当前门禁.md)确认当前检查点、下一门禁、已知问题和证据；[设计权威与冲突登记](docs/design-authority-and-conflict-register-设计权威与冲突登记.md)只用于判断主题权威和冲突裁决。
-2. 当前稳定行为看[四操作契约](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md)、[Store 管理/备份恢复契约](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)和[最小本地收件箱规范](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md)；已完成计划与验收报告只作为证据，不再承担现行规范职责。
-3. 方向治理红线已经确认，但三类 Processing Profile、Source Ledger、Evidence Bundle、自动路由和语义召回评测方法仍为 Draft，不能据此直接实现 RAG 或候选图谱。
-4. [P0 低敏感度 Pilot 实施历史](archive/2026-p0-low-sensitivity-pilot/README.md)记录了已完成的 P0D/P0V 停点、限定结论、两项重要 UX 摩擦和未证明边界；它是证据，不是当前计划。
-5. 不要从本 README、稳定契约或已完成计划推断当前检查点；该事实只由项目状态文档维护，每个新实施批次仍必须满足其中写明的复核与授权边界。
-6. 捕获/Pilot 底座之后的已批准战略方向，是先用代表材料和 Evidence-first 本地价值切片验证价值，再决定是否冻结更广的 Task/Ledger/Profile 状态或增加 RAG、图谱、GBrain 与可信写入。详见[设计权威与冲突登记第 12 节](docs/design-authority-and-conflict-register-设计权威与冲突登记.md#12-批准的方向与阶段顺序)。
-
-现有 `prompts/sop-001-*` 仍可作为 `full-map` 或分层提取实验素材；产物应进入 `proposals/curation-maps/` 或相应未审核派生层，并在人工审核后停止。不要执行旧 [`prompts/sop-002-curator.md`](prompts/sop-002-curator.md) 写入真实知识库。现有 SOP-003 Lint 脚本仍可用于检查旧版或现有 Markdown KB。
-
-### 已安装的捕获 CLI
-
-`knowledgeflow-capture` 是供本地适配器调用的**机器协议入口**，不是交互式终端工具。安装包提供四个精确命令：
-
-```text
-knowledgeflow-capture capture_text [--config <Windows 本地绝对路径>]
-knowledgeflow-capture append_capture_version [--config <Windows 本地绝对路径>]
-knowledgeflow-capture get_capture [--config <Windows 本地绝对路径>]
-knowledgeflow-capture list_captures [--config <Windows 本地绝对路径>]
-```
-
-stdin 必须是“一行 UTF-8 JSON 头 + LF/CRLF + 精确 `body_length_bytes` 个正文原始字节 + EOF”；读取和列表请求的正文长度必须为 `0`。stdout 在退出码 0 或 2 时同样返回“一行 JSON 头 + LF + 精确长度正文 + EOF”；退出码 70 表示 stdout 可能不完整，调用方必须全部丢弃。入口不提供 `--help`、`--version`、Store 初始化、恢复、迁移、路由或测试策略切换，也不会因运行命令而自动创建生产配置/Store。完整字段、帧、退出码和安全边界见[四操作契约第 7A 节](docs/capture/mvp-0-capture-operations-本地文本捕获操作契约.md#7a-c7-受限-cli-适配映射)。
-
-### P0B 管理入口（限定 `Implemented`，Pilot 首次操作副本已验证）
-
-`knowledgeflow-capture-admin` 与日常四操作机器协议分离，只提供 `init`、`verify`、`backup`、`restore`。公共成功/失败只输出一行不含路径的 JSON；恢复不切换配置；备份/恢复目标必须尚不存在，失败部分目标保留且绝不自动续传。完整命令、Backup Bundle v1、纳入/排除、退出码和安全行为由[Capture Store 管理、备份与恢复契约](docs/capture/capture-store-administration-and-backup-contract-捕获存储管理与备份恢复契约.md)长期维护。合并后的精确提交远端门禁已由运行 `37185470445` 通过；P0D/P0V 已完成 Pilot 初始化、用户 Capture、两份同盘 `operational-copy` 和一次全新目标恢复演练，正式配置在恢复中未切换。异盘灾备仍未证明。
-
-### P0C 最小本地收件箱（限定 `Implemented`；已完成低敏感度 Pilot 使用）
-
-`knowledgeflow-inbox` 使用 Python 标准库 Tk 打开 Windows-first 桌面收件箱。它只通过公共边界调用 `capture_text`、`list_captures`、`get_capture` 和 `append_capture_version`，不解析 Store 文件、不打开网络端口，也不把正文放入进程参数、stdout/stderr、日志或磁盘 spool。默认读取本机标准配置，也允许在受控场景显式选择配置：
-
-```text
-knowledgeflow-inbox
-knowledgeflow-inbox --config <Windows 本地绝对路径>
-knowledgeflow-inbox --help
-```
-
-配置缺失时只显示引导且不初始化。“未分配 / 待处理”只映射既有 `unassigned` / `unreviewed-capture`。写入正文与幂等身份只在当前界面进程中保留并支持同请求重试；进程崩溃后绝不自动重发，用户必须先刷新核对。[最小本地收件箱产品规范](docs/capture/local-inbox-product-spec-本地收件箱产品规范.md)维护当前行为，并把历史入口不可见与错误修正提示不清晰登记为重要但尚未授权的 UX 工作。提交 `d149036` 已修复安装态帮助输出的区域编码问题并通过精确远端 CI 运行 `37185470445`；P0D/P0V 提供限定的真实使用证据。
-
----
-
-## 不确定性处理
-
-粗读器不假装确定。每条提取都有一个必填的「置信度」字段，当置信度不是「确定」时，Agent 必须从 5 种预设原因中选择一个：
-
-| 类别 | 含义 | 典型场景 |
-|------|------|------|
-| `来源不可靠` | 原文中的数值/声明缺乏原始引用 | 「MRR 提升 15-40%」但无论文出处 |
-| `Agent 理解局限` | 提取者不确定自己的理解是否正确 | 语义模糊的段落 |
-| `原文模糊` | 原料本身的表述不够明确 | 类比过于简化 |
-| `信息不完整` | 原文提到了但未展开 | 「此外还有 Graph RAG……」一笔带过 |
-| `总结压缩损失` | 原料本身是二手总结，可能丢失了原始细节 | 对话总结而非原始记录 |
-
-不同类别的不确定对应不同的人类处理策略——来源不可靠需要查原始论文，总结压缩损失需要找原始对话——这个分类本身就是一种行动指南。
-
----
-
-## 实践数据
-
-> 方法论形成过程参考了 4 个跨领域知识库的实践。仓库内当前可核查的证据只有 [`examples/`](examples/) 中一份历史 25K 行策展地图样例和一份派生 wiki 页面；原始材料未收录，因此它们是说明性样例，不构成可复现实证。
-
----
-
-## 设计哲学
-
-知识库有两种退化方式：**漂移**（页面内容过时）和**碎片化**（同一概念散落在多个页面）。大多数工具靠定期清理处理漂移，但很少有工具能有效防止碎片化。
-
-KnowledgeFlow 通过两个机制同时应对两者：**宪法约束**（SCHEMA.md 是结构规则的唯一权威来源——Agent 写的任何页面都必须通过 SCHEMA 的格式和标签体系校验）和**纵深防御**（写入时查格式、Lint 时查结构、SCHEMA 变更时查连锁破坏）。系统设计让最危险的失败模式——重复页面、断裂链接、孤立实体、SCHEMA 与页面不一致——被自动捕获，不依赖人类的持续警惕。
-
----
 
 ## 许可
 
-MIT
+[MIT](LICENSE)
