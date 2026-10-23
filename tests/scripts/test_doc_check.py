@@ -123,7 +123,7 @@ knowledge-flow/
                 "capture_tests": 323,
                 "curation_tests": 93,
                 "script_tests": 15,
-                "next_gate": "CUR1D-RUN-AUTH",
+                "next_gate": "CUR1D-RUN-R1-AUTH",
             },
         )
 

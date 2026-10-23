@@ -66,10 +66,30 @@ def _request(*, thinking: bool = False) -> ProcessorRequest:
     )
 
 
+def _target_request() -> ProcessorRequest:
+    return ProcessorRequest(
+        unit_id="target-summary-001",
+        stage=ProcessingStage.TARGET_SUMMARY,
+        task="Provide a bounded synopsis and target suggestion.",
+        segments=(
+            ProcessorSegment(
+                reference="s000001",
+                ordinal=0,
+                heading_path=("测试",),
+                body="这是低敏感的合成目标建议正文。",
+                locator_id="local-target-locator-001",
+            ),
+        ),
+        max_visible_tokens=128,
+        planned_input_tokens=64,
+    )
+
+
 def _success_response(
     *,
     evidence_ref: str = "s000001",
     reasoning_tokens: int = 0,
+    payload_override: dict[str, object] | None = None,
 ) -> HttpResponse:
     payload = {
         "schema": "knowledgeflow.processor-result",
@@ -88,6 +108,8 @@ def _success_response(
         ],
         "focus_topics": [],
     }
+    if payload_override is not None:
+        payload = payload_override
     body = {
         "id": "chatcmpl-test",
         "model": "DeepSeek-V4.1-Flash-1017",
@@ -145,6 +167,55 @@ class ProcessingTest(unittest.TestCase):
         self.assertNotIn(b"secret-test-key", request_body)
         self.assertNotIn(b"local-locator-001", request_body)
         self.assertNotIn(b"capture_id", request_body)
+        provider_payload = json.loads(parsed["messages"][1]["content"])
+        contract = provider_payload["output_contract"]
+        self.assertEqual(provider_payload["profile_revision"], 2)
+        self.assertEqual(contract["format"], "json")
+        self.assertFalse(contract["additional_fields_allowed"])
+        self.assertTrue(contract["example_values_are_shape_only"])
+        self.assertEqual(
+            contract["exact_top_level_fields"],
+            [
+                "schema",
+                "schema_version",
+                "synopsis",
+                "target_suggestion",
+                "candidates",
+                "focus_topics",
+            ],
+        )
+        self.assertEqual(
+            contract["example_json_object"]["candidates"][0]["evidence_refs"],
+            ["s000001"],
+        )
+        target_body = json.loads(processor.request_bytes(_target_request()))
+        target_payload = json.loads(target_body["messages"][1]["content"])
+        target_contract = target_payload["output_contract"]
+        self.assertEqual(
+            target_contract["stage_rules"],
+            {
+                "synopsis": "required non-blank text",
+                "target_suggestion": "required object",
+                "candidates": "must be an empty array",
+                "focus_topics": "must be an empty array",
+            },
+        )
+        self.assertEqual(
+            target_contract["example_json_object"]["target_suggestion"]["choice"],
+            "new-kb",
+        )
+        target_transport = _FakeTransport(
+            _success_response(
+                payload_override=target_contract["example_json_object"],
+            )
+        )
+        target_processor = DeepSeekChatProcessor(
+            transport=target_transport,
+            environment={"DEEPSEEK_API_KEY": "target-secret"},
+        )
+        target_result = target_processor.process(_target_request())
+        self.assertEqual(target_result.target_choice, "new-kb")
+        self.assertEqual(target_result.candidates, ())
         headers = call["headers"]
         assert isinstance(headers, dict)
         self.assertEqual(headers["authorization"], "Bearer secret-test-key")
@@ -162,7 +233,7 @@ class ProcessingTest(unittest.TestCase):
         self.assertEqual(body["thinking"], {"type": "disabled"})
         self.assertNotIn("reasoning_effort", body)
 
-    def test_cur1d_04_unknown_invalid_output_is_not_retried_and_reserves_usage(self) -> None:
+    def test_cur1d_04_invalid_output_is_classified_without_persisting_content(self) -> None:
         transport = _FakeTransport(
             HttpResponse(status=200, headers={}, body=b"not-json"),
             _success_response(),
@@ -177,10 +248,50 @@ class ProcessingTest(unittest.TestCase):
             execute_processor_request(processor, _request(), ledger)
 
         self.assertTrue(raised.exception.unknown_usage)
+        self.assertEqual(raised.exception.http_status, 200)
+        diagnostic = raised.exception.diagnostic
+        self.assertIsNotNone(diagnostic)
+        assert diagnostic is not None
+        self.assertEqual(diagnostic.code, "outer-json-invalid")
+        self.assertEqual(diagnostic.response_bytes, len(b"not-json"))
+        self.assertIsNone(diagnostic.usage)
         self.assertEqual(len(transport.calls), 1)
         self.assertEqual(ledger.http_attempts, 1)
         self.assertEqual(ledger.input_tokens, 64)
         self.assertEqual(ledger.visible_output_tokens, 128)
+
+        marker = "untrusted-model-text-must-not-be-persisted"
+        invalid_payload = {
+            "schema": "knowledgeflow.processor-result",
+            "schema_version": 1,
+            "synopsis": marker,
+        }
+        observed_transport = _FakeTransport(
+            _success_response(payload_override=invalid_payload),
+        )
+        observed_processor = DeepSeekChatProcessor(
+            transport=observed_transport,
+            environment={"DEEPSEEK_API_KEY": "secret"},
+        )
+        observed_ledger = ProcessingBudgetLedger()
+
+        with self.assertRaises(ProcessorCallError) as observed_raised:
+            execute_processor_request(
+                observed_processor,
+                _request(),
+                observed_ledger,
+            )
+
+        self.assertFalse(observed_raised.exception.unknown_usage)
+        observed = observed_raised.exception.diagnostic
+        self.assertIsNotNone(observed)
+        assert observed is not None
+        self.assertEqual(observed.code, "payload-fields-invalid")
+        self.assertIsNotNone(observed.usage)
+        self.assertNotIn(marker, json.dumps(observed.as_mapping()))
+        self.assertEqual(observed_ledger.input_tokens, 41)
+        self.assertEqual(observed_ledger.visible_output_tokens, 19)
+        self.assertEqual(observed_ledger.reasoning_tokens, 0)
 
     def test_cur1d_05_retryable_http_reuses_exact_request_bytes(self) -> None:
         transport = _FakeTransport(
@@ -255,7 +366,7 @@ class ProcessingTest(unittest.TestCase):
 
         self.assertEqual(transport.calls, [])
 
-    def test_cur1d_08_unauthorized_evidence_reference_is_rejected_locally(self) -> None:
+    def test_cur1d_08_stage_and_evidence_contracts_are_rejected_locally(self) -> None:
         request = _request()
         response = ProcessorResponse(
             candidates=(
@@ -273,6 +384,26 @@ class ProcessingTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "unauthorized evidence"):
             response.validate_against(request)
+
+        target = _target_request()
+        target_response = ProcessorResponse(
+            candidates=(
+                ProcessorCandidateDraft(
+                    kind="claim",
+                    summary="目标建议阶段不应夹带地图候选。",
+                    evidence_refs=("s000001",),
+                    provenance="source-claim",
+                    uncertainty="low",
+                    markdown_anchor="target-map-field",
+                ),
+            ),
+            synopsis="合成梗概。",
+            target_choice="new-kb",
+            target_rationale="合成理由。",
+            usage=DeterministicTestProcessor().process(target).usage,
+        )
+        with self.assertRaisesRegex(ValueError, "map-only fields"):
+            target_response.validate_against(target)
 
     def test_cur1d_09_clear_presend_failure_may_retry(self) -> None:
         transport = _FakeTransport(

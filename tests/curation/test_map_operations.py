@@ -27,6 +27,7 @@ from knowledgeflow_curation import (
     ProcessingBudgetLimits,
     ProcessorCallUsage,
     ProcessorCallError,
+    ProcessorFailureDiagnostic,
     ProcessorProfile,
     ProcessorCandidateDraft,
     ProcessorResponse,
@@ -166,6 +167,37 @@ class _PostSendUnknownProcessor(_CountingProcessor):
             retryable=False,
             request_sent=True,
             unknown_usage=True,
+        )
+
+
+class _ObservedInvalidOutputProcessor(_CountingProcessor):
+    def process(self, request):
+        self.calls += 1
+        raw = b'{"synthetic":"invalid-provider-output"}'
+        usage = ProcessorCallUsage(
+            input_tokens=11,
+            visible_output_tokens=7,
+            reasoning_tokens=0,
+            elapsed_ms=5,
+            response_model="test-model-v1",
+            system_fingerprint="test-fingerprint",
+            finish_reason="stop",
+        )
+        raise ProcessorCallError(
+            "simulated invalid provider output",
+            retryable=False,
+            request_sent=True,
+            unknown_usage=False,
+            http_status=200,
+            diagnostic=ProcessorFailureDiagnostic(
+                code="payload-fields-invalid",
+                response_sha256=hash_bytes(raw).sha256,
+                response_bytes=len(raw),
+                response_model="test-model-v1",
+                system_fingerprint="test-fingerprint",
+                finish_reason="stop",
+                usage=usage,
+            ),
         )
 
 
@@ -391,6 +423,49 @@ class MapOperationTest(unittest.TestCase):
         self.assertIsInstance(result, CurationFailure)
         self.assertEqual(result.error.code, CurationErrorCode.PROCESSOR_OUTPUT_INVALID)
         self.assertFalse((self.experiment_root / "curation-work" / "targets").exists())
+
+        observed_processor = _ObservedInvalidOutputProcessor()
+        observed_request = TargetSuggestRequest(
+            request_id="target-suggest-observed-invalid",
+            source_request_id="source-map-01",
+            suggested_by="local-agent",
+        )
+        observed = suggest_target(
+            observed_request,
+            experiment_root=self.experiment_root,
+            path_policy=self.policy,
+            processor=observed_processor,
+            now=self._fixed_now,
+        )
+
+        self.assertIsInstance(observed, CurationFailure)
+        self.assertEqual(observed_processor.calls, 1)
+        transaction = (
+            self.experiment_root
+            / "curation-work"
+            / "map-transactions"
+            / "target-suggestion-target-suggest-observed-invalid"
+        )
+        result_path = transaction / "attempt-target-summary-001-01-result.json"
+        attempt = json.loads(result_path.read_text(encoding="utf-8"))
+        self.assertEqual(attempt["status"], "failed")
+        self.assertFalse(attempt["unknown_usage"])
+        self.assertEqual(attempt["http_status"], 200)
+        self.assertEqual(attempt["diagnostic"]["code"], "payload-fields-invalid")
+        self.assertEqual(attempt["diagnostic"]["usage"]["input_tokens"], 11)
+        self.assertEqual(attempt["budget_after"]["input_tokens"], 11)
+        self.assertNotIn("invalid-provider-output", result_path.read_text(encoding="utf-8"))
+
+        replacement = _CountingProcessor()
+        replayed = suggest_target(
+            observed_request,
+            experiment_root=self.experiment_root,
+            path_policy=self.policy,
+            processor=replacement,
+            now=self._fixed_now,
+        )
+        self.assertIsInstance(replayed, CurationFailure)
+        self.assertEqual(replacement.calls, 0)
 
     def test_cur1d_11_no_target_map_is_atomic_replayable_and_does_not_write_wiki(self) -> None:
         self._no_target()

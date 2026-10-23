@@ -338,14 +338,14 @@ API key 只能通过运行时密钥来源引用，例如环境变量名或后续
 | provider profile | `deepseek-official-openai-chat-v1` |
 | base URL / endpoint | `https://api.deepseek.com` + `/chat/completions`；不是 OpenAI 托管服务，只复用 OpenAI 风格请求/响应 |
 | 请求模型 | `deepseek-flash` |
-| 当前别名解析 | 截至 2026-10-20，官方文档说明该别名由 `DeepSeek-V4.1-Flash-1017` 提供；别名以后可能滚动升级，因此运行记录必须同时保存请求别名、响应 `model` 与 `system_fingerprint`，不得宣称可精确复现不可调用的历史后端 |
+| 当前别名解析 | 截至 2026-10-22，官方文档说明该别名由 `DeepSeek-V4.1-Flash-1017` 提供；别名以后可能滚动升级，因此运行记录必须同时保存请求别名、响应 `model` 与 `system_fingerprint`，不得宣称可精确复现不可调用的历史后端 |
 | 首轮交互 | 非流式；不使用文件上传、工具调用、联网搜索或服务端对话延续 |
 | 输出边界 | 使用 `response_format={"type":"json_object"}` 取得可解析 JSON，再由本地严格契约验证；JSON mode 不保证符合 KnowledgeFlow schema，截断、空内容、字段越界或非法 Evidence 一律失败关闭，不直接发布地图 |
 | 凭据引用 | 默认读取环境变量 `DEEPSEEK_API_KEY`；配置与运行记录只保存变量名，不保存值 |
 
-本次核对依据为 DeepSeek 官方的 [API 快速入口](https://api-docs.deepseek.com/guides/search_fetch)、[Chat Completions 契约](https://api-docs.deepseek.com/api/create-chat-completion/)、[模型与计价](https://api-docs.deepseek.com/quick_start/pricing/)和[隐私政策](https://cdn.deepseek.com/policies/zh-CN/deepseek-privacy-policy.html)，以及 OpenAI 官方对 [JSON mode 与 Structured Outputs 区别](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat)的说明；动态模型、能力和价格在真实运行授权前必须重新核对。
+本次动态复核截至 2026-10-22，依据 DeepSeek 官方的 [API 快速入口](https://api-docs.deepseek.com/guides/search_fetch)、[Chat Completions 契约](https://api-docs.deepseek.com/api/create-chat-completion/)、[模型与计价](https://api-docs.deepseek.com/quick_start/pricing/)和[隐私政策](https://cdn.deepseek.com/policies/zh-CN/deepseek-privacy-policy.html)，以及 OpenAI 官方对 [JSON mode 与 Structured Outputs 区别](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=chat)的说明；动态模型、能力和价格在每次新的真实运行授权前仍须重新核对。
 
-官方接口称 Chat Completions 为无状态，只表示后续请求必须由客户端重新提供上下文，不能推导为“服务商不收集或不保留输入”。DeepSeek 隐私政策明确覆盖 API 输入及相应处理，因此首轮仍只允许已登记的低敏感度 `E0-C`；未来私人或高敏内容必须另行评估和授权，不能沿用本次许可。
+官方接口称 Chat Completions 为无状态，只表示后续请求必须由客户端重新提供上下文，不能推导为“服务商不收集或不保留输入”。DeepSeek 隐私政策明确覆盖 API 输入及相应处理，并说明输入/输出可能在加密和去标识化处理后用于模型训练与服务优化；用户可在账号设置中关闭“数据用于优化体验”，关闭后新的输入/输出不再用于模型训练。因此首轮除仍只允许已登记的低敏感度 `E0-C` 外，还必须在发送前由项目所有者确认已关闭该设置，或明确接受本轮数据可能用于训练/优化。未来私人或高敏内容必须另行评估和授权，不能沿用本次许可。
 
 “实际发送字段”用于界定哪些本地内容会离开机器，不要求用户逐段手选。项目所有者已经确认首轮按下表把低敏感度 `E0-C` 的完整正文作为 76 个连续 Segment 分批发送；该确认只冻结外传范围，不等于已经授权调用 API：
 
@@ -410,7 +410,7 @@ DeepSeek 官方当前默认启用 thinking 且默认 effort 为 `high`，因此�
 
 离线规划 input 不得超过 `32,768`；API 实际 `prompt_tokens` 高于规划值但未越过硬上限时，先按实际用量记账，再确认剩余预算足以完成下一单元。实际输入越过硬上限、任何输出以 `length`/`content_filter`/资源中止结束、usage 缺失且无法按最坏值预留、累计尝试/token/费用达到任一上限时，不发布该候选，不再发起新请求；保留已验证结果和运行记录，其余范围明确标为 `deferred`、`failed` 或 `unknown`。预算耗尽不得触发自动换模型、降低证据要求或把机械覆盖冒充语义覆盖。
 
-数据边界维持不变：不使用文件上传、工具调用、联网搜索、服务端对话延续或无关仓库内容；不发送本机绝对路径、Capture/KB/Git 身份、gold 或判分答案。DeepSeek 当前隐私政策覆盖 API 输入并说明某些输入/输出可能用于服务优化；因此本轮只能在项目所有者另行批准 `CUR1D-RUN` 后发送已经确认的低敏感度 `E0-C`。政策、服务条款或用户的数据使用选择发生实质变化时，在下一次正文发送前暂停。
+数据边界维持不变：不使用文件上传、工具调用、联网搜索、服务端对话延续或无关仓库内容；不发送本机绝对路径、Capture/KB/Git 身份、gold 或判分答案。DeepSeek 当前隐私政策覆盖 API 输入并说明输入/输出可能用于训练或服务优化；本轮还须把账号是否关闭“数据用于优化体验”作为最终授权包的显式选择。因此只能在项目所有者另行批准 `CUR1D-RUN` 后发送已经确认的低敏感度 `E0-C`。政策、服务条款或用户的数据使用选择发生实质变化时，在下一次正文发送前暂停。
 
 #### 不含评估答案的 `CUR1D` 授权包
 
@@ -419,7 +419,21 @@ DeepSeek 官方当前默认启用 thinking 且默认 effort 为 `high`，因此�
 1. **`CUR1D-CODE`**：允许实现供应商无关处理端口、确定性测试处理器、DeepSeek 参考适配器、本地有界编排、预算/超时/重试停点、候选验证、地图发布/修改/关闭及对应测试；只使用测试临时目录、机械夹具、模拟响应和不含 gold 的合成候选。不得联网、读取或发送真实 `E0-C` 正文、读取 evaluator-only 文件、写入 `wiki/` 或触碰 Pilot/生产 Store。
 2. **`CUR1D-RUN`**：只有 `CUR1D-CODE` 独立复核、目标测试和受影响回归通过后，才允许做一次能力/价格/隐私前检并运行一份精确 `E0-C`。它使用已确认的完整正文分批发送范围、上述模型/Profile、思考模式、深度、调用/token/费用和网络停点；不得扩大到其他材料、已有 KB、可信写入、外部搜索或第二次调参运行。真实结果须先由项目所有者判断，再决定是否进行至多一次另行授权的有界修正。
 
-授权包明确不包含 C-K、非 C-K 盲抽答案或判分结论。下一次可授予的最小权限是 `CUR1D-CODE`；仅授权 `CUR1D-CODE` 时，不产生 API 费用和外部正文传输。
+授权包明确不包含 C-K、非 C-K 盲抽答案或判分结论。`CUR1D-CODE` 及其复核现已闭合；当前可授予的最小权限是按本节冻结边界执行一次 `CUR1D-RUN`，它会产生外部正文传输和实际 provider 费用，因此必须另行精确授权。
+
+`CUR1D-RUN-AUTH` 准备记录（2026-10-22 至 2026-10-23）：已在任务专用临时根建立非 editable Python 3.13.14 环境，确认 OpenSSL 3.5.7、处理器导入、3 项精确回归和 DeepSeek 官方公开文档 HTTPS 访问正常；这不改变仓库基础依赖，也没有覆盖或删除本机原 `.venv`。官方动态复核确认当前模型别名、思考/JSON 参数和峰时价格仍符合上表，原 USD 2.00 上限不变。`deepseek-recipe 0.2.0` 仍未提供 Windows wheel，因此首轮显式选择已实现并记录为非官方估算的 `conservative-utf8`，没有为当前价值验证扩张 Rust/OpenCV/Clang 构建链。项目所有者未找到“数据用于优化体验”选项，并于 2026-10-23 明确接受本次低敏感度 `E0-C` 输入/输出可能用于训练或服务优化；该接受不延伸到其他材料、未来运行或私人/高敏内容。项目所有者随后通过本机掩码输入窗口提供新密钥，密钥只进入运行进程环境，未写入项目、普通配置、命令历史、日志或回执，并在本次尝试停止后从进程清除。
+
+`CUR1D-RUN` 首次真实尝试记录（2026-10-23）：隔离实验根内的精确来源 Capture 成功提交，1,184,815 bytes 的授权来源形成 76 个 Segment，来源摘要与授权包一致。第一个 non-thinking 目标建议工作单元随后以 `deepseek-flash`、官方 Chat Completions endpoint、`conservative-utf8` 规划器和冻结请求字节发送 1 次。返回内容未通过本地处理器契约，操作以 `processor_output_invalid`、`not-committed`、`unknown_usage` 停止；不可变尝试记录证明 `request_sent=true`，但没有保存可用响应或具体解析分支。预算账本因此按最坏情况占用 1 个首次工作单元、1 次 HTTP 尝试、15,640 input tokens、2,048 visible output tokens、0 reasoning tokens 和 USD 0.00715。这不是供应商实际 usage 或账单证据。没有发布目标建议，没有创建 provisional KB、`raw/`、地图或本机回执，也没有 staging 残留。
+
+本次真实偏差同时暴露出两个零联网修正点。第一，当前 provider payload 只列出候选字段，没有提供本地解析器要求的完整顶层、嵌套结构与阶段化 JSON 示例；DeepSeek 官方 JSON Output 指南明确要求在 prompt 中给出期望 JSON 示例，因此下一候选应补齐 stage-specific 完整输出契约。第二，当前失败记录把解析异常安全地折叠为 `unknown_usage`，但也丢失了空 content、字段集合、枚举/证据引用等具体失败类别；下一候选应保存不含正文、密钥和未验证模型文本的安全诊断元数据。以上是高可信修正依据，但由于原始响应未持久化，不能反推本次响应究竟触发了哪一个解析分支。
+
+下一门禁为 `CUR1D-RUN-R1`：先单独完成上述本地修正、模拟目标测试和受影响策展回归；旧终止请求不得重放，也不得因密钥仍有效而再次联网。修正候选通过复核后，项目所有者再决定是否批准至多一次使用新请求身份的有界纠正运行，并明确其独立 token/费用上限。未经该授权，不再发送 `E0-C` 或调用真实 API。
+
+`CUR1D-RUN-R1` 本地实现记录（2026-10-23）：处理器 Prompt Profile 已从 revision 1 升级为 revision 2。目标梗概、L1 窗口、部分综合、全局地图和重点深化现在共享精确顶层字段，同时各自声明 `synopsis`、`target_suggestion`、`candidates` 与 `focus_topics` 的阶段规则；完整 JSON 示例使用请求中真实披露的 Evidence 引用，不引入虚构 locator。`ProcessorResponse` 同步强制目标建议字段与地图字段按阶段互斥。
+
+失败流水新增有界 `diagnostic`：只保存稳定失败类别、供应商响应 SHA-256/字节数、安全格式的模型名/指纹/结束原因及可解析 usage，不保存响应正文、来源正文或密钥。能可靠解析 usage 的无效输出按实际 token 记账；usage 不可解析时仍按请求最坏值保守占用。旧版没有 `diagnostic` 字段的不可变失败结果继续可读，已终止请求仍禁止自动发送。源码编译、51 项处理器/地图精确测试和严格 `ResourceWarning` 的全部 93 项策展回归通过；测试只使用模拟响应与临时根，没有读取 evaluator-only gold 或真实 `E0-C`，没有联网或 API 费用。
+
+下一门禁更新为 `CUR1D-RUN-R1-AUTH`：当前候选须先复核、独立版本化，并以精确版本重建非 editable 运行环境；随后才由项目所有者决定是否授权至多一次新请求身份的纠正运行。该授权不得继承首轮已消费授权，也不得重放旧失败事务。
 
 ### `CUR1D`：真实处理器、地图生成、证据导航与修改
 

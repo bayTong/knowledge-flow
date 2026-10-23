@@ -71,6 +71,7 @@ from .processing import (
     ProcessorCallError,
     ProcessorCallUsage,
     ProcessorCandidateDraft,
+    ProcessorFailureDiagnostic,
     ProcessorPort,
     ProcessorRequest,
     ProcessorResponse,
@@ -1121,6 +1122,7 @@ def _attempt_result_mapping(
     request_sent: bool | None,
     retry_after_seconds: int | None,
     recovered_after_interruption: bool,
+    diagnostic: ProcessorFailureDiagnostic | None,
 ) -> dict[str, object]:
     return {
         "schema": "knowledgeflow.curation-processor-attempt-result",
@@ -1136,6 +1138,7 @@ def _attempt_result_mapping(
         "request_sent": request_sent,
         "retry_after_seconds": retry_after_seconds,
         "recovered_after_interruption": recovered_after_interruption,
+        "diagnostic": None if diagnostic is None else diagnostic.as_mapping(),
         "response": None if response is None else _response_mapping(response),
         "budget_after": _ledger_mapping(ledger),
     }
@@ -1213,7 +1216,12 @@ def _load_attempt_result(
         "response",
         "budget_after",
     }
-    if not isinstance(value, Mapping) or set(value) != required:
+    allowed = required | {"diagnostic"}
+    if (
+        not isinstance(value, Mapping)
+        or not required.issubset(value)
+        or not set(value).issubset(allowed)
+    ):
         raise ValueError("stored processor attempt result is invalid")
     if (
         value["schema"] != "knowledgeflow.curation-processor-attempt-result"
@@ -1235,6 +1243,12 @@ def _load_attempt_result(
     ):
         raise ValueError("stored processor retry delay is invalid")
     record = _attempt_record_from_result(value)
+    diagnostic_raw = value.get("diagnostic")
+    diagnostic = (
+        None
+        if diagnostic_raw is None
+        else ProcessorFailureDiagnostic.from_mapping(diagnostic_raw)
+    )
     if retry_after is not None and not record.retryable:
         raise ValueError("stored non-retryable attempt has a retry delay")
     if recovered:
@@ -1245,13 +1259,18 @@ def _load_attempt_result(
             or not record.unknown_usage
             or record.http_status is not None
             or retry_after is not None
+            or diagnostic is not None
         ):
             raise ValueError("stored interrupted attempt recovery is invalid")
     elif type(request_sent) is not bool:
         raise ValueError("stored live attempt send state is invalid")
     response: ProcessorResponse | None = None
     if record.status == "succeeded":
-        if value["response"] is None or request_sent is not True:
+        if (
+            value["response"] is None
+            or request_sent is not True
+            or diagnostic is not None
+        ):
             raise ValueError("stored successful processor response is missing")
         response = _response_from_mapping(value["response"])
         response.validate_against(request)
@@ -1264,7 +1283,23 @@ def _load_attempt_result(
     else:
         if value["response"] is not None:
             raise ValueError("stored failed processor attempt has a response")
-        if record.unknown_usage:
+        if diagnostic is not None and request_sent is not True:
+            raise ValueError("stored processor diagnostic has no sent request")
+        if diagnostic is not None and (
+            record.http_status != 200
+            or (diagnostic.usage is None) != record.unknown_usage
+        ):
+            raise ValueError("stored processor diagnostic state is inconsistent")
+        if diagnostic is not None and diagnostic.usage is not None:
+            try:
+                ledger.record_observed_usage(diagnostic.usage, request=request)
+            except BudgetExhausted:
+                if value["budget_after"] != ledger.as_mapping():
+                    raise ValueError(
+                        "stored processor budget ledger is not reproducible"
+                    )
+                raise
+        elif record.unknown_usage:
             ledger.record_unknown(request)
     if value["budget_after"] != ledger.as_mapping():
         raise ValueError("stored processor budget ledger is not reproducible")
@@ -1280,8 +1315,6 @@ def _record_live_attempt_error(
     attempt: int,
     error: ProcessorCallError,
 ) -> AttemptRecord:
-    if error.unknown_usage:
-        ledger.record_unknown(request)
     record = AttemptRecord(
         attempt=attempt,
         status="unknown" if error.unknown_usage else "failed",
@@ -1289,6 +1322,14 @@ def _record_live_attempt_error(
         unknown_usage=error.unknown_usage,
         http_status=error.http_status,
     )
+    budget_error: BudgetExhausted | None = None
+    try:
+        if error.diagnostic is not None and error.diagnostic.usage is not None:
+            ledger.record_observed_usage(error.diagnostic.usage, request=request)
+        elif error.unknown_usage:
+            ledger.record_unknown(request)
+    except BudgetExhausted as exc:
+        budget_error = exc
     _write_new_or_same(
         result_path,
         _canonical_json(
@@ -1300,10 +1341,13 @@ def _record_live_attempt_error(
                 request_sent=error.request_sent,
                 retry_after_seconds=error.retry_after_seconds,
                 recovered_after_interruption=False,
+                diagnostic=error.diagnostic,
             )
         ),
         durability,
     )
+    if budget_error is not None:
+        raise budget_error
     return record
 
 
@@ -1371,6 +1415,7 @@ def _execute_unit(
                         request_sent=None,
                         retry_after_seconds=None,
                         recovered_after_interruption=True,
+                        diagnostic=None,
                     )
                 ),
                 durability,
@@ -1423,6 +1468,7 @@ def _execute_unit(
                                 request_sent=True,
                                 retry_after_seconds=None,
                                 recovered_after_interruption=False,
+                                diagnostic=None,
                             )
                         ),
                         durability,
@@ -1439,6 +1485,7 @@ def _execute_unit(
                             request_sent=True,
                             retry_after_seconds=None,
                             recovered_after_interruption=False,
+                            diagnostic=None,
                         )
                     ),
                     durability,
