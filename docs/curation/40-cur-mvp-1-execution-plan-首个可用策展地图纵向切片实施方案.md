@@ -433,7 +433,25 @@ DeepSeek 官方当前默认启用 thinking 且默认 effort 为 `high`，因此�
 
 失败流水新增有界 `diagnostic`：只保存稳定失败类别、供应商响应 SHA-256/字节数、安全格式的模型名/指纹/结束原因及可解析 usage，不保存响应正文、来源正文或密钥。能可靠解析 usage 的无效输出按实际 token 记账；usage 不可解析时仍按请求最坏值保守占用。旧版没有 `diagnostic` 字段的不可变失败结果继续可读，已终止请求仍禁止自动发送。源码编译、51 项处理器/地图精确测试和严格 `ResourceWarning` 的全部 93 项策展回归通过；测试只使用模拟响应与临时根，没有读取 evaluator-only gold 或真实 `E0-C`，没有联网或 API 费用。
 
-下一门禁更新为 `CUR1D-RUN-R1-AUTH`：当前候选须先复核、独立版本化，并以精确版本重建非 editable 运行环境；随后才由项目所有者决定是否授权至多一次新请求身份的纠正运行。该授权不得继承首轮已消费授权，也不得重放旧失败事务。
+`CUR1D-RUN-R1` 版本化与运行环境准备记录（2026-10-23）：修正候选已由提交 `21c0156` 独立版本化并推送；[Windows CI #20](https://github.com/bayTong/knowledge-flow/actions/runs/39892359013) 在该精确提交上通过普通/严格全量测试、源码编译、依赖和文档门禁。随后从该提交的 Git 归档重建任务专用运行环境：uv 0.11.27 使用既有独立 CPython 3.13.14 和离线缓存完成非 editable 安装，包从临时环境 `site-packages` 加载；OpenSSL 3.5.7、Prompt Profile revision 2 和 3 项精确回归通过。对 `api.deepseek.com` 的无密钥、无正文 TLS 1.3 握手成功；这不是 API 请求，也没有产生 provider 用量。
+
+同日重新核对官方动态资料：请求模型仍为 `deepseek-flash`，支持 non-thinking、JSON Output 与 OpenAI 格式 Chat Completions；峰时 cache-miss 输入和输出价格仍分别为每百万 tokens USD 0.30 与 USD 1.20。官方 JSON Output 指南仍要求在 Prompt 中明确 JSON 并提供期望示例，同时继续提示偶发空内容，因此 revision 2 的完整示例不能替代本地严格校验与失败关闭。隐私政策仍覆盖 API 输入/输出，并可能在安全加密和去标识化后用于模型训练和服务优化；首轮已消费的接受与运行授权不自动延伸到纠正请求。
+
+下一门禁仍为 `CUR1D-RUN-R1-AUTH`，但其准备项现已闭合。待项目所有者裁决的精确纠正包为：
+
+| 项目 | 纠正授权上限 |
+|---|---|
+| 目的 | 只验证 Prompt Profile revision 2 能否产生可接受的“最小梗概 + 非权威目标建议”；成功后停在人工审核，不继续地图处理 |
+| 来源与外传 | 仅使用首轮已确认的同一精确低敏感度 `E0-C` 来源版本与既定完整授权范围；实际请求仍只发送目标建议窗口选中的正文区段和必要非身份元数据，不发送本机路径、Capture/KB/Git 身份或 evaluator-only 内容 |
+| 处理器 | `deepseek-official-openai-chat-v1`、请求模型 `deepseek-flash`、`conservative-utf8`、non-thinking、JSON Output、Prompt Profile revision 2 |
+| 请求身份 | 使用全新的纠正授权 ID、来源准备请求 ID 和目标建议请求 ID；旧失败请求、事务和预算不得重放或复用 |
+| 单请求 | 不超过 16,384 input tokens、2,048 visible output tokens、0 reasoning tokens |
+| 尝试与累计预算 | 1 个首次工作单元；同一冻结请求字节至多 3 次 HTTP 尝试，只允许既定连接前失败或明确 `408/429/500/503` 瞬时重试；累计不超过 49,152 input、6,144 visible output、0 reasoning 和 USD 0.025 provider 费用 |
+| 强制停止 | Schema/Evidence 无效、空内容、截断、内容过滤、请求后读取超时、提交状态不明、usage 无法在上限内保守占用或任一预算达到上限时立即停止，不自动改 Prompt、换模型或再次发送 |
+| 明确不包含 | 完整 76 Segment 地图、provisional KB、`raw/` 映射、可信 `wiki/` 写入、其他材料、搜索/工具调用或第二轮调参 |
+| 凭据与数据选择 | 仍由本机掩码窗口输入现有新 key，只驻留于运行进程并在结束后清除；项目所有者须对这次纠正请求重新确认接受同一低敏感来源及输出可能用于训练或服务优化 |
+
+未经这项新的精确授权，不读取或发送真实 `E0-C` 正文，不调用真实 API。授权后若目标建议成功，下一步只是展示梗概、建议和证据范围供项目所有者决定 `new-kb` 或 `no-target`；完整地图运行必须等待该人工决定及其后续边界确认。
 
 ### `CUR1D`：真实处理器、地图生成、证据导航与修改
 
