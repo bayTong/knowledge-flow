@@ -37,6 +37,7 @@ from .codec import (
     render_curation_map_markdown,
 )
 from .contracts import (
+    ByteRange,
     CandidateDecision,
     CurationEvidenceRecord,
     CurationMap,
@@ -103,6 +104,8 @@ _REPARSE_ATTRIBUTE = 0x400
 _L1_TARGET_TOKENS = 24_576
 _INPUT_HARD_LIMIT = 32_768
 _TOKEN_PLANNING_SAFETY_MARGIN = 512
+_TARGET_SAMPLE_INITIAL_BYTES = 2_048
+_TARGET_SAMPLE_MINIMUM_BYTES = 512
 _PROCESSING_WINDOW_PROFILE = "heading-tree-token-bounded"
 _PROCESSING_WINDOW_PROFILE_REVISION = 1
 _BUDGET_COUNTER_FIELDS = (
@@ -311,6 +314,7 @@ class TargetSuggestResult:
     selected_segment_count: int
     total_segment_count: int
     selected_byte_size: int
+    coverage_is_complete: bool
     result_path: Path
     replayed: bool = False
 
@@ -339,6 +343,8 @@ class TargetSuggestResult:
             or self.selected_byte_size < 1
         ):
             raise ValueError("target suggestion coverage counts are invalid")
+        if type(self.coverage_is_complete) is not bool:
+            raise TypeError("coverage_is_complete must be boolean")
         if not isinstance(self.result_path, Path) or not self.result_path.is_absolute():
             raise ValueError("result_path must be absolute")
         if type(self.replayed) is not bool:
@@ -359,7 +365,7 @@ class TargetSuggestResult:
             "selected_segment_count": self.selected_segment_count,
             "total_segment_count": self.total_segment_count,
             "selected_byte_size": self.selected_byte_size,
-            "coverage_is_complete": self.selected_segment_count == self.total_segment_count,
+            "coverage_is_complete": self.coverage_is_complete,
             "requires_human_confirmation": True,
             "target_decision_recorded": False,
             "kb_created": False,
@@ -370,7 +376,7 @@ class TargetSuggestResult:
             "replayed": self.replayed,
             "warnings": (
                 []
-                if self.selected_segment_count == self.total_segment_count
+                if self.coverage_is_complete
                 else ["target synopsis is based on a bounded representative sample"]
             ),
         }
@@ -639,6 +645,7 @@ def _processor_segments(
                 heading_path=segment.heading_path,
                 body=selected.decode("utf-8", errors="strict"),
                 locator_id=locator.locator_id,
+                byte_range=segment.byte_range,
             )
         )
     return tuple(result)
@@ -856,6 +863,14 @@ def _request_metadata(request: ProcessorRequest) -> dict[str, object]:
     return {
         "segment_references": [item.reference for item in request.segments],
         "heading_paths": [list(item.heading_path) for item in request.segments],
+        "segment_ranges": [
+            None if item.byte_range is None else item.byte_range.as_mapping()
+            for item in request.segments
+        ],
+        "segment_body_sha256": [
+            hash_bytes(item.body.encode("utf-8")).sha256
+            for item in request.segments
+        ],
         "prior_candidate_references": [
             item.reference for item in request.prior_candidates
         ],
@@ -1580,49 +1595,115 @@ def _persist_processing_stop(
     _write_new_or_same(transaction / f"stop-{digest}.json", body, durability)
 
 
+def _utf8_sample(
+    segment: ProcessorSegment,
+    *,
+    maximum_bytes: int,
+    position: str,
+) -> ProcessorSegment:
+    """Return one exact UTF-8 subrange while retaining its parent Evidence locator."""
+
+    if segment.byte_range is None:
+        raise ValueError("target sampling requires exact source byte ranges")
+    raw = segment.body.encode("utf-8")
+    if len(raw) <= maximum_bytes:
+        return segment
+    if position == "start":
+        start = 0
+    elif position == "middle":
+        start = max(0, (len(raw) - maximum_bytes) // 2)
+    elif position == "end":
+        start = max(0, len(raw) - maximum_bytes)
+    else:
+        raise ValueError("target sample position is unsupported")
+    while start < len(raw) and raw[start] & 0xC0 == 0x80:
+        start += 1
+    end = min(len(raw), start + maximum_bytes)
+    while end > start and end < len(raw) and raw[end] & 0xC0 == 0x80:
+        end -= 1
+    if end <= start:
+        raise ValueError("target sample cannot preserve a UTF-8 boundary")
+    selected = raw[start:end]
+    return replace(
+        segment,
+        body=selected.decode("utf-8", errors="strict"),
+        byte_range=ByteRange(
+            segment.byte_range.start_byte + start,
+            segment.byte_range.start_byte + end,
+        ),
+    )
+
+
+def _target_summary_draft(
+    segments: Sequence[ProcessorSegment],
+) -> ProcessorRequest:
+    return ProcessorRequest(
+        unit_id="target-summary-001",
+        stage=ProcessingStage.TARGET_SUMMARY,
+        task=(
+            "Using only these disclosed representative source samples, provide a "
+            "minimal synopsis and a non-authoritative new-kb or no-target suggestion. "
+            "The samples come from the beginning, middle, and end when those ranges "
+            "exist. Do not claim that unselected source ranges were reviewed."
+        ),
+        segments=tuple(segments),
+        thinking=False,
+        max_visible_tokens=2048,
+        planned_input_tokens=1,
+    )
+
+
 def _target_summary_request(
     segments: Sequence[ProcessorSegment],
     counter: TokenCounter,
 ) -> ProcessorRequest:
-    """Select a bounded representative sample without implying full-source coverage."""
+    """Fit mandatory beginning/middle/end samples without silently dropping anchors."""
 
     if not segments:
         raise ValueError("target suggestion requires source segments")
-    preferred_indexes = (0, len(segments) // 2, len(segments) - 1)
-    ordered_indexes: list[int] = []
-    for index in preferred_indexes:
-        if index not in ordered_indexes:
-            ordered_indexes.append(index)
-    for index in range(len(segments)):
-        if index not in ordered_indexes:
-            ordered_indexes.append(index)
-    selected: list[ProcessorSegment] = []
-    for index in ordered_indexes:
-        candidate = (*selected, segments[index])
-        draft = ProcessorRequest(
-            unit_id="target-summary-001",
-            stage=ProcessingStage.TARGET_SUMMARY,
-            task=(
-                "Using only these disclosed representative source samples, provide a "
-                "minimal synopsis and a non-authoritative new-kb or no-target suggestion. "
-                "Do not claim that unselected source ranges were reviewed."
-            ),
-            segments=candidate,
-            thinking=False,
-            max_visible_tokens=2048,
-            planned_input_tokens=1,
+    if len(segments) == 1:
+        anchors = [(0, "start")]
+    elif len(segments) == 2:
+        anchors = [(0, "start"), (1, "end")]
+    else:
+        anchors = [
+            (0, "start"),
+            (len(segments) // 2, "middle"),
+            (len(segments) - 1, "end"),
+        ]
+
+    full_anchors = tuple(segments[index] for index, _ in anchors)
+    try:
+        return _planned_request(
+            _target_summary_draft(full_anchors),
+            counter,
+            hard_limit=16_384,
+        )
+    except BudgetExhausted:
+        pass
+
+    maximum_bytes = _TARGET_SAMPLE_INITIAL_BYTES
+    while maximum_bytes >= _TARGET_SAMPLE_MINIMUM_BYTES:
+        selected = tuple(
+            _utf8_sample(
+                segments[index],
+                maximum_bytes=maximum_bytes,
+                position=position,
+            )
+            for index, position in anchors
         )
         try:
-            planned = _planned_request(draft, counter, hard_limit=16_384)
+            return _planned_request(
+                _target_summary_draft(selected),
+                counter,
+                hard_limit=16_384,
+            )
         except BudgetExhausted:
-            continue
-        selected = list(candidate)
-        latest = planned
-    if not selected:
-        raise BudgetExhausted(
-            "no exact Segment fits the target-suggestion input hard limit"
-        )
-    return latest
+            maximum_bytes //= 2
+    raise BudgetExhausted(
+        "representative beginning/middle/end samples do not fit the "
+        "target-suggestion input hard limit"
+    )
 
 
 def suggest_target(
@@ -1731,10 +1812,28 @@ def suggest_target(
             selected_bytes = sum(
                 len(item.body.encode("utf-8")) for item in unit_request.segments
             )
+            total_bytes = sum(len(item.body.encode("utf-8")) for item in segments)
+            coverage_is_complete = (
+                len(unit_request.segments) == len(segments)
+                and selected_bytes == total_bytes
+            )
+            selected_samples = [
+                {
+                    "segment_reference": item.reference,
+                    "locator_id": item.locator_id,
+                    "range": (
+                        None
+                        if item.byte_range is None
+                        else item.byte_range.as_mapping()
+                    ),
+                    "body_sha256": hash_bytes(item.body.encode("utf-8")).sha256,
+                }
+                for item in unit_request.segments
+            ]
             result_body = _canonical_json(
                 {
                     "schema": "knowledgeflow.target-suggestion",
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "transaction_id": identity["transaction_id"],
                     "request_id": request.request_id,
                     "source_request_id": request.source_request_id,
@@ -1748,10 +1847,11 @@ def suggest_target(
                         item.reference for item in unit_request.segments
                     ],
                     "selected_locator_ids": list(locator_ids),
+                    "selected_samples": selected_samples,
                     "selected_segment_count": len(unit_request.segments),
                     "total_segment_count": len(segments),
                     "selected_byte_size": selected_bytes,
-                    "coverage_is_complete": len(unit_request.segments) == len(segments),
+                    "coverage_is_complete": coverage_is_complete,
                     "processor_profile": processor.profile.as_mapping(),
                     "provider_profile": processor.provider_profile,
                     "key_reference": processor.key_reference,
@@ -1816,6 +1916,7 @@ def suggest_target(
                 selected_segment_count=len(unit_request.segments),
                 total_segment_count=len(segments),
                 selected_byte_size=selected_bytes,
+                coverage_is_complete=coverage_is_complete,
                 result_path=result_path.resolve(strict=True),
                 replayed=replayed,
             )
@@ -1898,9 +1999,10 @@ def _prior_target_suggestion_budget(
             CurationErrorCode.AUTHORIZATION_SCOPE_MISMATCH
         ) from exc
     expected_limits = {name: getattr(limits, name) for name in limits.__slots__}
+    suggestion_schema_version = value.get("schema_version")
     if (
         value.get("schema") != "knowledgeflow.target-suggestion"
-        or value.get("schema_version") != 1
+        or suggestion_schema_version not in (1, 2)
         or value.get("request_id") != suggestion_request_id
         or value.get("source_request_id") != request.source_request_id
         or value.get("curation_run_id") != target.updated_run.curation_run_id
@@ -1932,6 +2034,51 @@ def _prior_target_suggestion_budget(
         or not isinstance(unit_metadata, Mapping)
     ):
         raise _RemoteAuthorizationError(CurationErrorCode.AUTHORIZATION_SCOPE_MISMATCH)
+    if suggestion_schema_version == 2:
+        references = value.get("selected_segment_references")
+        locator_ids = value.get("selected_locator_ids")
+        ranges = unit_metadata.get("segment_ranges")
+        body_hashes = unit_metadata.get("segment_body_sha256")
+        if not all(
+            isinstance(item, list)
+            for item in (references, locator_ids, ranges, body_hashes)
+        ):
+            raise _RemoteAuthorizationError(
+                CurationErrorCode.AUTHORIZATION_SCOPE_MISMATCH
+            )
+        assert isinstance(references, list)
+        assert isinstance(locator_ids, list)
+        assert isinstance(ranges, list)
+        assert isinstance(body_hashes, list)
+        if not (
+            len(references)
+            == len(locator_ids)
+            == len(ranges)
+            == len(body_hashes)
+            > 0
+        ):
+            raise _RemoteAuthorizationError(
+                CurationErrorCode.AUTHORIZATION_SCOPE_MISMATCH
+            )
+        expected_samples = [
+            {
+                "segment_reference": reference,
+                "locator_id": locator_id,
+                "range": byte_range,
+                "body_sha256": body_sha256,
+            }
+            for reference, locator_id, byte_range, body_sha256 in zip(
+                references,
+                locator_ids,
+                ranges,
+                body_hashes,
+                strict=True,
+            )
+        ]
+        if value.get("selected_samples") != expected_samples:
+            raise _RemoteAuthorizationError(
+                CurationErrorCode.AUTHORIZATION_SCOPE_MISMATCH
+            )
     request_fields = {
         "schema",
         "schema_version",

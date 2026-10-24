@@ -9,6 +9,7 @@ import unittest
 from unittest import mock
 
 from knowledgeflow_curation import (
+    ByteRange,
     BudgetExhausted,
     DeepSeekChatProcessor,
     DeepSeekV41TokenizerCounter,
@@ -26,7 +27,7 @@ from knowledgeflow_curation import (
     Utf8ByteUpperBoundTokenCounter,
     execute_processor_request,
 )
-from knowledgeflow_curation.map_operations import _l1_requests
+from knowledgeflow_curation.map_operations import _l1_requests, _target_summary_request
 
 
 class _FakeTransport:
@@ -743,6 +744,72 @@ class ProcessingTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(BudgetExhausted, "one Segment"):
             _l1_requests((oversized,), counter)
+
+    def test_cur1d_r2_01_target_summary_keeps_beginning_middle_end_anchors(self) -> None:
+        segments = tuple(
+            ProcessorSegment(
+                reference=f"s{index + 1:06d}",
+                ordinal=index,
+                heading_path=(f"Part {index + 1}",),
+                body=chr(ord("a") + index) * 20_000,
+                locator_id=f"locator-{index + 1:03d}",
+                byte_range=ByteRange(index * 20_000, (index + 1) * 20_000),
+            )
+            for index in range(5)
+        )
+
+        request = _target_summary_request(
+            segments,
+            Utf8ByteUpperBoundTokenCounter(model_id="deepseek-flash"),
+        )
+
+        self.assertEqual(
+            [item.reference for item in request.segments],
+            ["s000001", "s000003", "s000005"],
+        )
+        self.assertLessEqual(request.planned_input_tokens, 16_384)
+        self.assertTrue(all(len(item.body.encode("utf-8")) <= 2_048 for item in request.segments))
+        self.assertEqual(request.segments[0].byte_range, ByteRange(0, 2_048))
+        assert request.segments[1].byte_range is not None
+        self.assertGreater(request.segments[1].byte_range.start_byte, 40_000)
+        self.assertLess(request.segments[1].byte_range.end_byte, 60_000)
+        self.assertEqual(request.segments[2].byte_range, ByteRange(97_952, 100_000))
+
+        two_segment_request = _target_summary_request(
+            segments[:2],
+            Utf8ByteUpperBoundTokenCounter(model_id="deepseek-flash"),
+        )
+        self.assertEqual(
+            [item.reference for item in two_segment_request.segments],
+            ["s000001", "s000002"],
+        )
+        self.assertEqual(
+            two_segment_request.segments[0].byte_range,
+            ByteRange(0, 2_048),
+        )
+        self.assertEqual(
+            two_segment_request.segments[1].byte_range,
+            ByteRange(37_952, 40_000),
+        )
+
+    def test_cur1d_r2_02_one_large_segment_is_sampled_without_claiming_full_body(self) -> None:
+        segment = ProcessorSegment(
+            reference="s000001",
+            ordinal=0,
+            heading_path=("Long source",),
+            body="文" * 8_000,
+            locator_id="locator-001",
+            byte_range=ByteRange(0, 24_000),
+        )
+
+        request = _target_summary_request(
+            (segment,),
+            Utf8ByteUpperBoundTokenCounter(model_id="deepseek-flash"),
+        )
+
+        self.assertEqual(len(request.segments), 1)
+        self.assertLess(len(request.segments[0].body.encode("utf-8")), 24_000)
+        self.assertLessEqual(request.planned_input_tokens, 16_384)
 
 
 if __name__ == "__main__":

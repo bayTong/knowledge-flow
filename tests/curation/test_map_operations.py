@@ -55,6 +55,7 @@ class _CountingProcessor:
     def __init__(self) -> None:
         self.delegate = DeterministicTestProcessor()
         self.calls = 0
+        self.requests = []
 
     @property
     def profile(self):
@@ -70,6 +71,7 @@ class _CountingProcessor:
 
     def process(self, request):
         self.calls += 1
+        self.requests.append(request)
         return self.delegate.process(request)
 
 
@@ -402,10 +404,66 @@ class MapOperationTest(unittest.TestCase):
         self.assertFalse(first.replayed)
         self.assertTrue(second.replayed)
         self.assertEqual(processor.calls, 1)
+        self.assertTrue(first.coverage_is_complete)
+        self.assertEqual(first.to_dict()["warnings"], [])
         self.assertTrue(first.to_dict()["requires_human_confirmation"])
         self.assertFalse(first.to_dict()["target_decision_recorded"])
         self.assertFalse(first.to_dict()["kb_created"])
         self.assertFalse((self.experiment_root / "curation-work" / "targets").exists())
+
+    def test_cur1d_r2_03_target_suggestion_records_exact_sample_without_false_full_coverage(self) -> None:
+        long_body = ("# Long source\n\n" + "a" * 14_000).encode("utf-8")
+        source_path = self.owned_root / "long-source.md"
+        source_path.write_bytes(long_body)
+        prepared = prepare_source(
+            SourcePrepareRequest(
+                request_id="source-target-sample",
+                source_path=source_path,
+                source_reference="synthetic-target-sample",
+                expected_sha256=hash_bytes(long_body).sha256,
+                expected_byte_size=len(long_body),
+                authorized_by="local-user",
+                task_ids=("target-suggestion",),
+            ),
+            experiment_root=self.experiment_root,
+            path_policy=self.policy,
+        )
+        self.assertIsInstance(prepared, SourcePrepareResult)
+        processor = _CountingProcessor()
+
+        result = suggest_target(
+            TargetSuggestRequest(
+                request_id="target-sample-range",
+                source_request_id="source-target-sample",
+                suggested_by="local-agent",
+            ),
+            experiment_root=self.experiment_root,
+            path_policy=self.policy,
+            processor=processor,
+            now=self._fixed_now,
+        )
+
+        self.assertIsInstance(result, TargetSuggestResult)
+        assert isinstance(result, TargetSuggestResult)
+        self.assertEqual(result.selected_segment_count, result.total_segment_count)
+        self.assertFalse(result.coverage_is_complete)
+        self.assertLess(result.selected_byte_size, len(long_body))
+        stored = json.loads(result.result_path.read_text(encoding="utf-8"))
+        self.assertEqual(stored["schema_version"], 2)
+        self.assertFalse(stored["coverage_is_complete"])
+        self.assertEqual(len(stored["selected_samples"]), 1)
+        sample = stored["selected_samples"][0]
+        self.assertEqual(
+            sample["range"]["end_byte"] - sample["range"]["start_byte"],
+            result.selected_byte_size,
+        )
+        self.assertEqual(
+            processor.requests[0].segments[0].byte_range,
+            ByteRange(
+                sample["range"]["start_byte"],
+                sample["range"]["end_byte"],
+            ),
+        )
 
     def test_cur1d_10_incomplete_target_suggestion_fails_without_target_side_effect(self) -> None:
         result = suggest_target(

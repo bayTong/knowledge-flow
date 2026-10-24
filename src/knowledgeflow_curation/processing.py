@@ -164,6 +164,7 @@ class ProcessorSegment:
     heading_path: tuple[str, ...]
     body: str
     locator_id: str = field(repr=False)
+    byte_range: ByteRange | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         _token(self.reference, "segment reference")
@@ -176,8 +177,16 @@ class ProcessorSegment:
         object.__setattr__(self, "heading_path", headings)
         if type(self.body) is not str or not self.body:
             raise ValueError("segment body must be non-empty text")
-        self.body.encode("utf-8", errors="strict")
+        body_bytes = self.body.encode("utf-8", errors="strict")
         _token(self.locator_id, "locator_id")
+        if self.byte_range is not None:
+            if not isinstance(self.byte_range, ByteRange):
+                raise TypeError("segment byte_range must be ByteRange or null")
+            if (
+                self.byte_range.end_byte - self.byte_range.start_byte
+                != len(body_bytes)
+            ):
+                raise ValueError("segment byte_range must match the UTF-8 body length")
 
     def provider_mapping(self) -> dict[str, object]:
         return {
