@@ -40,6 +40,7 @@ from .processing import (
     DeepSeekV41TokenizerCounter,
     DeepSeekChatProcessor,
     DeterministicTestProcessor,
+    ProcessingBudgetLimits,
     RemoteProcessingAuthorization,
     StandardLibraryHttpTransport,
     Utf8ByteUpperBoundTokenCounter,
@@ -146,6 +147,8 @@ def _parser() -> _Parser:
     build.add_argument("--target-decision-request-id", required=True)
     build.add_argument("--target-suggestion-request-id")
     build.add_argument("--kb-parent")
+    build.add_argument("--reading-profile", choices=("short-ten-section-v1",))
+    build.add_argument("--budget-file")
     _add_processor_arguments(build)
 
     for action in ("decide", "close"):
@@ -306,6 +309,34 @@ def _optional_absolute_path(value: str | None, label: str) -> Path | None:
     if not path.is_absolute():
         raise _ArgumentError(f"{label} must be absolute")
     return path
+
+
+def _budget_limits(path_value: str | None) -> ProcessingBudgetLimits | None:
+    if path_value is None:
+        return None
+    path = Path(path_value)
+    if not path.is_absolute():
+        raise _ArgumentError("budget file path must be absolute")
+    try:
+        status = path.lstat()
+        if (
+            not stat.S_ISREG(status.st_mode)
+            or path.is_symlink()
+            or bool(getattr(status, "st_file_attributes", 0) & 0x400)
+            or status.st_size > 4096
+        ):
+            raise _ArgumentError("budget file must be a bounded plain file")
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise _ArgumentError("budget file is not valid UTF-8 JSON") from exc
+    names = set(ProcessingBudgetLimits.__slots__)
+    if (
+        not isinstance(value, dict)
+        or set(value) != names
+        or any(type(item) is not int or item < 1 for item in value.values())
+    ):
+        raise _ArgumentError("budget file must declare every positive budget limit")
+    return ProcessingBudgetLimits(**value)
 
 
 def _load_candidate_decisions(path_value: str) -> tuple[CandidateDecision, ...]:
@@ -547,6 +578,12 @@ def _run_cli(
             return _emit(stdout, _cli_mapping(result))
 
         if arguments.group == "map" and arguments.action == "build":
+            if (
+                arguments.reading_profile == "short-ten-section-v1"
+                and arguments.processor == "deepseek"
+                and arguments.budget_file is None
+            ):
+                raise _ArgumentError("short remote reading requires --budget-file")
             processor = _processor(arguments)
             result = build_map(
                 MapBuildRequest(
@@ -557,12 +594,14 @@ def _run_cli(
                     target_suggestion_request_id=(
                         arguments.target_suggestion_request_id
                     ),
+                    reading_profile=arguments.reading_profile,
                 ),
                 experiment_root=experiment_root,
                 path_policy=path_policy,
                 processor=processor,
                 remote_authorization=_remote_authorization(arguments),
                 token_counter=_token_counter(arguments),
+                budget_limits=_budget_limits(arguments.budget_file),
             )
             return _emit(stdout, _cli_mapping(result))
 

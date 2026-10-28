@@ -20,6 +20,10 @@ EXPERIMENT_SEGMENTATION_PROFILE_ID = "experiment-markdown-blocks"
 EXPERIMENT_SEGMENTATION_PROFILE_REVISION = 1
 EXPERIMENT_TARGET_BYTES = 16 * 1024
 EXPERIMENT_MAX_BYTES = 32 * 1024
+SHORT_READING_PROFILE = "short-ten-section-v1"
+SHORT_READING_MAX_BYTES = 8 * 1024
+SHORT_READING_MAX_UNITS = 128
+SHORT_READING_MAX_RANGE_BYTES = 1024
 
 _MAX_CAPTURE_VERSION = 999999
 _MAX_TEXT_BYTES = 16 * 1024
@@ -1738,6 +1742,8 @@ class CurationMap:
     processor_usage: ProcessorUsage
     target_binding: TargetBinding | None
     candidates: tuple[MapCandidate, ...]
+    reading_profile: str | None = None
+    review_locators: tuple[EvidenceLocator, ...] = ()
 
     def __post_init__(self) -> None:
         _require_uuid7_id(self.map_id, "map_", "map_id")
@@ -1777,11 +1783,50 @@ class CurationMap:
         if len({item.markdown_anchor for item in candidates}) != len(candidates):
             raise ValueError("candidate markdown anchors must be unique")
         object.__setattr__(self, "candidates", candidates)
+        locators = tuple(self.review_locators)
+        if self.reading_profile is None:
+            if locators:
+                raise ValueError("legacy maps cannot contain review locators")
+        elif self.reading_profile == SHORT_READING_PROFILE:
+            if not locators:
+                raise ValueError("short reading maps require exact review locators")
+            if (
+                self.source.byte_size > SHORT_READING_MAX_BYTES
+                or self.declared_scope != ByteRange(0, self.source.byte_size)
+                or len(self.scope) != 1
+                or self.scope[0].status != "processed"
+                or len(locators) > SHORT_READING_MAX_UNITS
+            ):
+                raise ValueError("short reading map exceeds its complete-source profile")
+        else:
+            raise ValueError("map reading profile is not supported")
+        if not all(isinstance(item, EvidenceLocator) for item in locators):
+            raise ValueError("review locators must contain EvidenceLocator values")
+        if len({item.locator_id for item in locators}) != len(locators):
+            raise ValueError("review locator IDs must be unique")
+        for locator in locators:
+            if locator.source != self.source or (
+                locator.byte_range.start_byte < self.declared_scope.start_byte
+                or locator.byte_range.end_byte > self.declared_scope.end_byte
+            ):
+                raise ValueError("review locator escapes the map source or scope")
+            if (
+                locator.byte_range.end_byte - locator.byte_range.start_byte
+                > SHORT_READING_MAX_RANGE_BYTES
+            ):
+                raise ValueError("short reading locator exceeds its byte bound")
+        if self.reading_profile == SHORT_READING_PROFILE:
+            _require_exact_range_cover(
+                self.declared_scope,
+                [item.byte_range for item in locators],
+                "review locators",
+            )
+        object.__setattr__(self, "review_locators", locators)
 
     def as_mapping(self) -> dict[str, object]:
-        return {
+        result = {
             "schema": "knowledgeflow.curation-map",
-            "schema_version": 1,
+            "schema_version": 1 if self.reading_profile is None else 2,
             "map_id": self.map_id,
             "map_version": self.map_version,
             "curation_run_id": self.curation_run_id,
@@ -1798,34 +1843,54 @@ class CurationMap:
             ),
             "candidates": [item.as_mapping() for item in self.candidates],
         }
+        if self.reading_profile is not None:
+            result["reading_profile"] = self.reading_profile
+            result["review_locators"] = [
+                item.as_mapping() for item in self.review_locators
+            ]
+        return result
 
     @classmethod
     def from_mapping(cls, value: object) -> CurationMap:
+        required = {
+            "schema",
+            "schema_version",
+            "map_id",
+            "map_version",
+            "curation_run_id",
+            "created_at",
+            "source",
+            "declared_scope",
+            "scope",
+            "processor_profile",
+            "processor_usage",
+            "target_binding",
+            "candidates",
+        }
+        if not isinstance(value, Mapping):
+            raise ValueError("curation map must be a mapping")
+        version = value.get("schema_version")
+        if type(version) is not int or version not in {1, 2}:
+            raise ValueError("curation map schema_version is not supported")
+        if version == 2:
+            required |= {"reading_profile", "review_locators"}
+            if value.get("reading_profile") != SHORT_READING_PROFILE:
+                raise ValueError("curation map v2 reading_profile is not supported")
         raw = _require_exact_keys(
             value,
-            {
-                "schema",
-                "schema_version",
-                "map_id",
-                "map_version",
-                "curation_run_id",
-                "created_at",
-                "source",
-                "declared_scope",
-                "scope",
-                "processor_profile",
-                "processor_usage",
-                "target_binding",
-                "candidates",
-            },
+            required,
             "curation map",
         )
         if raw["schema"] != "knowledgeflow.curation-map":
             raise ValueError("curation map schema is not supported")
-        _require_version_one(raw["schema_version"], "curation map schema_version")
         scope = _require_sequence(raw["scope"], "scope", allow_empty=False)
         candidates = _require_sequence(
             raw["candidates"], "candidates", allow_empty=False
+        )
+        review_locators = (
+            _require_sequence(raw["review_locators"], "review_locators")
+            if version == 2
+            else ()
         )
         return cls(
             map_id=raw["map_id"],
@@ -1843,6 +1908,10 @@ class CurationMap:
                 else None
             ),
             candidates=tuple(MapCandidate.from_mapping(item) for item in candidates),
+            reading_profile=raw["reading_profile"] if version == 2 else None,
+            review_locators=tuple(
+                EvidenceLocator.from_mapping(item) for item in review_locators
+            ),
         )
 
     def validate_against(self, evidence: CurationEvidenceRecord) -> None:
@@ -1855,6 +1924,10 @@ class CurationMap:
         if self.declared_scope != evidence.declared_scope or self.scope != evidence.scope:
             raise ValueError("map and evidence use different scope records")
         available = {item.locator_id for item in evidence.locators}
+        review_ids = {item.locator_id for item in self.review_locators}
+        if available & review_ids:
+            raise ValueError("map review locator duplicates source evidence")
+        available.update(review_ids)
         referenced = {
             locator_id
             for candidate in self.candidates

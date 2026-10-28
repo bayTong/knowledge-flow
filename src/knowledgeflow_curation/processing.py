@@ -29,6 +29,8 @@ DEEPSEEK_DEFAULT_MODEL = "deepseek-flash"
 DEEPSEEK_DEFAULT_KEY_REFERENCE = "DEEPSEEK_API_KEY"
 CUR1D_PROCESSOR_PROFILE = "cur1d-thin-map"
 CUR1D_PROCESSOR_PROFILE_REVISION = 2
+SHORT_READING_PROCESSOR_PROFILE = "cur1d-short-ten-section"
+SHORT_READING_PROCESSOR_PROFILE_REVISION = 1
 DEEPSEEK_TOKENIZER_PROFILE = "deepseek-v41-official-tokenizer"
 DEEPSEEK_TOKENIZER_PROFILE_REVISION = 1
 DEEPSEEK_RECIPE_VERSION = "0.2.0"
@@ -245,6 +247,8 @@ class ProcessorRequest:
     max_visible_tokens: int = 2048
     max_reasoning_tokens: int = 0
     planned_input_tokens: int = 1
+    prompt_profile: str = CUR1D_PROCESSOR_PROFILE
+    prompt_profile_revision: int = CUR1D_PROCESSOR_PROFILE_REVISION
 
     def __post_init__(self) -> None:
         _token(self.unit_id, "unit_id")
@@ -277,6 +281,23 @@ class ProcessorRequest:
             raise ValueError("non-thinking requests cannot reserve reasoning tokens")
         _positive(self.max_visible_tokens, "max_visible_tokens")
         _positive(self.planned_input_tokens, "planned_input_tokens")
+        if self.prompt_profile not in {
+            CUR1D_PROCESSOR_PROFILE,
+            SHORT_READING_PROCESSOR_PROFILE,
+        }:
+            raise ValueError("prompt profile is not supported")
+        expected_revision = (
+            CUR1D_PROCESSOR_PROFILE_REVISION
+            if self.prompt_profile == CUR1D_PROCESSOR_PROFILE
+            else SHORT_READING_PROCESSOR_PROFILE_REVISION
+        )
+        if self.prompt_profile_revision != expected_revision:
+            raise ValueError("prompt profile revision is not supported")
+        if (
+            self.prompt_profile == SHORT_READING_PROCESSOR_PROFILE
+            and self.stage is not ProcessingStage.GLOBAL_MAP
+        ):
+            raise ValueError("short reading profile requires a direct global map request")
 
     @property
     def allowed_evidence_refs(self) -> frozenset[str]:
@@ -321,7 +342,11 @@ class ProcessorRequest:
             ],
             "focus_topics": [],
         }
-        if self.stage is ProcessingStage.GLOBAL_MAP and evidence_refs:
+        if (
+            self.stage is ProcessingStage.GLOBAL_MAP
+            and self.prompt_profile != SHORT_READING_PROCESSOR_PROFILE
+            and evidence_refs
+        ):
             example["focus_topics"] = [
                 {
                     "title": "Example bounded focus",
@@ -333,7 +358,10 @@ class ProcessorRequest:
 
     def _output_contract(self) -> dict[str, object]:
         target_stage = self.stage is ProcessingStage.TARGET_SUMMARY
-        global_stage = self.stage is ProcessingStage.GLOBAL_MAP
+        global_stage = (
+            self.stage is ProcessingStage.GLOBAL_MAP
+            and self.prompt_profile != SHORT_READING_PROCESSOR_PROFILE
+        )
         return {
             "format": "json",
             "schema": "knowledgeflow.processor-result",
@@ -379,7 +407,15 @@ class ProcessorRequest:
             "stage_rules": {
                 "synopsis": "required non-blank text" if target_stage else "must be null",
                 "target_suggestion": "required object" if target_stage else "must be null",
-                "candidates": "must be an empty array" if target_stage else "one or more items",
+                "candidates": (
+                    "must be an empty array"
+                    if target_stage
+                    else (
+                        "one to twelve concise items"
+                        if self.prompt_profile == SHORT_READING_PROCESSOR_PROFILE
+                        else "one or more items"
+                    )
+                ),
                 "focus_topics": (
                     "zero to five items"
                     if global_stage
@@ -392,8 +428,8 @@ class ProcessorRequest:
 
     def provider_mapping(self) -> dict[str, object]:
         return {
-            "profile": CUR1D_PROCESSOR_PROFILE,
-            "profile_revision": CUR1D_PROCESSOR_PROFILE_REVISION,
+            "profile": self.prompt_profile,
+            "profile_revision": self.prompt_profile_revision,
             "stage": self.stage.value,
             "task": self.task,
             "segments": [item.provider_mapping() for item in self.segments],
@@ -628,9 +664,17 @@ class ProcessorResponse:
         else:
             if not self.candidates:
                 raise ValueError("map processing response contains no candidates")
+            if (
+                request.prompt_profile == SHORT_READING_PROCESSOR_PROFILE
+                and len(self.candidates) > 12
+            ):
+                raise ValueError("short reading response contains too many candidates")
             if self.synopsis is not None or self.target_choice is not None:
                 raise ValueError("map processing response contains target-only fields")
-            if request.stage is not ProcessingStage.GLOBAL_MAP and self.focus_topics:
+            if (
+                request.stage is not ProcessingStage.GLOBAL_MAP
+                or request.prompt_profile == SHORT_READING_PROCESSOR_PROFILE
+            ) and self.focus_topics:
                 raise ValueError("focus topics are only allowed in a global map response")
         if self.usage.finish_reason != "stop":
             raise ValueError("processor response did not finish normally")

@@ -42,11 +42,16 @@ from .contracts import (
     CurationEvidenceRecord,
     CurationMap,
     CurationRunManifest,
+    EvidenceLocator,
     MapCandidate,
     MapDecision,
     ProcessorProfile,
     ProcessorUsage,
     ScopeRecord,
+    SHORT_READING_MAX_BYTES,
+    SHORT_READING_MAX_RANGE_BYTES,
+    SHORT_READING_MAX_UNITS,
+    SHORT_READING_PROFILE,
     TargetBinding,
 )
 from .errors import (
@@ -63,6 +68,8 @@ from .processing import (
     BudgetExhausted,
     CUR1D_PROCESSOR_PROFILE,
     CUR1D_PROCESSOR_PROFILE_REVISION,
+    SHORT_READING_PROCESSOR_PROFILE,
+    SHORT_READING_PROCESSOR_PROFILE_REVISION,
     ExecutedUnit,
     FocusTopic,
     PriorCandidate,
@@ -108,6 +115,10 @@ _TARGET_SAMPLE_INITIAL_BYTES = 2_048
 _TARGET_SAMPLE_MINIMUM_BYTES = 512
 _PROCESSING_WINDOW_PROFILE = "heading-tree-token-bounded"
 _PROCESSING_WINDOW_PROFILE_REVISION = 1
+_SHORT_READING_PROFILE = SHORT_READING_PROFILE
+_SHORT_DIRECT_MAX_BYTES = SHORT_READING_MAX_BYTES
+_SHORT_DIRECT_MAX_UNITS = SHORT_READING_MAX_UNITS
+_SHORT_LINE_CHUNK_BYTES = SHORT_READING_MAX_RANGE_BYTES
 _BUDGET_COUNTER_FIELDS = (
     "first_work_units",
     "http_attempts",
@@ -130,6 +141,10 @@ class _RemoteAuthorizationError(ValueError):
     def __init__(self, code: CurationErrorCode) -> None:
         self.code = code
         super().__init__(code.value)
+
+
+class _ReadingProfileUnavailable(ValueError):
+    pass
 
 
 def _token(value: object, field_name: str) -> str:
@@ -275,6 +290,7 @@ class MapBuildRequest:
     target_decision_request_id: str
     kb_parent: Path | None = None
     target_suggestion_request_id: str | None = None
+    reading_profile: str | None = None
 
     def __post_init__(self) -> None:
         _token(self.request_id, "request_id")
@@ -287,6 +303,8 @@ class MapBuildRequest:
             )
         if self.kb_parent is not None:
             object.__setattr__(self, "kb_parent", _absolute(self.kb_parent))
+        if self.reading_profile not in {None, _SHORT_READING_PROFILE}:
+            raise ValueError("reading_profile is not supported")
 
 
 @dataclass(frozen=True, slots=True)
@@ -651,6 +669,169 @@ def _processor_segments(
     return tuple(result)
 
 
+def _short_line_ranges(body: bytes) -> tuple[ByteRange, ...]:
+    ranges: list[ByteRange] = []
+    start = 0
+    while start < len(body):
+        newline = body.find(b"\n", start)
+        line_end = len(body) if newline < 0 else newline + 1
+        while start < line_end:
+            end = min(start + _SHORT_LINE_CHUNK_BYTES, line_end)
+            while end < line_end and body[end] & 0xC0 == 0x80:
+                end -= 1
+            if end <= start:
+                raise ValueError("short reading unit has no UTF-8 boundary")
+            ranges.append(ByteRange(start, end))
+            start = end
+    return tuple(ranges)
+
+
+def _short_segments(
+    body: bytes,
+    ranges: Sequence[ByteRange],
+    locator_ids: Sequence[str],
+) -> tuple[ProcessorSegment, ...]:
+    return tuple(
+        ProcessorSegment(
+            reference=f"line{index:04d}",
+            ordinal=index - 1,
+            heading_path=(),
+            body=body[item.start_byte : item.end_byte].decode("utf-8", errors="strict"),
+            locator_id=locator_id,
+            byte_range=item,
+        )
+        for index, (item, locator_id) in enumerate(
+            zip(ranges, locator_ids, strict=True), 1
+        )
+    )
+
+
+def _short_reading_draft(segments: Sequence[ProcessorSegment]) -> ProcessorRequest:
+    return ProcessorRequest(
+        unit_id="short-map-001",
+        stage=ProcessingStage.GLOBAL_MAP,
+        task=(
+            "Read the entire authorized short source in order and write a concise "
+            "human-readable curation map in its language. Prefer one grounded overview "
+            "and one structure/extraction-layer item, then select useful concepts, "
+            "relationships, claims, uncertainties and visible gaps only where supported. "
+            "Use at most twelve self-contained, concise candidates with natural paragraph "
+            "or short-list formatting. Do not pad sections, repeat the "
+            "same point, invent facts, promise exhaustive extraction or propose a KB "
+            "structure for this no-target task. Put exact disclosed line refs only in "
+            "evidence_refs, never machine references or locator IDs in summary text. "
+            "Use separate candidates for distinct concepts or claims, and short lines "
+            "or lists where that makes the summary easier to scan. Explain why any "
+            "extraction layer is useful, distinguish why an item is uncertain, and "
+            "separate source omissions from processing limits. Cite concrete claims, "
+            "relationships and disputes with exact refs. Preserve quotation, speaker "
+            "and fictional narrative layers; distinguish source content from inference. "
+            "Return no focus topics."
+        ),
+        segments=tuple(segments),
+        thinking=True,
+        reasoning_effort="low",
+        max_visible_tokens=4096,
+        max_reasoning_tokens=6144,
+        planned_input_tokens=1,
+        prompt_profile=SHORT_READING_PROCESSOR_PROFILE,
+        prompt_profile_revision=SHORT_READING_PROCESSOR_PROFILE_REVISION,
+    )
+
+
+def _short_direct_plan(
+    body: bytes,
+    run: CurationRunManifest,
+    evidence: CurationEvidenceRecord,
+    counter: TokenCounter,
+    *,
+    no_target: bool,
+) -> tuple[ByteRange, ...] | None:
+    if (
+        not no_target
+        or len(body) > _SHORT_DIRECT_MAX_BYTES
+        or evidence.declared_scope != ByteRange(0, len(body))
+        or run.processing_authorization.allowed_range != evidence.declared_scope
+        or len(evidence.scope) != 1
+        or evidence.scope[0].status != "processed"
+    ):
+        return None
+    ranges = _short_line_ranges(body)
+    if not ranges or len(ranges) > _SHORT_DIRECT_MAX_UNITS:
+        return None
+    planned_segments = _short_segments(body, ranges, ("planned",) * len(ranges))
+    try:
+        _planned_request(_short_reading_draft(planned_segments), counter)
+    except BudgetExhausted:
+        return None
+    return ranges
+
+
+def _short_review_locators(
+    *,
+    body: bytes,
+    source: CurationRunManifest,
+    ranges: Sequence[ByteRange],
+    transaction: Path,
+    durability: DurabilityBackend,
+) -> tuple[EvidenceLocator, ...]:
+    path = transaction / "short-review-locators.json"
+    expected_ranges = [item.as_mapping() for item in ranges]
+    if path.exists():
+        record = json.loads(_read_bounded(path).decode("utf-8"))
+        if (
+            not isinstance(record, Mapping)
+            or set(record) != {"schema", "schema_version", "source", "ranges", "locators"}
+            or record["schema"] != "knowledgeflow.short-review-locators"
+            or record["schema_version"] != 1
+            or record["source"] != source.source.as_mapping()
+            or record["ranges"] != expected_ranges
+            or not isinstance(record["locators"], list)
+        ):
+            raise ValueError("stored short review locator plan differs from the source")
+        locators = tuple(
+            EvidenceLocator.from_mapping(item) for item in record["locators"]
+        )
+    else:
+        locators = tuple(
+            EvidenceLocator(
+                locator_id=generate_curation_id("loc_"),
+                source=source.source,
+                byte_range=item,
+                start_line=body.count(b"\n", 0, item.start_byte) + 1,
+                end_line=body.count(b"\n", 0, item.end_byte - 1) + 1,
+                excerpt_sha256=hash_bytes(
+                    body[item.start_byte : item.end_byte]
+                ).sha256,
+            )
+            for item in ranges
+        )
+        _write_new_or_same(
+            path,
+            _canonical_json(
+                {
+                    "schema": "knowledgeflow.short-review-locators",
+                    "schema_version": 1,
+                    "source": source.source.as_mapping(),
+                    "ranges": expected_ranges,
+                    "locators": [item.as_mapping() for item in locators],
+                }
+            ),
+            durability,
+        )
+    if len(locators) != len(ranges) or any(
+        locator.source != source.source
+        or locator.byte_range != byte_range
+        or locator.excerpt_sha256
+        != hash_bytes(body[byte_range.start_byte : byte_range.end_byte]).sha256
+        or locator.start_line != body.count(b"\n", 0, byte_range.start_byte) + 1
+        or locator.end_line != body.count(b"\n", 0, byte_range.end_byte - 1) + 1
+        for locator, byte_range in zip(locators, ranges, strict=True)
+    ):
+        raise ValueError("stored short review locator facts do not match exact source bytes")
+    return locators
+
+
 def _planned_request(
     request: ProcessorRequest,
     counter: TokenCounter,
@@ -954,6 +1135,19 @@ def _processing_window_profile() -> dict[str, object]:
         "hard_input_tokens": _INPUT_HARD_LIMIT,
         "planning_safety_margin_tokens": _TOKEN_PLANNING_SAFETY_MARGIN,
         "maximum_l1_windows": 48,
+    }
+
+
+def _short_processing_window_profile() -> dict[str, object]:
+    return {
+        "profile_id": _SHORT_READING_PROFILE,
+        "revision": 1,
+        "grouping": "complete-source-in-ordered-utf8-line-ranges",
+        "maximum_source_bytes": _SHORT_DIRECT_MAX_BYTES,
+        "maximum_line_ranges": _SHORT_DIRECT_MAX_UNITS,
+        "maximum_range_bytes": _SHORT_LINE_CHUNK_BYTES,
+        "hard_input_tokens": _INPUT_HARD_LIMIT,
+        "planning_safety_margin_tokens": _TOKEN_PLANNING_SAFETY_MARGIN,
     }
 
 
@@ -2252,8 +2446,10 @@ def _build_request_mapping(
     limits: ProcessingBudgetLimits,
     remote_authorization: Mapping[str, object] | None,
     prior_budget: Mapping[str, int],
+    *,
+    short_reading: bool = False,
 ) -> dict[str, object]:
-    return {
+    result = {
         "schema": "knowledgeflow.map-build-request",
         "schema_version": 1,
         "request_id": request.request_id,
@@ -2266,12 +2462,19 @@ def _build_request_mapping(
         "key_reference": processor.key_reference,
         "remote_authorization": remote_authorization,
         "token_counter_profile": _token_counter_profile(counter),
-        "processing_window_profile": _processing_window_profile(),
+        "processing_window_profile": (
+            _short_processing_window_profile()
+            if short_reading
+            else _processing_window_profile()
+        ),
         "budget_limits": {
             name: getattr(limits, name) for name in limits.__slots__
         },
         "prior_budget": dict(prior_budget),
     }
+    if short_reading:
+        result["reading_profile"] = _SHORT_READING_PROFILE
+    return result
 
 
 def _load_or_create_identity(
@@ -2400,6 +2603,8 @@ def _curation_map(
     durability: DurabilityBackend,
     segments: Sequence[ProcessorSegment],
     prior_elapsed_ms: int,
+    reading_profile: str | None = None,
+    review_locators: Sequence[EvidenceLocator] = (),
 ) -> CurationMap:
     locator_by_reference = {item.reference: item.locator_id for item in segments}
     identifiers = _candidate_ids(transaction, len(drafts), durability)
@@ -2444,6 +2649,8 @@ def _curation_map(
         processor_usage=usage,
         target_binding=target_binding,
         candidates=candidates,
+        reading_profile=reading_profile,
+        review_locators=tuple(review_locators),
     )
     result.validate_against(evidence)
     result.validate_against_run(
@@ -2465,6 +2672,7 @@ def _run_record(
     ledger: ProcessingBudgetLedger,
     units: Sequence[ExecutedUnit],
     prior_target_suggestion: Mapping[str, object] | None,
+    short_reading: bool = False,
 ) -> bytes:
     return _canonical_json(
         {
@@ -2484,10 +2692,22 @@ def _run_record(
             "provider_profile": processor.provider_profile,
             "key_reference": processor.key_reference,
             "remote_authorization": remote_authorization,
-            "prompt_profile": CUR1D_PROCESSOR_PROFILE,
-            "prompt_profile_revision": CUR1D_PROCESSOR_PROFILE_REVISION,
+            "prompt_profile": (
+                SHORT_READING_PROCESSOR_PROFILE
+                if short_reading
+                else CUR1D_PROCESSOR_PROFILE
+            ),
+            "prompt_profile_revision": (
+                SHORT_READING_PROCESSOR_PROFILE_REVISION
+                if short_reading
+                else CUR1D_PROCESSOR_PROFILE_REVISION
+            ),
             "token_counter_profile": _token_counter_profile(counter),
-            "processing_window_profile": _processing_window_profile(),
+            "processing_window_profile": (
+                _short_processing_window_profile()
+                if short_reading
+                else _processing_window_profile()
+            ),
             "budget_limits": {
                 name: getattr(ledger.limits, name) for name in ledger.limits.__slots__
             },
@@ -2495,7 +2715,11 @@ def _run_record(
                 []
                 if processor.provider_profile is None
                 else [
-                    "authorized-segment-text",
+                    (
+                        "authorized-line-range-text"
+                        if short_reading
+                        else "authorized-segment-text"
+                    ),
                     "opaque-segment-reference",
                     "heading-context",
                     "validated-prior-candidate",
@@ -3197,6 +3421,12 @@ def build_map(
             ProcessorProfile,
         ):
             raise TypeError("processor does not implement ProcessorPort")
+        if (
+            request.reading_profile == _SHORT_READING_PROFILE
+            and processor.provider_profile is not None
+            and budget_limits is None
+        ):
+            return _failure(CurationErrorCode.INVALID_INPUT, stage="reading-budget")
         selected_git = git or ManagedGit()
         selected_counter = token_counter or Utf8ByteUpperBoundTokenCounter()
         token_counter_profile = _token_counter_profile(selected_counter)
@@ -3304,6 +3534,22 @@ def build_map(
             path_policy=path_policy,
         )
         segments = _processor_segments(body, source.evidence)
+        short_reading = request.reading_profile == _SHORT_READING_PROFILE
+        short_ranges = (
+            _short_direct_plan(
+                body,
+                source.run,
+                source.evidence,
+                selected_counter,
+                no_target=target.record.target_binding is None,
+            )
+            if short_reading
+            else None
+        )
+        if short_reading and short_ranges is None:
+            raise _ReadingProfileUnavailable(
+                "short reading requires a complete, bounded no-target source"
+            )
         request_body = _canonical_json(
             _build_request_mapping(
                 request,
@@ -3312,6 +3558,7 @@ def build_map(
                 selected_limits,
                 remote_authorization_mapping,
                 prior_budget,
+                short_reading=short_reading,
             )
         )
         with exclusive_file_lock(lock):
@@ -3324,49 +3571,80 @@ def build_map(
             )
             ledger = ProcessingBudgetLedger(selected_limits, **prior_budget)
             stop_ledger = ledger
-            l1_units = tuple(
-                _execute_unit(
+            review_locators: tuple[EvidenceLocator, ...] = ()
+            map_segments = segments
+            if short_reading:
+                assert short_ranges is not None
+                review_locators = _short_review_locators(
+                    body=body,
+                    source=source.run,
+                    ranges=short_ranges,
+                    transaction=transaction,
+                    durability=selected_durability,
+                )
+                map_segments = _short_segments(
+                    body,
+                    short_ranges,
+                    tuple(item.locator_id for item in review_locators),
+                )
+                direct_unit = _execute_unit(
                     transaction,
                     processor,
-                    unit,
+                    _planned_request(
+                        _short_reading_draft(map_segments), selected_counter
+                    ),
                     ledger,
                     selected_durability,
                     sleeper,
                 )
-                for unit in _l1_requests(segments, selected_counter)
-            )
-            section_units = tuple(
-                _execute_unit(
+                if direct_unit.response.focus_topics:
+                    raise ValueError("short reading response must not request focus work")
+                all_units = (direct_unit,)
+                drafts = direct_unit.response.candidates
+            else:
+                l1_units = tuple(
+                    _execute_unit(
+                        transaction,
+                        processor,
+                        unit,
+                        ledger,
+                        selected_durability,
+                        sleeper,
+                    )
+                    for unit in _l1_requests(segments, selected_counter)
+                )
+                section_units = tuple(
+                    _execute_unit(
+                        transaction,
+                        processor,
+                        unit,
+                        ledger,
+                        selected_durability,
+                        sleeper,
+                    )
+                    for unit in _section_requests(l1_units, selected_counter)
+                )
+                global_unit = _execute_unit(
                     transaction,
                     processor,
-                    unit,
+                    _global_request(section_units, selected_counter),
                     ledger,
                     selected_durability,
                     sleeper,
                 )
-                for unit in _section_requests(l1_units, selected_counter)
-            )
-            global_unit = _execute_unit(
-                transaction,
-                processor,
-                _global_request(section_units, selected_counter),
-                ledger,
-                selected_durability,
-                sleeper,
-            )
-            focus_units = tuple(
-                _execute_unit(
-                    transaction,
-                    processor,
-                    unit,
-                    ledger,
-                    selected_durability,
-                    sleeper,
+                focus_units = tuple(
+                    _execute_unit(
+                        transaction,
+                        processor,
+                        unit,
+                        ledger,
+                        selected_durability,
+                        sleeper,
+                    )
+                    for unit in _focus_requests(global_unit, segments, selected_counter)
                 )
-                for unit in _focus_requests(global_unit, segments, selected_counter)
-            )
-            all_units = (*l1_units, *section_units, global_unit, *focus_units)
-            drafts = _assembled_drafts(section_units, global_unit, focus_units)
+                all_units = (*l1_units, *section_units, global_unit, *focus_units)
+                drafts = _assembled_drafts(section_units, global_unit, focus_units)
             target_binding = target.record.target_binding
             curation_map = _curation_map(
                 identity=identity,
@@ -3379,8 +3657,12 @@ def build_map(
                 drafts=drafts,
                 transaction=transaction,
                 durability=selected_durability,
-                segments=segments,
+                segments=map_segments,
                 prior_elapsed_ms=prior_elapsed_ms,
+                reading_profile=(
+                    _SHORT_READING_PROFILE if short_reading else None
+                ),
+                review_locators=review_locators,
             )
             yaml_body = dump_curation_map(curation_map)
             markdown_body = render_curation_map_markdown(curation_map)
@@ -3399,6 +3681,7 @@ def build_map(
                 ledger=ledger,
                 units=all_units,
                 prior_target_suggestion=prior_target_suggestion,
+                short_reading=short_reading,
             )
             files = {
                 "map.yaml": yaml_body,
@@ -3531,6 +3814,8 @@ def build_map(
                 retryable=True,
             )
         return _failure(CurationErrorCode.BUDGET_EXHAUSTED, stage="processor-budget")
+    except _ReadingProfileUnavailable:
+        return _failure(CurationErrorCode.INVALID_INPUT, stage="reading-profile")
     except _RemoteAuthorizationError as exc:
         return _failure(exc.code, stage="remote-authorization")
     except ProcessorCallError as exc:

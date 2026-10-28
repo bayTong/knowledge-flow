@@ -24,6 +24,7 @@ from .contracts import (
     MapDecision,
     RawSourceMapping,
     RouteRecord,
+    SHORT_READING_PROFILE,
     SourceFileMapping,
     TargetDecisionRecord,
 )
@@ -231,11 +232,150 @@ def _quoted_markdown(value: str) -> list[str]:
     return ["> " + line if line else ">" for line in value.split("\n")]
 
 
+_SHORT_READING_SECTIONS = (
+    ("1. 全景概括", ("overview",)),
+    ("2. 本次提取层次", ("structure",)),
+    ("3. 核心概念与实体", ("concept",)),
+    ("4. 关系清单", ("relationship",)),
+    ("5. 原文主张与叙述", ("claim",)),
+    ("6. 不确定标记", ("dispute", "limitation")),
+    ("7. 缺口分析", ("gap",)),
+    ("8. SCHEMA／组织建议", ("organization",)),
+)
+_READING_PROVENANCE = {
+    "source-claim": "原文表达",
+    "quoted-claim": "原文直接引述",
+    "processor-inference": "处理器归纳",
+    "user-revision": "用户修订",
+    "unverified": "尚未核实",
+}
+_READING_UNCERTAINTY = {
+    "none": "未标记",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "unknown": "未知",
+}
+
+
+def _render_short_reading_map(value: CurationMap) -> bytes:
+    source = value.source
+    locators = {item.locator_id: item for item in value.review_locators}
+    lines = [
+        "# 策展地图 · 阅读版",
+        "",
+        "> 以下内容是待审候选，不是已批准的可信知识。具体说法请打开原文证据核对。",
+        "",
+    ]
+    for title, kinds in _SHORT_READING_SECTIONS:
+        lines.extend((f"## {title}", ""))
+        selected = [item for item in value.candidates if item.kind in kinds]
+        if not selected:
+            if title.startswith("8.") and value.target_binding is None:
+                lines.append("本次暂不选库，因此不拟定知识库结构。")
+            else:
+                lines.append("本次未形成可支持的候选。")
+            lines.append("")
+            continue
+        for index, candidate in enumerate(selected, 1):
+            lines.extend((f"### 候选 {index}", "", *_quoted_markdown(candidate.summary), ""))
+            selected_locators = sorted(
+                (
+                    locators[item]
+                    for item in candidate.evidence_locator_ids
+                    if item in locators
+                ),
+                key=lambda item: item.byte_range.start_byte,
+            )
+            merged: list[tuple[int, int, int]] = []
+            for locator in selected_locators:
+                if merged and merged[-1][2] == locator.byte_range.start_byte:
+                    start_line, _end_line, _end_byte = merged[-1]
+                    merged[-1] = (
+                        start_line,
+                        locator.end_line,
+                        locator.byte_range.end_byte,
+                    )
+                else:
+                    merged.append(
+                        (
+                            locator.start_line,
+                            locator.end_line,
+                            locator.byte_range.end_byte,
+                        )
+                    )
+            spans = [
+                (
+                    f"原文第 {start} 行"
+                    if start == end
+                    else f"原文第 {start}–{end} 行"
+                )
+                for start, end, _end_byte in merged
+            ]
+            if len(selected_locators) != len(candidate.evidence_locator_ids):
+                spans.append("来源证据（见来源记录）")
+            lines.append(
+                "证据：" + ("、".join(spans) if spans else "此项没有精确证据")
+            )
+            lines.append(
+                "属性："
+                + _READING_PROVENANCE[candidate.provenance]
+                + "；不确定性："
+                + _READING_UNCERTAINTY[candidate.uncertainty]
+            )
+            lines.extend(
+                (
+                    "",
+                    "<details><summary>审核编号</summary>",
+                    "",
+                    f"候选：`{candidate.candidate_id}`；证据："
+                    + ("、".join(f"`{item}`" for item in candidate.evidence_locator_ids) or "无"),
+                    "",
+                    "</details>",
+                    "",
+                )
+            )
+    profile = value.processor_profile
+    usage = value.processor_usage
+    lines.extend(
+        (
+            "## 9. 处理记录",
+            "",
+            f"- 地图：`{value.map_id}` / v{value.map_version}；运行：`{value.curation_run_id}`",
+            f"- 来源：Capture `{source.capture_id}` / v{source.capture_version}；{source.byte_size} bytes",
+            f"- 创建时间：`{value.created_at}`",
+            f"- 处理器：`{profile.processor_id}` / r{profile.revision}；模型：`{profile.model_id or '无'}`",
+            f"- 调用：{usage.call_count} 次；输入 {usage.input_tokens} token；输出 {usage.output_tokens} token；用时 {usage.elapsed_ms} ms",
+        )
+    )
+    if usage.cost_currency is not None:
+        lines.append(
+            f"- 外部费用：{usage.cost_minor_units} {usage.cost_currency} 最小货币单位"
+        )
+    lines.extend(
+        (
+            "",
+            "## 10. 覆盖报告",
+            "",
+            f"- 声明范围：byte [{value.declared_scope.start_byte}, {value.declared_scope.end_byte})",
+        )
+    )
+    for item in value.scope:
+        reason = f"；原因：{item.reason}" if item.reason else ""
+        lines.append(
+            f"- `{item.status}`：byte [{item.byte_range.start_byte}, {item.byte_range.end_byte}){reason}"
+        )
+    lines.extend(("", "机械范围完整不保证语义零遗漏；原文证据与未决项仍需人工核查。"))
+    return ("\n".join(lines).rstrip() + "\n").encode("utf-8")
+
+
 def render_curation_map_markdown(value: CurationMap) -> bytes:
     """Render a readable view containing no facts absent from ``map.yaml``."""
 
     if not isinstance(value, CurationMap):
         raise TypeError("value must be CurationMap")
+    if value.reading_profile == SHORT_READING_PROFILE:
+        return _render_short_reading_map(value)
 
     source = value.source
     target = value.target_binding.kb_id if value.target_binding is not None else "暂未绑定"

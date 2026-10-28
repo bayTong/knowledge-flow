@@ -116,15 +116,20 @@ knowledge-flow/
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         report = json.loads(result.stdout)
         self.assertEqual(report["errors"], [])
+        status = report["stats"]["status"]
         self.assertEqual(
-            report["stats"]["status"],
+            {key: value for key, value in status.items() if key != "next_gate"},
             {
-                "tests": 434,
+                "tests": 443,
                 "capture_tests": 323,
-                "curation_tests": 96,
+                "curation_tests": 105,
                 "script_tests": 15,
-                "next_gate": "CUR1D-RUN-R2-V",
             },
+        )
+        self.assertRegex(status["next_gate"], r"^[A-Z0-9.-]+$")
+        self.assertIn(
+            f"next_gate={status['next_gate']} -->",
+            (PROJECT_ROOT / self.module.STATUS_ANCHOR_FILE).read_text(encoding="utf-8"),
         )
 
     def test_untracked_project_document_is_rejected(self) -> None:

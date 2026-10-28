@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -28,6 +29,10 @@ from knowledgeflow_curation import (
     execute_processor_request,
 )
 from knowledgeflow_curation.map_operations import _l1_requests, _target_summary_request
+from knowledgeflow_curation.processing import (
+    SHORT_READING_PROCESSOR_PROFILE,
+    SHORT_READING_PROCESSOR_PROFILE_REVISION,
+)
 
 
 class _FakeTransport:
@@ -138,6 +143,28 @@ def _success_response(
 
 
 class ProcessingTest(unittest.TestCase):
+    def test_short_reading_profile_uses_one_bounded_json_response(self) -> None:
+        request = replace(
+            _request(thinking=True),
+            unit_id="short-map-001",
+            stage=ProcessingStage.GLOBAL_MAP,
+            prompt_profile=SHORT_READING_PROCESSOR_PROFILE,
+            prompt_profile_revision=SHORT_READING_PROCESSOR_PROFILE_REVISION,
+        )
+        transport = _FakeTransport(_success_response(reasoning_tokens=3))
+        processor = DeepSeekChatProcessor(
+            transport=transport,
+            environment={"DEEPSEEK_API_KEY": "synthetic-key"},
+        )
+        response = processor.process(request)
+        self.assertEqual(len(response.candidates), 1)
+        self.assertEqual(response.focus_topics, ())
+        sent = json.loads(transport.calls[0]["body"])
+        payload = json.loads(sent["messages"][1]["content"])
+        self.assertEqual(payload["profile"], SHORT_READING_PROCESSOR_PROFILE)
+        self.assertEqual(payload["output_contract"]["stage_rules"]["focus_topics"], "must be an empty array")
+        self.assertNotIn(b"synthetic-key", transport.calls[0]["body"])
+
     def test_cur1d_01_deterministic_processor_is_offline_and_evidence_bound(self) -> None:
         processor = DeterministicTestProcessor()
         response = processor.process(_request())

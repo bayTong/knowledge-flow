@@ -18,6 +18,7 @@ knowledgeflow-capture = "knowledgeflow_capture.cli:main"
 knowledgeflow-capture-admin = "knowledgeflow_capture.management_cli:main"
 knowledgeflow-inbox = "knowledgeflow_capture.inbox_app:main"
 knowledgeflow-curation = "knowledgeflow_curation.cli:main"
+knowledgeflow-map-review = "knowledgeflow_curation.review_app:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
