@@ -30,6 +30,7 @@ from knowledgeflow_curation import (
 )
 from knowledgeflow_curation.map_operations import _l1_requests, _target_summary_request
 from knowledgeflow_curation.processing import (
+    SHORT_READING_MAX_CANDIDATES,
     SHORT_READING_PROCESSOR_PROFILE,
     SHORT_READING_PROCESSOR_PROFILE_REVISION,
 )
@@ -162,8 +163,20 @@ class ProcessingTest(unittest.TestCase):
         sent = json.loads(transport.calls[0]["body"])
         payload = json.loads(sent["messages"][1]["content"])
         self.assertEqual(payload["profile"], SHORT_READING_PROCESSOR_PROFILE)
+        self.assertEqual(payload["profile_revision"], SHORT_READING_PROCESSOR_PROFILE_REVISION)
+        self.assertEqual(
+            payload["output_contract"]["stage_rules"]["candidates"],
+            f"one to {SHORT_READING_MAX_CANDIDATES} concise items",
+        )
         self.assertEqual(payload["output_contract"]["stage_rules"]["focus_topics"], "must be an empty array")
         self.assertNotIn(b"synthetic-key", transport.calls[0]["body"])
+        candidates = tuple(
+            replace(response.candidates[0], markdown_anchor=f"item-{index}")
+            for index in range(SHORT_READING_MAX_CANDIDATES + 1)
+        )
+        replace(response, candidates=candidates[:-1]).validate_against(request)
+        with self.assertRaisesRegex(ValueError, "too many candidates"):
+            replace(response, candidates=candidates).validate_against(request)
 
     def test_cur1d_01_deterministic_processor_is_offline_and_evidence_bound(self) -> None:
         processor = DeterministicTestProcessor()

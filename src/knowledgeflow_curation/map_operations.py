@@ -68,6 +68,7 @@ from .processing import (
     BudgetExhausted,
     CUR1D_PROCESSOR_PROFILE,
     CUR1D_PROCESSOR_PROFILE_REVISION,
+    SHORT_READING_MAX_CANDIDATES,
     SHORT_READING_PROCESSOR_PROFILE,
     SHORT_READING_PROCESSOR_PROFILE_REVISION,
     ExecutedUnit,
@@ -715,12 +716,18 @@ def _short_reading_draft(segments: Sequence[ProcessorSegment]) -> ProcessorReque
             "human-readable curation map in its language. Prefer one grounded overview "
             "and one structure/extraction-layer item, then select useful concepts, "
             "relationships, claims, uncertainties and visible gaps only where supported. "
-            "Use at most twelve self-contained, concise candidates with natural paragraph "
-            "or short-list formatting. Do not pad sections, repeat the "
+            f"Use at most {SHORT_READING_MAX_CANDIDATES} self-contained, concise "
+            "candidates with natural paragraph "
+            "or short-list formatting; the limit is a ceiling, not a target. When the "
+            "source supports multiple important concepts, entities or relationships, "
+            "give each distinct item its own candidate and its own directly relevant "
+            "line evidence_refs. Do not bundle several independent items into one "
+            "candidate or spend the response mostly on repeated claims. Do not pad "
+            "sections, repeat the "
             "same point, invent facts, promise exhaustive extraction or propose a KB "
             "structure for this no-target task. Put exact disclosed line refs only in "
             "evidence_refs, never machine references or locator IDs in summary text. "
-            "Use separate candidates for distinct concepts or claims, and short lines "
+            "Use separate candidates for distinct claims, and short lines "
             "or lists where that makes the summary easier to scan. Explain why any "
             "extraction layer is useful, distinguish why an item is uncertain, and "
             "separate source omissions from processing limits. Cite concrete claims, "

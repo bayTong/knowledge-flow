@@ -120,9 +120,9 @@ knowledge-flow/
         self.assertEqual(
             {key: value for key, value in status.items() if key != "next_gate"},
             {
-                "tests": 443,
+                "tests": 444,
                 "capture_tests": 323,
-                "curation_tests": 105,
+                "curation_tests": 106,
                 "script_tests": 15,
             },
         )

@@ -30,7 +30,8 @@ DEEPSEEK_DEFAULT_KEY_REFERENCE = "DEEPSEEK_API_KEY"
 CUR1D_PROCESSOR_PROFILE = "cur1d-thin-map"
 CUR1D_PROCESSOR_PROFILE_REVISION = 2
 SHORT_READING_PROCESSOR_PROFILE = "cur1d-short-ten-section"
-SHORT_READING_PROCESSOR_PROFILE_REVISION = 1
+SHORT_READING_PROCESSOR_PROFILE_REVISION = 2
+SHORT_READING_MAX_CANDIDATES = 20
 DEEPSEEK_TOKENIZER_PROFILE = "deepseek-v41-official-tokenizer"
 DEEPSEEK_TOKENIZER_PROFILE_REVISION = 1
 DEEPSEEK_RECIPE_VERSION = "0.2.0"
@@ -411,7 +412,7 @@ class ProcessorRequest:
                     "must be an empty array"
                     if target_stage
                     else (
-                        "one to twelve concise items"
+                        f"one to {SHORT_READING_MAX_CANDIDATES} concise items"
                         if self.prompt_profile == SHORT_READING_PROCESSOR_PROFILE
                         else "one or more items"
                     )
@@ -666,7 +667,7 @@ class ProcessorResponse:
                 raise ValueError("map processing response contains no candidates")
             if (
                 request.prompt_profile == SHORT_READING_PROCESSOR_PROFILE
-                and len(self.candidates) > 12
+                and len(self.candidates) > SHORT_READING_MAX_CANDIDATES
             ):
                 raise ValueError("short reading response contains too many candidates")
             if self.synopsis is not None or self.target_choice is not None:

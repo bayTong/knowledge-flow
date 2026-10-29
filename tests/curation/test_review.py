@@ -25,6 +25,10 @@ from knowledgeflow_curation import (
     target_decide,
 )
 from knowledgeflow_curation.review import MapReviewError, load_map_review
+from knowledgeflow_curation.review_app import (
+    _display_index_for_byte_offset,
+    _display_source_text,
+)
 from knowledgeflow_curation.cli import _ArgumentError, _budget_limits
 from knowledgeflow_curation.errors import CurationErrorCode, CurationFailure
 from knowledgeflow_curation.map_operations import _short_line_ranges
@@ -48,6 +52,15 @@ class _ShortReadingProcessor(DeterministicTestProcessor):
         exact = next(
             item.reference for item in request.segments if "可核验的原文" in item.body
         )
+        first = next(
+            item.reference for item in request.segments if "## 第一部分" in item.body
+        )
+        second = next(
+            item.reference for item in request.segments if "## 第二部分" in item.body
+        )
+        reading = next(
+            item.reference for item in request.segments if "另一段用于地图阅读" in item.body
+        )
         return ProcessorResponse(
             candidates=(
                 ProcessorCandidateDraft(
@@ -57,6 +70,38 @@ class _ShortReadingProcessor(DeterministicTestProcessor):
                     provenance="processor-inference",
                     uncertainty="low",
                     markdown_anchor="short-overview",
+                ),
+                ProcessorCandidateDraft(
+                    kind="concept",
+                    summary="第一部分是材料的起始主题。",
+                    evidence_refs=(first,),
+                    provenance="processor-inference",
+                    uncertainty="low",
+                    markdown_anchor="first-concept",
+                ),
+                ProcessorCandidateDraft(
+                    kind="concept",
+                    summary="第二部分是材料的后续主题。",
+                    evidence_refs=(second,),
+                    provenance="processor-inference",
+                    uncertainty="low",
+                    markdown_anchor="second-concept",
+                ),
+                ProcessorCandidateDraft(
+                    kind="relationship",
+                    summary="第一部分包含一条可核验表述。",
+                    evidence_refs=(first, exact),
+                    provenance="processor-inference",
+                    uncertainty="low",
+                    markdown_anchor="first-relationship",
+                ),
+                ProcessorCandidateDraft(
+                    kind="relationship",
+                    summary="第二部分用于地图阅读。",
+                    evidence_refs=(second, reading),
+                    provenance="processor-inference",
+                    uncertainty="low",
+                    markdown_anchor="second-relationship",
                 ),
                 ProcessorCandidateDraft(
                     kind="claim",
@@ -219,6 +264,18 @@ class MapReviewTest(unittest.TestCase):
             map_directory=first.yaml_path.parent,
             path_policy=self.policy,
         )
+        source = session.read_source()
+        self.assertEqual(source.body, self.body)
+        self.assertEqual(source.text, self.body.decode("utf-8"))
+        self.assertNotIn("可核验的原文", repr(source))
+        for kind in ("concept", "relationship"):
+            items = [item for item in first.curation_map.candidates if item.kind == kind]
+            self.assertEqual(len(items), 2)
+            for item in items:
+                self.assertTrue(item.evidence_locator_ids)
+                for locator_id in item.evidence_locator_ids:
+                    excerpt = session.read_evidence(item.candidate_id, locator_id)
+                    self.assertIn(excerpt.text, self.body.decode("utf-8"))
         claim = next(item for item in first.curation_map.candidates if item.kind == "claim")
         excerpt = session.read_evidence(claim.candidate_id, claim.evidence_locator_ids[0])
         self.assertIn("可核验的原文", excerpt.text)
@@ -318,6 +375,17 @@ class MapReviewTest(unittest.TestCase):
             [body[item.start_byte : item.end_byte].decode("utf-8") for item in ranges],
             ["甲\r\n", "乙乙\n", "末行"],
         )
+
+    def test_full_source_display_maps_utf8_and_crlf_evidence_offsets(self) -> None:
+        body = "甲\r\n乙乙\n末行".encode("utf-8")
+        self.assertEqual(_display_source_text(body.decode("utf-8")), "甲\n乙乙\n末行")
+        self.assertEqual(_display_index_for_byte_offset(body, 0), "1.0")
+        self.assertEqual(_display_index_for_byte_offset(body, len("甲".encode("utf-8"))), "1.1")
+        self.assertEqual(_display_index_for_byte_offset(body, len("甲\r\n".encode("utf-8"))), "2.0")
+        self.assertEqual(_display_index_for_byte_offset(body, len("甲\r\n乙".encode("utf-8"))), "2.1")
+        self.assertEqual(_display_index_for_byte_offset(body, len(body)), "3.2")
+        with self.assertRaises(UnicodeDecodeError):
+            _display_index_for_byte_offset(body, 1)
 
     def test_short_remote_budget_file_requires_all_positive_limits(self) -> None:
         path = self.root / "budget.json"

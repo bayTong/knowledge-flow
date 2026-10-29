@@ -6,7 +6,7 @@ validator and the existing Capture-backed evidence operation as authorities.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import io
 import json
 from pathlib import Path
@@ -64,6 +64,13 @@ class VerifiedExcerpt:
 
 
 @dataclass(frozen=True, slots=True)
+class VerifiedSource:
+    text: str = field(repr=False)
+    body: bytes = field(repr=False)
+    warning_codes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class MapReviewSession:
     curation_map: CurationMap
     evidence: CurationEvidenceRecord
@@ -108,12 +115,13 @@ class MapReviewSession:
         )
         return f"原文第 {span} 行"
 
-    def _read_review_locator(self, locator: EvidenceLocator) -> VerifiedExcerpt:
+    def _read_capture_body(self) -> tuple[bytes, tuple[str, ...]]:
+        source = self.curation_map.source
         sink = io.BytesIO()
         read = get_capture(
             GetCaptureRequest(
-                capture_id=locator.source.capture_id,
-                version=locator.source.capture_version,
+                capture_id=source.capture_id,
+                version=source.capture_version,
                 body_sink=sink,
             ),
             config_path=self.experiment_root / "capture-config.yaml",
@@ -122,7 +130,6 @@ class MapReviewSession:
         if isinstance(read, FailureResult) or not isinstance(read, GetCaptureResult):
             raise MapReviewError("原文 Capture 版本无法通过核验。")
         metadata = read.capture
-        source = locator.source
         if (
             metadata.capture_id != source.capture_id
             or metadata.version != source.capture_version
@@ -134,6 +141,29 @@ class MapReviewSession:
         body = sink.getvalue()
         if len(body) != source.byte_size or hash_bytes(body).sha256 != source.payload_sha256:
             raise MapReviewError("原文完整性无法通过核验。")
+        warnings = tuple(
+            sorted(
+                set(self.source_warning_codes)
+                | {item.code.value for item in read.warnings}
+            )
+        )
+        return body, warnings
+
+    def read_source(self) -> VerifiedSource:
+        """Read the full, exact Capture version used by the published map."""
+
+        body, warnings = self._read_capture_body()
+        try:
+            text = body.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise MapReviewError("原文不是完整的 UTF-8 文本。") from exc
+        return VerifiedSource(text=text, body=body, warning_codes=warnings)
+
+    def _read_review_locator(self, locator: EvidenceLocator) -> VerifiedExcerpt:
+        if locator.source != self.curation_map.source:
+            raise MapReviewError("这条证据与当前地图的来源版本不一致。")
+        body, warnings = self._read_capture_body()
+        source = locator.source
         start = locator.byte_range.start_byte
         end = locator.byte_range.end_byte
         excerpt = body[start:end]
@@ -156,12 +186,7 @@ class MapReviewSession:
             end_byte=end,
             excerpt_sha256=locator.excerpt_sha256,
             whole_source=start == 0 and end == source.byte_size,
-            warning_codes=tuple(
-                sorted(
-                    set(self.source_warning_codes)
-                    | {item.code.value for item in read.warnings}
-                )
-            ),
+            warning_codes=warnings,
         )
 
     def read_evidence(self, candidate_id: str, locator_id: str) -> VerifiedExcerpt:
